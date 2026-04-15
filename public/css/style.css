@@ -1,0 +1,1534 @@
+/* ─── METT Custom Styles ─────────────────────────────────────────────────── */
+/* Built on top of Pico CSS dark theme */
+
+:root {
+  /* Dark charcoal + antique gold — inspired by the ancient world theme of Mega Empires */
+  --mett-bg: #0e0f0f;
+  --mett-surface: #181c1c;
+  --mett-surface2: #212727;
+  --mett-border: #2e3636;
+  --mett-text: #e8e3d8;
+  --mett-muted: #7a7568;
+  --mett-accent: #c4933f;   /* antique gold */
+  --mett-danger: #cc3333;
+  --mett-success: #2ea84a;
+  --mett-warning: #cc8800;
+
+  /* Pico overrides */
+  --pico-background-color: var(--mett-bg);
+  --pico-card-background-color: var(--mett-surface);
+  --pico-border-color: var(--mett-border);
+}
+
+body {
+  background: var(--mett-bg);
+  color: var(--mett-text);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* ─── Nav ─────────────────────────────────────────────────────────────────── */
+
+.mett-nav {
+  background: var(--mett-surface);
+  border-bottom: 1px solid var(--mett-border);
+  padding: 0.15rem 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.mett-brand {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--mett-text);
+  text-decoration: none;
+}
+
+.mett-nav li a {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.4rem;
+  color: var(--mett-text);
+  text-decoration: none;
+}
+
+.mett-nav a[aria-current="page"] {
+  color: var(--mett-accent) !important;
+  font-weight: 600;
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+
+.mett-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.25rem 0 0.3rem;
+}
+
+.mett-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.game-status {
+  color: var(--mett-muted);
+  font-size: 0.9rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+
+.mode-badge,
+.revealed-badge,
+.final-round-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.mode-badge {
+  background: var(--mett-accent);
+  color: #fff;
+}
+
+.final-round-badge {
+  background: var(--mett-danger);
+  color: #fff;
+  animation: pulse-badge 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.revealed-badge {
+  background: var(--mett-success);
+  color: #fff;
+}
+
+/* ─── Civilization badges ─────────────────────────────────────────────────── */
+
+.civ-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+
+.civ-badge-sm {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+
+.region-west .civ-badge { border-left: 3px solid rgba(0,0,0,0.3); }
+.region-east .civ-badge { border-right: 3px solid rgba(255,255,255,0.3); }
+
+.civ-badge-with-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 4px;
+  width: 115px;
+  box-sizing: border-box;
+}
+.civ-badge-label { min-width: 0; }
+.civ-num-in-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.22);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.mil-badge {
+  font-size: 0.75rem;
+  margin-left: 0.3rem;
+  opacity: 0.9;
+}
+
+/* Census table column sizing */
+.census-table { table-layout: fixed; width: 100%; }
+.census-table .empire-col { width: 100%; }
+.empire-col-inner { display: flex; align-items: center; overflow: hidden; min-width: 0; }
+.empire-col-inner .civ-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.census-table .city-col {
+  width: 34px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--mett-text);
+  white-space: nowrap;
+}
+.census-table .mil-col {
+  width: 34px;
+  text-align: center;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  white-space: nowrap;
+}
+.census-table thead .mil-col { color: #cc4444; }
+.census-pop { width: 52px; }
+
+/* Red military dot */
+.mil-dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #e05555;
+  box-shadow: 0 0 4px #e05555aa;
+  vertical-align: middle;
+}
+
+.census-pop { font-weight: 700; text-align: right; font-size: 1rem; white-space: nowrap; }
+.pending-pop { color: var(--mett-warning); font-size: 0.85rem; }
+.submitted-hidden { color: #4a8a5a; font-size: 0.85rem; }   /* muted green ✓ */
+.not-submitted    { color: #8a3a3a; font-size: 0.85rem; }   /* muted red ? */
+
+/* Military icon — red dot in census table, ⚔ on header/buttons */
+
+/* Military toggle on civ page */
+.mil-toggle-civ {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--mett-border);
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: center;
+}
+.mil-toggle-civ.mil-on  { background: #3a2020; border-color: #cc5555; color: #ff8888; }
+.mil-toggle-civ.mil-off { background: var(--mett-surface2); color: var(--mett-muted); }
+
+/* Requirement label in AST table */
+.req-label { text-align: center; color: var(--mett-muted); font-size: 0.85rem; width: 2.5rem; }
+
+/* Requirement legend below AST table */
+.req-legend {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.75rem;
+  list-style: none;
+  font-size: 0.75rem;
+  color: var(--mett-muted);
+  border-top: 1px solid var(--mett-border);
+  line-height: 1.7;
+}
+.req-legend li strong { color: var(--mett-text); margin-right: 0.3rem; }
+
+.move-pos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--mett-accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-right: 0.4rem;
+}
+
+.civ-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--mett-surface2);
+  color: var(--mett-muted);
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 0.4rem;
+  flex-shrink: 0;
+}
+
+.total-vp { font-weight: 700; text-align: right; }
+
+/* Leaderboard ties */
+.rank-tie { color: var(--mett-warning); font-weight: 900; font-size: 1rem; }
+.lb-tied td { background: rgba(204,136,0,0.06); }
+.lb-group-start td { border-top: 2px solid var(--mett-border); }
+
+/* ─── Tables ──────────────────────────────────────────────────────────────── */
+
+.mett-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.mett-table th {
+  background: var(--mett-surface2);
+  color: var(--mett-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--mett-border);
+  white-space: nowrap;
+}
+
+.mett-table td {
+  padding: 0.3rem 0.55rem;
+  border-bottom: 1px solid var(--mett-border);
+  vertical-align: middle;
+  height: 2rem;  /* fixed row height so tables align across columns */
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.mett-table tr:hover td {
+  background: var(--mett-surface2);
+}
+
+.rank { color: var(--mett-muted); font-size: 0.85rem; width: 2rem; text-align: center; }
+.player-name { font-weight: 500; }
+.lb-emp-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 3px 8px 4px 4px;
+  width: 115px;
+  box-sizing: border-box;
+}
+.lb-emp-top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.lb-badge-name { display: none; font-size: 10px; opacity: 0.8; padding-left: 2px; white-space: nowrap; }
+/* Player name in go-empire — visible by default, block on mobile for card layout */
+.go-player-name { display: none; font-size: 0.78rem; color: var(--mett-muted); margin-top: 0.1rem; }
+.adv-pts { text-align: right; }
+.ast-pts { text-align: right; font-weight: 600; }
+.ast-req { color: var(--mett-muted); font-size: 0.82rem; }
+.status-col { text-align: center; width: 2.5rem; }
+.status-icon { font-size: 1rem; }
+.status-icon.submitted { color: var(--mett-success); }
+.status-icon.pending { color: var(--mett-warning); }
+
+.table-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--mett-muted);
+}
+
+/* Census hint with separator — matches req-legend style */
+.census-hint {
+  border-top: 1px solid var(--mett-border);
+  padding-top: 0.4rem;
+}
+
+.table-scroll { overflow-x: auto; }
+
+/* ─── Main 3-column layout ────────────────────────────────────────────────── */
+
+.main-grid {
+  display: grid;
+  /* census | leaderboard | ast — leaderboard gets more room for 16:9 TV */
+  grid-template-columns: 5fr 8fr 5fr;
+  gap: 1.5rem;
+  align-items: stretch;
+  min-width: 0;
+}
+.main-grid > * { min-width: 0; }
+
+@media (max-width: 1100px) {
+  .main-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── Status page responsive font scaling ─────────────────────────────────── */
+@media (max-width: 1400px) {
+  .mett-table { font-size: 0.84rem; }
+  .mett-table th { font-size: 0.7rem; padding: 0.4rem 0.5rem; }
+  .mett-table td { height: 1.9rem; padding: 0.25rem 0.5rem; }
+  .table-section { padding: 0.6rem; }
+  .main-grid { gap: 1rem; }
+}
+@media (max-width: 1100px) {
+  .mett-table { font-size: 0.8rem; }
+  .mett-table td { height: 1.75rem; }
+  .table-section { padding: 0.5rem; }
+  .main-grid { gap: 0.6rem; }
+}
+@media (max-width: 700px) {
+  .mett-table { font-size: 0.78rem; }
+  main.container-fluid { padding-left: 0.3rem !important; padding-right: 0.3rem !important; }
+  .lb-player-col { display: none; }
+  .lb-badge-name { display: block; }
+  .lb-table .adv-pts, .lb-table .ast-pts, .lb-table .total-vp, .lb-table .rank { padding-left: 0.2rem; padding-right: 0.2rem; }
+}
+
+/* ─── Admin page responsive font scaling ──────────────────────────────────── */
+@media (max-width: 1200px) {
+  .admin-table { font-size: 0.82rem; }
+  .admin-table td { height: 1.9rem; }
+  .admin-table .player-name-input { width: 110px; font-size: 0.82rem; }
+  .admin-table .adv-input { width: 68px; }
+  .mett-header h2 { font-size: 1.2rem; }
+  .admin-header h2 { font-size: 1.2rem; }
+}
+@media (max-width: 900px) {
+  .admin-table { font-size: 0.76rem; }
+  .admin-table .player-name-input { width: 90px; font-size: 0.76rem; }
+  .admin-table .adv-input { width: 58px; }
+  .ast-btn { width: 1.4rem; height: 1.4rem; font-size: 0.85rem; }
+  .ast-select { font-size: 0.76rem; }
+  .mil-toggle { font-size: 0.72rem; padding: 0.15rem 0.35rem; }
+  .setup-section, .admin-section { padding: 0.4rem 0.6rem; }
+}
+@media (max-width: 700px) {
+  /* Admin — ultra compact for phone */
+  .admin-table { font-size: 0.68rem; }
+  .admin-table td, .admin-table th { padding: 0.15rem 0.2rem; height: 1.6rem; }
+  .admin-table .player-name-input { width: 72px; font-size: 0.68rem; }
+  .admin-table .adv-input { width: 46px; font-size: 0.68rem; }
+  .census-admin-input, .city-admin-input, .city-admin-select { width: 42px; font-size: 0.68rem; padding: 0.12rem 0.15rem; }
+  .admin-table .rank-input { width: 34px; font-size: 0.65rem; }
+  .ast-btn { width: 1.2rem; height: 1.2rem; font-size: 0.75rem; }
+  .ast-select { font-size: 0.66rem; padding: 0.1rem 0.15rem; }
+  .ast-ctrl { gap: 0.15rem; }
+  .mil-toggle { font-size: 0.62rem; padding: 0.1rem 0.2rem; }
+  .admin-section { padding: 0.3rem 0.4rem; }
+
+  /* All tables on phone — minimal column gaps */
+  .mett-table td, .mett-table th { padding-left: 0.2rem; padding-right: 0.2rem; }
+}
+
+.table-section {
+  background: var(--mett-surface);
+  border: 1px solid var(--mett-border);
+  border-radius: 5px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+.table-spacer { flex: 1; }
+
+.table-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mett-muted);
+  font-weight: 700;
+}
+
+/* ─── Banners ─────────────────────────────────────────────────────────────── */
+
+.no-game-banner,
+.census-ready-banner,
+.final-round-banner {
+  padding: 1rem 1.5rem;
+  border-radius: 5px;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.final-round-banner {
+  background: #3a1010;
+  border: 1px solid var(--mett-danger);
+  color: #ff9999;
+}
+
+.final-scores-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.5rem;
+}
+
+/* Score breakdown shown only on mobile inside player name cell */
+.go-score-detail { display: none; }
+
+/* ─── Game-over table: card layout on narrow/large-text screens ───────────── */
+@media (max-width: 700px) {
+  .game-over-table thead { display: none; }
+  .game-over-table,
+  .game-over-table tbody { display: block; }
+  .game-over-table tr {
+    display: grid;
+    /* empire: fit-content caps at 55% so total always gets meaningful space */
+    grid-template-columns: 1.8rem fit-content(55%) 1fr;
+    align-items: stretch;  /* all three cells same height as empire badge */
+    gap: 0.5rem;
+    padding: 0.45rem 0.1rem;
+    border-bottom: 1px solid var(--mett-border);
+  }
+  .game-over-table tr.lb-tied { background: rgba(204,136,0,0.06); }
+  .game-over-table td { height: auto; overflow: visible; }
+  /* Rank: vertically centred */
+  .game-over-table .go-rank   { padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+  /* Empire: flex container so badge stretches to fill full cell height */
+  .game-over-table .go-empire { padding: 0; overflow: visible; white-space: normal; display: flex; align-items: stretch; }
+  /* Total: vertically centred, right-aligned — 1fr gives it all remaining space */
+  .game-over-table .go-total  { padding: 0; display: flex; align-items: center; justify-content: flex-end; white-space: nowrap; font-size: 1rem; overflow: visible; }
+  .game-over-table .go-ast,
+  .game-over-table .go-adv   { display: none; }
+  .game-over-table .go-tie   { grid-column: 1 / 4; padding: 0.25rem 0 0; }
+  .game-over-table .go-tie:empty { display: none; }
+  /* Badge fills empire cell: flex:1 for full width, align-self:stretch for full height */
+  .game-over-table .civ-badge-with-num { flex: 1 1 100%; display: flex; white-space: normal; align-items: flex-start; }
+  .game-over-table .civ-badge-label   { display: flex; flex-direction: column; line-height: 1.25; }
+  .game-over-table .go-player-name    { display: block !important; font-size: 0.72rem; opacity: 0.82; margin-top: 0.15rem; }
+  /* strip padding from the game-over section so table sits flush */
+  .go-section { padding: 0.15rem 0.05rem; }
+  main.container-fluid { padding-left: 0.15rem !important; padding-right: 0.15rem !important; }
+}
+
+/* Medal flags (⚑) in gold/silver/bronze */
+.medal {
+  font-size: 1rem;
+  vertical-align: middle;
+}
+.medal-gold   { color: #f5c518; }
+.medal-silver { color: #adb5bd; }
+.medal-bronze { color: #cd7f32; }
+
+/* Late Iron Age star — shown next to empire name */
+.lia-star {
+  color: var(--mett-accent);
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+/* Late Iron Age star toggle button (admin game-over) */
+.lia-star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0 0.2rem;
+  vertical-align: middle;
+  transition: color 0.15s;
+}
+.lia-star-on  { color: var(--mett-accent); }
+.lia-star-off { color: var(--mett-border); }
+.lia-star-off:hover { color: var(--mett-muted); }
+
+/* Tie-break rank dropdown */
+.rank-select {
+  --pico-form-element-spacing-vertical: 0.15rem;
+  --pico-form-element-spacing-horizontal: 0.35rem;
+  font-size: 0.8rem;
+  width: auto;
+}
+.rank-select-resolved {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.no-game-banner {
+  background: var(--mett-surface);
+  border: 1px solid var(--mett-border);
+  color: var(--mett-muted);
+}
+
+.census-ready-banner {
+  background: #1a3a1a;
+  border: 1px solid var(--mett-success);
+  color: var(--mett-success);
+}
+
+/* ─── Civ Page ────────────────────────────────────────────────────────────── */
+
+.civ-hero {
+  background: var(--civ-color, #333);
+  color: var(--civ-text, #fff);
+  border-radius: 6px;
+  padding: 0.45rem 0.85rem;
+  margin-bottom: 0.4rem;
+  position: relative;
+}
+
+.civ-hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.civ-hero h2 {
+  font-size: 1.7rem;
+  font-weight: 900;
+  margin: 0;
+  color: inherit;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.civ-player-name {
+  font-size: 1rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.civ-region-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  background: rgba(0,0,0,0.2);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  align-self: flex-start;
+  text-transform: uppercase;
+}
+
+.civ-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.civ-body > * { min-width: 0; } /* prevent grid items from expanding beyond their track */
+
+.civ-section.ast-section {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 700px) {
+  /* Container gutters */
+  main.container-fluid { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+
+  /* Hero */
+  .civ-hero { padding: 0.35rem 0.5rem; margin-bottom: 0.2rem; }
+  .civ-hero-content { gap: 0.02rem; }
+  .civ-hero h2 { font-size: 1.0rem; gap: 0.3rem; }
+  .civ-player-name { font-size: 0.72rem; }
+  .civ-region-tag { font-size: 0.58rem; padding: 0.08rem 0.25rem; }
+
+  /* Body layout */
+  .civ-body { grid-template-columns: 1fr; gap: 0.2rem; }
+  .civ-section { padding: 0.3rem 0.4rem; }
+  .civ-section h3 { font-size: 0.68rem; margin-bottom: 0.15rem; letter-spacing: 0.04em; }
+
+  /* Census — status line very tight, input row compact */
+  .census-submitted, .census-pending { font-size: 0.7rem; margin-bottom: 0.08rem; }
+  .census-input-row, .adv-input-row { gap: 0.2rem; }
+  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.82rem; padding: 0 0 0 0.4rem; height: 1.65rem; min-height: 0; line-height: 1.65rem; box-sizing: border-box; border-radius: 3px; }
+  .btn-submit { font-size: 0.74rem; padding: 0 0.5rem; height: 1.65rem; min-height: 0; box-sizing: border-box; }
+  .move-order { font-size: 0.68rem; margin-top: 0.1rem; }
+
+  /* Advances — stacked rows, very tight */
+  .adv-cards { gap: 0.1rem; }
+  .adv-card-row { gap: 0.18rem; margin: 0; }
+  .adv-card-label { font-size: 0.66rem; }
+  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.76rem; padding: 0 0.3rem 0 0; width: 3rem; height: 1.5rem; min-height: 0; line-height: 1.5rem; text-align: right; box-sizing: border-box; border-radius: 3px; margin: 0 !important; }
+  .adv-btn { width: 1.5rem; height: 1.5rem; min-height: 0; font-size: 0.85rem; }
+  .adv-total-row { margin-top: 0.1rem; padding-top: 0.15rem; gap: 0.2rem; }
+  .adv-total-label { font-size: 0.68rem; }
+  .adv-total-value { font-size: 0.9rem; min-width: 2rem; }
+
+  /* Military */
+  .mil-toggle-civ { padding: 0.28rem 0.5rem; font-size: 0.78rem; }
+
+  /* AST section */
+  .ast-current { margin-bottom: 0.18rem; gap: 0.3rem; }
+  .ast-level-label { font-size: 0.75rem; }
+  .ast-level-value { font-size: 1.05rem; }
+  .ast-era { font-size: 0.7rem; }
+  .ast-next { padding: 0.28rem 0.4rem; margin-bottom: 0.2rem; }
+  .ast-next h4 { font-size: 0.7rem; margin-bottom: 0.12rem; }
+  .ast-req-text { font-size: 0.78rem; }
+  .ast-mode-note { font-size: 0.64rem; margin-top: 0.1rem; }
+  :root { --ast-node-size: 1.5rem; --ast-node-gap: 2px; }
+  .ast-node { font-size: 0.55rem; }
+  .ast-age-label { font-size: 0.38rem; padding: 1px 0; margin-bottom: 1px; }
+}
+
+.civ-section {
+  background: var(--mett-surface);
+  border: 1px solid var(--mett-border);
+  border-radius: 5px;
+  padding: 0.4rem 0.6rem;
+}
+
+.civ-section h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mett-muted);
+  font-weight: 700;
+}
+
+.census-submitted { color: var(--mett-success); font-weight: 600; margin: 0 0 0.35rem; font-size: 0.9rem; }
+.census-pending { color: var(--mett-warning); margin: 0 0 0.35rem; font-size: 0.9rem; }
+
+.census-input-row,
+.adv-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.census-input, .adv-input {
+  --pico-form-element-spacing-vertical: 0.25rem;
+  --pico-form-element-spacing-horizontal: 0.5rem;
+  flex: 1;
+  max-width: 160px;
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  color: var(--mett-text);
+  font-size: 0.95rem;
+  margin: 0 !important;
+}
+
+/* Advance card inputs */
+.adv-cards { display: flex; flex-direction: column; gap: 0.25rem; }
+.adv-card-row { display: flex; align-items: center; gap: 0.3rem; }
+.adv-card-label { flex: 1; font-size: 0.82rem; color: var(--mett-muted); white-space: nowrap; }
+.adv-btn {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mett-border);
+  border-radius: 3px;
+  background: var(--mett-surface2);
+  color: var(--mett-text);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+.adv-btn:hover { background: var(--mett-border); }
+.adv-card-input {
+  --pico-form-element-spacing-vertical: 0.18rem;
+  --pico-form-element-spacing-horizontal: 0.35rem;
+  width: 4rem;
+  text-align: right;
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 3px;
+  color: var(--mett-text);
+  font-size: 0.88rem;
+  margin: 0 !important;
+}
+/* Hide number input spinners globally for compact layout */
+.adv-card-input::-webkit-outer-spin-button,
+.adv-card-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.adv-card-input[type=number] { -moz-appearance: textfield; }
+.adv-total-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--mett-border);
+}
+.adv-total-label { flex: 1; font-size: 0.85rem; color: var(--mett-muted); }
+.adv-total-value { font-weight: 800; font-size: 1rem; min-width: 2.5rem; text-align: right; }
+
+.btn-submit {
+  background: var(--mett-accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-submit:hover { filter: brightness(1.15); }
+
+.move-order {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--mett-muted);
+}
+
+/* ─── AST Section on civ page ─────────────────────────────────────────────── */
+
+.ast-current {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.ast-level-label { color: var(--mett-muted); }
+.ast-level-value { font-size: 1.8rem; font-weight: 900; }
+.ast-era { color: var(--mett-muted); font-size: 0.85rem; }
+
+.ast-next {
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-accent);
+  border-radius: 4px;
+  padding: 0.35rem 0.55rem;
+  margin-bottom: 0.35rem;
+}
+
+.ast-next h4 { margin: 0 0 0.4rem; font-size: 0.85rem; color: var(--mett-accent); }
+.ast-req-text { margin: 0; font-weight: 600; font-size: 1rem; }
+.ast-mode-note { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--mett-muted); }
+
+.ast-warn-regress {
+  margin: 0;
+  font-weight: 700;
+  color: var(--mett-danger);
+  font-size: 1rem;
+}
+.ast-req-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.req-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.req-ok { color: var(--mett-success); }
+.req-fail { color: var(--mett-danger); }
+.req-have { font-weight: 400; font-size: 0.8rem; color: var(--mett-muted); }
+.ast-next.req-all-ok { border-color: var(--mett-success); }
+.ast-next.req-not-met { border-color: var(--mett-danger); }
+
+.ast-bar-wrap {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+}
+
+:root { --ast-node-size: 2rem; --ast-node-gap: 3px; }
+
+.ast-progress-grid {
+  display: grid;
+  gap: var(--ast-node-gap);
+  width: max-content;
+}
+
+.ast-age-label {
+  font-size: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  border-radius: 3px 3px 0 0;
+  padding: 2px 0;
+  margin-bottom: 2px;
+}
+
+.ast-node {
+  width: var(--ast-node-size);
+  height: var(--ast-node-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: default;
+}
+
+.ast-node.past { background: var(--mett-surface2); color: var(--mett-muted); }
+.ast-node.active {
+  background: var(--mett-accent);
+  color: #fff;
+  box-shadow: 0 0 8px var(--mett-accent);
+  transform: scale(1.1);
+}
+.ast-node.future { background: var(--mett-surface); border: 1px solid var(--mett-border); color: var(--mett-muted); }
+
+/* ─── AST Full Table ──────────────────────────────────────────────────────── */
+
+.ast-full-table td { vertical-align: top; padding-top: 0.3rem; padding-bottom: 0.3rem; }
+
+.ast-full-table .ast-level-cell {
+  font-weight: 800;
+  font-size: 1rem;
+  text-align: right;
+  width: 4rem;
+}
+
+.ast-full-table .ast-era-cell {
+  color: var(--mett-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.ast-full-table tr.ast-row-occupied td {
+  background: rgba(108, 110, 255, 0.08);
+}
+
+/* ast-civs-cell is now an inner div (not td) to avoid display:flex on td causing row jump */
+.ast-civs-cell { display: flex; flex-direction: column; gap: 2px; min-width: 100px; align-items: flex-start; }
+
+.ast-table-wrap { overflow-x: auto; }
+
+.ast-mode-toggle {
+  margin-bottom: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--mett-surface);
+  border-radius: 4px;
+  border: 1px solid var(--mett-border);
+  font-size: 0.82rem;
+}
+.ast-mode-toggle p { margin: 0; }
+
+/* ─── AST View Toggle ────────────────────────────────────────────────────── */
+
+.ast-view-toggle {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.ast-toggle-btn {
+  padding: 0.25rem 0.9rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  background: var(--mett-surface);
+  color: var(--mett-muted);
+  cursor: pointer;
+}
+
+.ast-toggle-btn.active-toggle {
+  background: var(--mett-accent);
+  color: #fff;
+  border-color: var(--mett-accent);
+}
+
+/* ─── AST Board View ─────────────────────────────────────────────────────── */
+
+/* Shrink-wrap the table so it doesn't stretch to fill the page */
+.ab-scroll {
+  overflow-x: auto;
+  display: inline-block;   /* key: shrinks to table width */
+  max-width: 100%;
+}
+
+.ab-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  /* width is sum of columns: 100px label + 17 × 30px = 610px */
+  width: 610px;
+  font-size: 0.72rem;
+}
+
+/* Scale up on wider screens: 1100px → 160px label + 17×48px = 976px */
+@media (min-width: 1100px) {
+  .ab-scroll { display: block; }
+  .ab-table { width: 976px; font-size: 0.82rem; }
+  .ab-civ-label { width: 130px; }
+  .ab-level-num { width: 48px; font-size: 0.72rem; }
+  .ab-cell { width: 48px; height: 34px; }
+  .ab-magnet { width: 26px; height: 26px; }
+  .ab-name { font-size: 0.72rem; }
+  .ab-round-num { font-size: 0.72rem; }
+}
+
+/* Even wider: 1400px → 180px label + 17×58px = 1166px */
+@media (min-width: 1400px) {
+  .ab-table { width: 1166px; font-size: 0.88rem; }
+  .ab-civ-label { width: 135px; }
+  .ab-level-num { width: 58px; font-size: 0.76rem; }
+  .ab-cell { width: 58px; height: 40px; }
+  .ab-magnet { width: 30px; height: 30px; }
+  .ab-name { font-size: 0.76rem; }
+  .ab-round-num { font-size: 0.76rem; }
+}
+
+.ab-table th, .ab-table td {
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Civ label column — sticky so it stays visible when scrolling */
+.ab-civ-label {
+  width: 125px;
+  padding: 0.2rem 0.4rem;
+  background: var(--mett-bg);
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  border-right: 2px solid rgba(0,0,0,0.5) !important;
+}
+
+.ab-corner { background: var(--mett-bg) !important; z-index: 3; }
+
+.ab-vp-label {
+  font-size: 0.6rem;
+  color: var(--mett-muted);
+  font-weight: 400;
+  text-align: right;
+  padding-right: 0.3rem;
+}
+
+.ab-civ-num {
+  display: inline-block;
+  width: 1.1em;
+  opacity: 0.65;
+  font-size: 0.65em;
+  vertical-align: middle;
+}
+
+/* Age band header row */
+.ab-header {
+  text-align: center;
+  padding: 0.2rem 0.1rem;
+  vertical-align: middle;
+  overflow: hidden;
+  border-bottom: 2px solid rgba(0,0,0,0.4) !important;
+}
+
+.ab-name {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* Level number row */
+.ab-level-num {
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.15rem 0;
+  width: 30px;
+  border-bottom: 2px solid rgba(0,0,0,0.4) !important;
+}
+
+/* Age band colours — headers */
+.age-start   { background: #1a1a1a; color: #666; }
+.age-stone   { background: #3a3028; color: #c8b89a; }
+.age-ebronze { background: #352818; color: #d4a870; }
+.age-mbronze { background: #2e1e0e; color: #c09050; }
+.age-lbronze { background: #221408; color: #a07840; }
+.age-eiron   { background: #2a2000; color: #c8a020; }
+.age-liron   { background: #1e1004; color: #b06828; }
+
+/* Cell tints for the body rows */
+.ab-cell {
+  width: 30px;
+  height: 24px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.ab-cell.age-start   { background: rgba(30,30,30,0.30); }
+.ab-cell.age-stone   { background: rgba(90,76,52,0.35); }
+.ab-cell.age-ebronze { background: rgba(110,72,20,0.35); }
+.ab-cell.age-mbronze { background: rgba(80,48,10,0.40); }
+.ab-cell.age-lbronze { background: rgba(56,32,6,0.45); }
+.ab-cell.age-eiron   { background: rgba(72,56,0,0.40); }
+.ab-cell.age-liron   { background: rgba(90,36,4,0.40); }
+
+/* Thick right border marks the end of each age band per empire row */
+.ab-age-end {
+  border-right: 2px solid rgba(255,255,255,0.22) !important;
+}
+
+/* Start column — level 0, where all empires sit at game start */
+.ab-start-col {
+  border-right: 2px solid rgba(255,255,255,0.22) !important;
+  opacity: 0.6;
+}
+.ab-level-num.ab-start-col {
+  font-style: italic;
+  letter-spacing: 0;
+}
+
+/* Magnet dot */
+.ab-magnet {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.4);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.25);
+  vertical-align: middle;
+}
+
+/* Requirements legend below the board */
+.ab-legend {
+  list-style: none;
+  padding: 0.5rem 0 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  font-size: 0.72rem;
+  color: var(--mett-muted);
+}
+
+.ab-legend li { display: flex; align-items: center; gap: 0.35rem; }
+
+.ab-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.ab-slowstart-note {
+  font-size: 0.68rem;
+  color: var(--mett-muted);
+  margin: 0.25rem 0 0;
+}
+
+/* Round track footer row */
+.ab-round-label {
+  font-size: 0.6rem;
+  color: var(--mett-muted);
+  font-weight: 400;
+  text-align: right;
+  padding-right: 0.3rem;
+}
+
+.ab-round-num {
+  text-align: center;
+  font-size: 0.6rem;
+  color: var(--mett-muted);
+  padding: 0.12rem 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.ab-round-current {
+  color: var(--mett-accent);
+  font-weight: 700;
+  background: rgba(196,147,63,0.12) !important;
+}
+
+/* ─── Admin Page ──────────────────────────────────────────────────────────── */
+
+.admin-page h2 { margin-bottom: 1.5rem; }
+
+.setup-section,
+.admin-section {
+  background: var(--mett-surface);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+  margin-bottom: 0.3rem;
+}
+
+.setup-section h3,
+.admin-section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mett-muted);
+  font-weight: 700;
+}
+
+.mode-toggle-row {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.mode-toggle-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.player-count-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.player-count-select {
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  color: var(--mett-text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.setup-hint {
+  font-size: 0.8rem;
+  color: var(--mett-muted);
+  margin: 0;
+}
+
+.civ-num { font-size: 0.7rem; }
+
+/* ─── Name inputs ─────────────────────────────────────────────────────────── */
+
+.name-inputs-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .name-inputs-grid2 { grid-template-columns: 1fr; }
+}
+
+.name-input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.name-civ-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 5.5rem;
+}
+
+.name-text-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0 !important;
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  color: var(--mett-text);
+  font-size: 0.85rem;
+  height: auto;
+  line-height: 1.4;
+}
+
+/* ─── Admin active controls ───────────────────────────────────────────────── */
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.admin-header h2 { margin: 0; }
+.admin-badges { display: flex; gap: 0.5rem; }
+
+.round-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.debug-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--mett-border);
+}
+.round-hint {
+  font-size: 0.8rem;
+  color: var(--mett-warning);
+  opacity: 0.85;
+}
+
+/* Reset Pico CSS margin AND padding on all form elements inside admin table */
+.admin-table input,
+.admin-table select,
+.admin-table button {
+  margin: 0 !important;
+}
+.admin-table input[type=text],
+.admin-table input[type=number],
+.admin-table select {
+  --pico-form-element-spacing-vertical: 0.12rem;
+  --pico-form-element-spacing-horizontal: 0.35rem;
+}
+
+.admin-table { font-size: 0.84rem; }
+.admin-table td { height: 1.75rem; padding: 0.15rem 0.4rem; }
+.admin-table th { padding: 0.25rem 0.4rem; font-size: 0.68rem; }
+
+.admin-table .player-name-input {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--mett-text);
+  font-size: 0.84rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  width: 120px;
+}
+.admin-table .player-name-input:focus {
+  border-color: var(--mett-accent);
+  background: var(--mett-surface2);
+  outline: none;
+}
+
+.mil-toggle {
+  border: 1px solid var(--mett-border);
+  border-radius: 3px;
+  padding: 0.12rem 0.35rem;
+  font-size: 0.76rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mil-toggle.mil-on { background: #3a2020; border-color: #cc5555; color: #ff8888; }
+.mil-toggle.mil-off { background: var(--mett-surface2); color: var(--mett-muted); }
+
+.ast-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.ast-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ast-status-advance  { background: var(--mett-success); }
+.ast-status-stay     { background: var(--mett-danger); }
+.ast-status-regress  { background: var(--mett-danger); }
+.ast-status-unknown  { background: var(--mett-border); }
+
+.ast-btn {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mett-border);
+  border-radius: 3px;
+  background: var(--mett-surface2);
+  color: var(--mett-text);
+  cursor: pointer;
+  font-size: 0.88rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.ast-select {
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  color: var(--mett-text);
+  padding: 0.1rem 0.25rem;
+  font-size: 0.82rem;
+  width: 68px;
+}
+
+.admin-table .rank-input {
+  width: 44px;
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  padding: 0.15rem 0.3rem;
+  color: var(--mett-muted);
+  font-size: 0.78rem;
+  text-align: center;
+  margin: 0;
+}
+
+.admin-table .adv-input {
+  width: 68px;
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  padding: 0.15rem 0.3rem;
+  color: var(--mett-text);
+  font-size: 0.82rem;
+  text-align: right;
+  margin: 0;
+}
+
+.city-admin-select {
+  width: 54px;
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  color: var(--mett-text);
+  padding: 0.1rem 0.25rem;
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.census-admin-input,
+.city-admin-input {
+  width: 52px;
+  background: var(--mett-surface2);
+  border: 1px solid var(--mett-border);
+  border-radius: 3px;
+  padding: 0.15rem 0.3rem;
+  color: var(--mett-text);
+  font-size: 0.82rem;
+  text-align: right;
+  margin: 0 !important;
+}
+.census-admin-input:focus,
+.city-admin-input:focus {
+  border-color: var(--mett-accent);
+  outline: none;
+}
+.census-admin-input::placeholder,
+.city-admin-input::placeholder { color: var(--mett-muted); }
+
+.danger-section { border-color: #442222; }
+
+.ast-req-table { font-size: 0.8rem; }
+.ast-req-table .ast-req-vp { font-weight: 700; width: 2.5rem; color: var(--mett-accent); }
+.ast-req-table .ast-req-era { color: var(--mett-muted); white-space: nowrap; width: 8rem; }
+
+/* ─── AST Turn Tracker ────────────────────────────────────────────────────── */
+
+.ast-tracker-count {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--mett-muted);
+  margin-left: 0.4rem;
+}
+
+.ast-tracker-table { width: auto; min-width: 0; }
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+
+.btn-primary {
+  background: var(--mett-accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-danger {
+  background: var(--mett-danger);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.45rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: var(--mett-surface2);
+  color: var(--mett-text);
+  border: 1px solid var(--mett-border);
+  border-radius: 4px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error-msg {
+  color: #ff6666;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+  min-height: 1.2em;
+}
+
+.not-in-game {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--mett-muted);
+}
+
+/* ── Trade page ────────────────────────────────────────────────────────────── */
+.trade-page { max-width: 900px; margin: 0 auto; }
+.trade-hint { font-size: 0.78rem; color: var(--mett-muted); margin: 0 0 1rem; }
+.trade-no-game { color: var(--mett-muted); padding: 2rem 0; }
+
+.trade-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+.trade-grid.trade-split {
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 600px) {
+  .trade-grid.trade-split { grid-template-columns: 1fr; }
+}
+
+.trade-table { width: 100%; }
+.trade-table .trade-card-col {
+  width: 160px;
+  vertical-align: middle;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.trade-table .trade-card-col.submitted-hidden { color: #4a8a5a; font-size: 1rem; font-weight: 700; }
+.trade-table .trade-card-col.not-submitted    { color: #8a3a3a; font-size: 1rem; font-weight: 700; }
+.trade-no-cities { color: var(--mett-muted); font-weight: 400; }
+.trade-no-cards { color: var(--mett-muted); }
+
+/* Trade card chips */
+.trade-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+}
+.trade-chip {
+  width: 16px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  border: 1px solid var(--mett-border);
+  background: var(--mett-surface2);
+  color: var(--mett-text);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.trade-table .trade-group-start td {
+  border-top: 2px solid var(--mett-accent);
+}

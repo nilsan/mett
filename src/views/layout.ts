@@ -1,0 +1,32 @@
+export function layout(title: string, body: string, activeSlug?: string): string {
+  return /* html */`<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title === 'Mega Empires Turn Tracker' ? title : `${title} — Mega Empires Turn Tracker`}</title>
+  <meta name="description" content="Real-time census, leaderboard and A.S.T. tracker for Mega Empires board game sessions.">
+  <meta property="og:title" content="${title === 'Mega Empires Turn Tracker' ? title : `${title} — Mega Empires Turn Tracker`}">
+  <meta property="og:description" content="Real-time census, leaderboard and A.S.T. tracker for Mega Empires board game sessions.">
+  <meta property="og:site_name" content="Mega Empires Turn Tracker">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="mett-nav container-fluid">
+    <ul>
+      <li><a href="/" class="mett-brand" ${activeSlug === 'main' ? 'aria-current="page"' : ''}>METT</a></li>
+    </ul>
+    <ul>
+      <li><a href="/ast" ${activeSlug === 'ast' ? 'aria-current="page"' : ''}>A.S.T.</a></li>
+      <li><a href="/trade" ${activeSlug === 'trade' ? 'aria-current="page"' : ''}>Trade</a></li>
+      <li><a href="/admin" ${activeSlug === 'admin' ? 'aria-current="page"' : ''}>⚙</a></li>
+    </ul>
+  </nav>
+  <main class="container-fluid">
+    ${body}
+  </main>
+  <script src="/js/ws-client.js"></script>
+</body>
+</html>`;
+}
