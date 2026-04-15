@@ -1275,6 +1275,38 @@ body {
   opacity: 0.85;
 }
 
+/* Submission progress counters */
+.submission-progress {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.sub-prog-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.35rem;
+  background: var(--mett-bg-alt);
+  border: 1px solid var(--mett-border);
+  font-size: 0.8rem;
+}
+.sub-prog-item.sub-prog-done {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.15);
+}
+.sub-prog-label { opacity: 0.8; }
+.sub-prog-count { font-weight: 600; }
+.sub-prog-item.sub-prog-done .sub-prog-label { opacity: 1; }
+
+/* Section hint text (civ page) */
+.section-hint {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin: -0.25rem 0 0.5rem;
+}
+
 /* Reset Pico CSS margin AND padding on all form elements inside admin table */
 .admin-table input,
 .admin-table select,

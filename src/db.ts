@@ -372,6 +372,7 @@ export function allCitiesSubmitted(round: number): boolean {
   return submitted!.count === players.length;
 }
 
+
 // ─── AST ──────────────────────────────────────────────────────────────────────
 
 export function getAstLevels(): AstLevelRow[] {

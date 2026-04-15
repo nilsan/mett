@@ -389,7 +389,6 @@
         if (!sel) return;
         const dir = parseInt(btn.dataset.dir, 10);
         const cur = parseInt(sel.value, 10);
-        // If unset (—) and incrementing, start at 0; decrement on unset does nothing
         const base = isNaN(cur) ? (dir > 0 ? -1 : null) : cur;
         if (base === null) return;
         const next = base + dir;

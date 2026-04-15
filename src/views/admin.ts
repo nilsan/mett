@@ -299,9 +299,10 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[]): string {
   const expert = game.expert === 1;
   const AST_LEVELS = state.astLevels.map(l => l.level);
   const isFinalRound = game.is_final_round === 1;
-  const allCitiesReady = players.length > 0 && players.every(p =>
-    census.find(c => c.player_id === p.id)?.city_count != null
-  );
+  const n = players.length;
+  const censusCount = census.filter(c => c.population != null).length;
+  const citiesCount = census.filter(c => c.city_count != null).length;
+  const allCitiesReady = n > 0 && citiesCount === n;
 
   const playerRows = players.map(p => {
     const c = census.find(x => x.player_id === p.id);
@@ -311,7 +312,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[]): string {
     ).join('');
 
     const astStatus = nextAstStatus(p, c?.city_count, state.astLevels, expert);
-    const dotTitle = astStatus === 'advance' ? 'Will advance' : astStatus === 'regress' ? 'Will regress' : astStatus === 'stay' ? 'Requirements not met' : 'City count unknown';
+    const dotTitle = astStatus === 'advance' ? 'Will advance' : astStatus === 'regress' ? 'Will regress' : astStatus === 'stay' ? 'Requirements not met' : 'Post-calamity city count unknown';
 
     return `<tr data-player-id="${p.id}">
       <td data-label="Empire">
@@ -370,11 +371,21 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[]): string {
   ${isFinalRound ? '<div class="final-round-banner">⚑ Final Round — clicking End Game will close the game and reveal final scores.</div>' : ''}
 
   <section class="admin-section round-section">
+    <div class="submission-progress">
+      <div class="sub-prog-item${censusCount === n ? ' sub-prog-done' : ''}">
+        <span class="sub-prog-label">Census</span>
+        <span class="sub-prog-count">${censusCount}/${n}</span>
+      </div>
+      <div class="sub-prog-item${citiesCount === n ? ' sub-prog-done' : ''}">
+        <span class="sub-prog-label">Cities</span>
+        <span class="sub-prog-count">${citiesCount}/${n}</span>
+      </div>
+    </div>
     <div class="round-controls">
-      <button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled title="Set city count for all empires first"'}>
+      <button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled title="All empires must submit post-calamity city count first"'}>
         ${isFinalRound ? 'End Game' : `Advance to Round ${game.current_round + 1}`}
       </button>
-      ${!allCitiesReady ? '<span class="round-hint">Set city count for all empires before advancing</span>' : ''}
+      <span class="round-hint">All empires must submit post-calamity city count before advancing</span>
       ${!game.census_revealed ? `
       <button id="force-reveal" class="secondary">
         Force Reveal Census

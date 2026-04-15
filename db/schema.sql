@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS census (
   round        INTEGER NOT NULL,
   population   INTEGER,              -- NULL = not yet submitted
   submitted_at TEXT,
+  city_count   INTEGER,              -- NULL = not yet submitted
   UNIQUE(player_id, round)
 );
 
