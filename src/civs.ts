@@ -81,7 +81,7 @@ export const EAST_SCENARIOS: Record<number, SetupRecommendation> = {
 export const SETUP_RECOMMENDATIONS: Record<number, SetupRecommendation> = {
   // Combined game (West + East)
   10: { civNumbers: [15, 9, 1, 17, 3, 6, 12, 2, 14, 18], regionOverrides: {} },
-  11: { civNumbers: [15, 9, 1, 17, 3, 10, 6, 12, 2, 14, 18], regionOverrides: {} },
+  11: { civNumbers: [3, 17, 6, 14, 2, 12, 18, 16, 10, 4, 8], regionOverrides: {} },
   12: {
     civNumbers: [15, 11, 9, 7, 1, 17, 3, 6, 12, 2, 14, 18],
     regionOverrides: { 3: 'east' },
