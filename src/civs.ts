@@ -42,29 +42,39 @@ export interface SetupRecommendation {
 
 // ─── West-only scenarios (3–9 players) ───────────────────────────────────────
 // Cumulative: each count adds one civ to the previous.
-// W3: Hellas, Minoa, Hatti
-// W4: + Celt | W5: + Carthage | W6: + Rome | W7: + Iberia | W8: + Egypt | W9: + Assyria
+// W3: Hellas(15), Minoa(1), Hatti(9)
+// W4: + Assyria(3)
+// W5: + Egypt(17)
+// W6: Hellas(15), Minoa(1), Rome(11), Carthage(7), Iberia(13), Hatti(9)
+// W7: Rome(11), Carthage(7), Hellas(15), Minoa(1), Hatti(9), Assyria(3), Egypt(17)
+// W8: Iberia(13), Rome(11), Hellas(15), Minoa(1), Hatti(9), Assyria(3), Egypt(17), Carthage(7)
+// W9: all west empires
 export const WEST_SCENARIOS: Record<number, SetupRecommendation> = {
-  3: { civNumbers: [15, 1, 9],                   regionOverrides: {} },
-  4: { civNumbers: [15, 1, 9, 5],                regionOverrides: {} },
-  5: { civNumbers: [15, 1, 9, 5, 7],             regionOverrides: {} },
-  6: { civNumbers: [15, 1, 9, 5, 7, 11],         regionOverrides: {} },
-  7: { civNumbers: [15, 1, 9, 5, 7, 11, 13],     regionOverrides: {} },
-  8: { civNumbers: [15, 1, 9, 5, 7, 11, 13, 17], regionOverrides: {} },
-  9: { civNumbers: [15, 1, 9, 5, 7, 11, 13, 17, 3], regionOverrides: {} },
+  3: { civNumbers: [15, 1, 9],                      regionOverrides: {} },
+  4: { civNumbers: [15, 1, 9, 3],                   regionOverrides: {} },
+  5: { civNumbers: [15, 1, 9, 3, 17],               regionOverrides: {} },
+  6: { civNumbers: [15, 1, 11, 7, 13, 9],           regionOverrides: {} },
+  7: { civNumbers: [11, 7, 15, 1, 9, 3, 17],        regionOverrides: {} },
+  8: { civNumbers: [13, 11, 15, 1, 9, 3, 17, 7],    regionOverrides: {} },
+  9: { civNumbers: [1, 3, 5, 7, 9, 11, 13, 15, 17], regionOverrides: {} },
 };
 
 // ─── East-only scenarios (3–9 players) ───────────────────────────────────────
-// E3: Babylon, Assyria, Kushan
-// E4: + Indus | E5: + Maurya | E6: + Dravidia | E7: + Persia | E8: + Saba | E9: + Parthia
+// E3: Indus(16), Kushan(10), Parthia(18)
+// E4: + Persia(12)
+// E5: Parthia(18), Babylon(6), Persia(12), Saba(2), Nubia(14)
+// E6: Kushan(10), Parthia(18), Indus(16), Persia(12), Babylon(6), Saba(2)
+// E7: + Nubia(14)
+// E8: Kushan(10), Parthia(18), Indus(16), Maurya(4), Dravidia(8), Persia(12), Babylon(6), Saba(2)
+// E9: all east empires
 export const EAST_SCENARIOS: Record<number, SetupRecommendation> = {
-  3: { civNumbers: [6, 3, 10],                    regionOverrides: {} },
-  4: { civNumbers: [6, 3, 10, 16],                regionOverrides: {} },
-  5: { civNumbers: [6, 3, 10, 16, 4],             regionOverrides: {} },
-  6: { civNumbers: [6, 3, 10, 16, 4, 8],          regionOverrides: {} },
-  7: { civNumbers: [6, 3, 10, 16, 4, 8, 12],      regionOverrides: {} },
-  8: { civNumbers: [6, 3, 10, 16, 4, 8, 12, 2],   regionOverrides: {} },
-  9: { civNumbers: [6, 3, 10, 16, 4, 8, 12, 2, 18], regionOverrides: {} },
+  3: { civNumbers: [16, 10, 18],                    regionOverrides: {} },
+  4: { civNumbers: [16, 10, 18, 12],                regionOverrides: {} },
+  5: { civNumbers: [18, 6, 12, 2, 14],              regionOverrides: {} },
+  6: { civNumbers: [10, 18, 16, 12, 6, 2],          regionOverrides: {} },
+  7: { civNumbers: [10, 18, 16, 12, 6, 2, 14],      regionOverrides: {} },
+  8: { civNumbers: [10, 18, 16, 4, 8, 12, 6, 2],    regionOverrides: {} },
+  9: { civNumbers: [2, 4, 6, 8, 10, 12, 14, 16, 18], regionOverrides: {} },
 };
 
 // ─── Combined scenarios (10–18 players, West + East) ─────────────────────────
