@@ -182,11 +182,11 @@ export function renderCiv(
     const sorted = [...state.players]
       .map(p => ({
         ...p,
-        pop: state.census.find(c => c.player_id === p.id)?.population ?? Infinity,
+        pop: state.census.find(c => c.player_id === p.id)?.population ?? -Infinity,
       }))
       .sort((a, b) => {
         if (a.military !== b.military) return a.military - b.military;
-        if (a.pop !== b.pop) return a.pop - b.pop;
+        if (a.pop !== b.pop) return b.pop - a.pop;
         return a.civ_number - b.civ_number;
       });
     const pos = sorted.findIndex(p => p.id === player.id) + 1;

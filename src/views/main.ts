@@ -9,10 +9,10 @@ function moveOrder(players: PlayerWithCensus[], revealed: boolean): PlayerWithCe
   return [...players].sort((a, b) => {
     // Military moves last
     if (a.military !== b.military) return a.military - b.military;
-    // Within group, lowest census first; tie → lowest empire number first
-    const pa = a.census?.population ?? Infinity;
-    const pb = b.census?.population ?? Infinity;
-    if (pa !== pb) return pa - pb;
+    // Within group, highest census first; tie → lowest empire number first
+    const pa = a.census?.population ?? -Infinity;
+    const pb = b.census?.population ?? -Infinity;
+    if (pa !== pb) return pb - pa;
     return a.civ_number - b.civ_number;
   });
 }
