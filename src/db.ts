@@ -121,18 +121,21 @@ export function getGame(): GameRow {
 
 export function startGame(expert: number): void {
   const db = getDb();
-  // Clear existing players + census
-  db.exec('DELETE FROM census');
-  db.exec('DELETE FROM players');
-  db.query('UPDATE game SET expert=?, current_round=1, active=1, census_revealed=0, is_final_round=0, cities_phase=0, started_at=? WHERE id=1')
-    .run(expert, new Date().toISOString());
+  db.transaction(() => {
+    db.exec('DELETE FROM census');
+    db.exec('DELETE FROM players');
+    db.query('UPDATE game SET expert=?, current_round=1, active=1, census_revealed=0, is_final_round=0, cities_phase=0, started_at=? WHERE id=1')
+      .run(expert, new Date().toISOString());
+  })();
 }
 
 export function resetGame(): void {
   const db = getDb();
-  db.exec('DELETE FROM census');
-  db.exec('DELETE FROM players');
-  db.query('UPDATE game SET active=0, current_round=1, census_revealed=0, is_final_round=0, cities_phase=0, started_at=NULL WHERE id=1').run();
+  db.transaction(() => {
+    db.exec('DELETE FROM census');
+    db.exec('DELETE FROM players');
+    db.query('UPDATE game SET active=0, current_round=1, census_revealed=0, is_final_round=0, cities_phase=0, started_at=NULL WHERE id=1').run();
+  })();
 }
 
 const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
@@ -227,12 +230,15 @@ function autoAdvanceAst(round: number, expert: boolean): void {
 export function advanceRound(): number {
   const db = getDb();
   const game = getGame();
-  // Auto-advance/regress AST from this round's city counts before incrementing
-  autoAdvanceAst(game.current_round, game.expert === 1);
-  checkAndSetLateIronAgeBonus();
-  checkAndSetFinalRound();
-  const nextRound = game.current_round + 1;
-  db.query('UPDATE game SET current_round=?, census_revealed=0, cities_phase=0 WHERE id=1').run(nextRound);
+  let nextRound!: number;
+  db.transaction(() => {
+    // Auto-advance/regress AST from this round's city counts before incrementing
+    autoAdvanceAst(game.current_round, game.expert === 1);
+    checkAndSetLateIronAgeBonus();
+    checkAndSetFinalRound();
+    nextRound = game.current_round + 1;
+    db.query('UPDATE game SET current_round=?, census_revealed=0, cities_phase=0 WHERE id=1').run(nextRound);
+  })();
   return nextRound;
 }
 
