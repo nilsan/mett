@@ -54,32 +54,6 @@ export function renderAst(state: FullState): string {
   const { game, players, astLevels } = state;
   const expert = game.expert === 1;
 
-  // ── List view (existing) ─────────────────────────────────────────────────
-  const atLevel: Record<number, typeof players> = {};
-  for (const p of players) {
-    if (!atLevel[p.ast_level]) atLevel[p.ast_level] = [];
-    atLevel[p.ast_level].push(p);
-  }
-  for (const level in atLevel) {
-    atLevel[level].sort((a, b) => b.adv_points - a.adv_points || (a.rank_order || a.civ_number) - (b.rank_order || b.civ_number));
-  }
-
-  const listRows = [...astLevels].reverse().map(l => {
-    const civsHere = (atLevel[l.level] ?? []).map(p =>
-      `<span class="civ-badge civ-badge-with-num" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num-in-badge">${p.civ_number}</span>${p.civ_name}</span>`
-    ).join('');
-    const rowClass = (atLevel[l.level] ?? []).length ? 'ast-row-occupied' : '';
-    const req = (expert ? l.expert_req : l.basic_req) ?? '—';
-    // In basic mode, level 70 is EIA (two EIA columns); schema era = 'Early Iron Age' too
-    const era = (!expert && l.level === 70) ? 'Early Iron Age' : l.era;
-    return `<tr class="${rowClass}">
-      <td><div class="ast-civs-cell">${civsHere || ''}</div></td>
-      <td class="ast-era-cell">${era}</td>
-      <td class="ast-level-cell">${l.level}</td>
-      <td class="ast-req-cell">${req}</td>
-    </tr>`;
-  }).join('');
-
   // ── Board view ───────────────────────────────────────────────────────────
   // Sort players by Empire number (matches the physical board)
   const sorted = [...players].sort((a, b) => a.civ_number - b.civ_number);
@@ -158,80 +132,34 @@ export function renderAst(state: FullState): string {
     </div>
   </div>
 
-  <div class="ast-view-toggle">
-    <button id="btn-list-view" class="ast-toggle-btn">List</button>
-    <button id="btn-board-view" class="ast-toggle-btn active-toggle">Board</button>
+  <div class="ab-scroll">
+    <table class="ab-table">
+      <thead>
+        <tr>
+          <th class="ab-civ-label ab-corner"></th>
+          ${bandHeaders}
+        </tr>
+      </thead>
+      <tbody>
+        ${boardRows || boardEmpty}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td class="ab-civ-label ab-corner ab-vp-label">VP →</td>
+          ${levelHeaders}
+        </tr>
+        <tr>
+          <td class="ab-civ-label ab-corner ab-round-label${roundBeyondBoard ? ' ab-round-current' : ''}">
+            ${roundBeyondBoard ? `R${game.current_round} →` : 'Round →'}
+          </td>
+          ${roundCells}
+        </tr>
+      </tfoot>
+    </table>
   </div>
-
-  <div id="ast-list-view" style="display:none">
-    <div class="ast-mode-toggle">
-      <p>Showing: <strong>${expert ? 'Expert' : 'Basic'} requirements</strong>
-      ${game.active ? '(set in game config)' : ''}
-      — C = cities, ADV = advances, VP = victory points</p>
-    </div>
-    <div class="ast-table-wrap">
-      <table class="mett-table ast-full-table">
-        <thead>
-          <tr>
-            <th>Empires</th>
-            <th>Era</th>
-            <th>Position</th>
-            <th>${expert ? 'Expert' : 'Basic'} Requirement</th>
-          </tr>
-        </thead>
-        <tbody>${listRows}</tbody>
-      </table>
-    </div>
-  </div>
-
-  <div id="ast-board-view">
-    <div class="ab-scroll">
-      <table class="ab-table">
-        <thead>
-          <tr>
-            <th class="ab-civ-label ab-corner"></th>
-            ${bandHeaders}
-          </tr>
-        </thead>
-        <tbody>
-          ${boardRows || boardEmpty}
-        </tbody>
-        <tfoot>
-          <tr>
-            <td class="ab-civ-label ab-corner ab-vp-label">VP →</td>
-            ${levelHeaders}
-          </tr>
-          <tr>
-            <td class="ab-civ-label ab-corner ab-round-label${roundBeyondBoard ? ' ab-round-current' : ''}">
-              ${roundBeyondBoard ? `R${game.current_round} →` : 'Round →'}
-            </td>
-            ${roundCells}
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-    <ul class="ab-legend">${reqLegend}</ul>
-  </div>
+  <ul class="ab-legend">${reqLegend}</ul>
 </div>
 <script>
-  const btnList  = document.getElementById('btn-list-view');
-  const btnBoard = document.getElementById('btn-board-view');
-  const listView  = document.getElementById('ast-list-view');
-  const boardView = document.getElementById('ast-board-view');
-  // Default to board view; list only if explicitly chosen
-  const stored = localStorage.getItem('ast-view');
-  if (stored !== 'list') { listView.style.display='none'; boardView.style.display=''; btnList.classList.remove('active-toggle'); btnBoard.classList.add('active-toggle'); }
-  btnList.addEventListener('click', () => {
-    listView.style.display=''; boardView.style.display='none';
-    btnList.classList.add('active-toggle'); btnBoard.classList.remove('active-toggle');
-    localStorage.setItem('ast-view', 'list');
-  });
-  btnBoard.addEventListener('click', () => {
-    listView.style.display='none'; boardView.style.display='';
-    btnBoard.classList.add('active-toggle'); btnList.classList.remove('active-toggle');
-    localStorage.setItem('ast-view', 'board');
-  });
-  // Live updates
   window.addEventListener('mett:state', () => location.reload());
 </script>
 `;
