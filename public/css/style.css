@@ -337,10 +337,11 @@ body {
   color: var(--mett-muted);
 }
 
-/* Census hint with separator — matches req-legend style */
 .census-hint {
-  border-top: 1px solid var(--mett-border);
-  padding-top: 0.4rem;
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.5;
+  margin-top: 0.25rem;
 }
 
 .table-scroll { overflow-x: auto; }

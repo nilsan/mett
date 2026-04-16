@@ -217,10 +217,11 @@ export function renderCiv(
         <div class="census-input-row">
           <input type="number" id="pop-input" min="-54" max="55"
             value="${censusDefault}"
-            placeholder="Count or negative (e.g. -27 = 28)"
+            placeholder="1–55"
             class="census-input">
           <button id="submit-census" class="btn-submit">Submit</button>
         </div>
+        ${!submitted ? '<small class="census-hint">Tip: -27 = 28 tokens remaining</small>' : ''}
         ${moveOrderHtml}
       </div>
       ` : '<p>No active game.</p>'}
