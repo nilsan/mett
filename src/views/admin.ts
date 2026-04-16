@@ -57,17 +57,35 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
   return 'advance';
 }
 
-export function renderAdmin(state: FullState, allCivs: CivRefRow[]): string {
+function changePasswordSection(query: string): string {
+  const error = query.includes('pwd_error=1') ? 'Current password is incorrect.'
+    : query.includes('pwd_error=2') ? 'New password cannot be empty.'
+    : '';
+  const ok = query.includes('pwd_ok=1');
+  return `
+  <section class="admin-section danger-section">
+    <h3>Change Password</h3>
+    ${ok ? '<p class="pwd-ok">Password updated.</p>' : ''}
+    ${error ? `<p class="login-error">${error}</p>` : ''}
+    <form method="POST" action="/admin/change-password" class="change-pwd-form">
+      <input type="password" name="current" placeholder="Current password" class="login-input" autocomplete="current-password">
+      <input type="password" name="next" placeholder="New password" class="login-input" autocomplete="new-password">
+      <button type="submit" class="btn-primary">Update Password</button>
+    </form>
+  </section>`;
+}
+
+export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = ''): string {
   const { game, players } = state;
 
   if (!game.active) {
-    if (players.length > 0) return renderGameOver(state, allCivs);
-    return renderSetup(allCivs);
+    if (players.length > 0) return renderGameOver(state, allCivs, query);
+    return renderSetup(allCivs, query);
   }
-  return renderActiveAdmin(state, allCivs);
+  return renderActiveAdmin(state, allCivs, query);
 }
 
-function renderSetup(allCivs: CivRefRow[]): string {
+function renderSetup(allCivs: CivRefRow[], query = ''): string {
   // Embed all civ data as JSON for JS to use — no visible grid needed
   const civData = JSON.stringify(allCivs.map(c => ({
     id: c.id, number: c.number, name: c.name,
@@ -123,13 +141,14 @@ function renderSetup(allCivs: CivRefRow[]): string {
     <button id="start-game" class="btn-primary" disabled>Start Game</button>
     <p id="start-error" class="error-msg"></p>
   </section>
+  ${changePasswordSection(query)}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
 <script src="/js/admin.js"></script>
 `;
 }
 
-function renderGameOver(state: FullState, allCivs: CivRefRow[]): string {
+function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
 
@@ -288,13 +307,14 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[]): string {
     <h3>Start New Game</h3>
     <button id="reset-game" class="btn-danger">Reset &amp; New Game</button>
   </section>
+  ${changePasswordSection(query)}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
 <script src="/js/admin.js"></script>
 `;
 }
 
-function renderActiveAdmin(state: FullState, allCivs: CivRefRow[]): string {
+function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
   const AST_LEVELS = state.astLevels.map(l => l.level);
@@ -442,6 +462,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[]): string {
     <h3>Danger Zone</h3>
     <button id="reset-game" class="btn-danger">Reset / New Game</button>
   </section>
+  ${changePasswordSection(query)}
 </div>
 <script>
   window.CURRENT_ROUND = ${game.current_round};

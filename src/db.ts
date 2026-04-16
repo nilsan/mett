@@ -29,6 +29,13 @@ export function getDb(): Database {
     migrate('ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0');
     migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
     migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
+    migrate('ALTER TABLE game ADD COLUMN admin_password TEXT');
+    // Seed password from env var on first run, defaulting to PASSWORD
+    const envPassword = process.env.ADMIN_PASSWORD ?? 'PASSWORD';
+    const row = _db!.query<{ admin_password: string | null }, []>('SELECT admin_password FROM game WHERE id=1').get();
+    if (!row?.admin_password) {
+      _db!.query('UPDATE game SET admin_password=? WHERE id=1').run(envPassword);
+    }
   }
   return _db;
 }
@@ -43,7 +50,18 @@ export interface GameRow {
   census_revealed: number;
   is_final_round: number;
   cities_phase: number;  // 0 = pre-trade, 1 = post-calamity
+  admin_password: string | null;
   started_at: string | null;
+}
+
+export function getAdminPassword(): string {
+  return getDb().query<{ admin_password: string | null }, []>(
+    'SELECT admin_password FROM game WHERE id=1'
+  ).get()?.admin_password ?? '';
+}
+
+export function setAdminPassword(password: string): void {
+  getDb().query('UPDATE game SET admin_password=? WHERE id=1').run(password);
 }
 
 export interface PlayerRow {

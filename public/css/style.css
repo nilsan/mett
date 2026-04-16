@@ -1274,6 +1274,48 @@ body {
   opacity: 0.85;
 }
 
+/* Login page */
+.login-page {
+  max-width: 320px;
+  margin: 4rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.login-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  background: var(--mett-bg-alt);
+  border: 1px solid var(--mett-border);
+  border-radius: 0.35rem;
+  color: var(--mett-text);
+}
+.login-error {
+  color: #e05555;
+  font-size: 0.9rem;
+}
+.pwd-ok {
+  color: #4caf50;
+  font-size: 0.9rem;
+}
+.change-pwd-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+.change-pwd-form .login-input {
+  width: auto;
+  flex: 1 1 160px;
+}
+
 /* Submission progress counters */
 .submission-progress {
   display: flex;

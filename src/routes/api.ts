@@ -2,8 +2,18 @@ import { Hono } from 'hono';
 import * as db from '../db.js';
 import { broadcastState } from '../ws.js';
 import { SETUP_RECOMMENDATIONS } from '../civs.js';
+import { isAdminAuthed } from './pages.js';
 
 const api = new Hono();
+
+// Protect all mutating API endpoints — read-only GET /api/state and /api/civs are public
+api.use('*', async (c, next) => {
+  if (c.req.method === 'GET') return next();
+  if (!isAdminAuthed(c.req.raw)) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  return next();
+});
 
 // ─── Game ─────────────────────────────────────────────────────────────────────
 
