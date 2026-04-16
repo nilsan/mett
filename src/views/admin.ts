@@ -1,6 +1,6 @@
 import type { FullState, PlayerRow, AstLevelRow } from '../db.js';
 import type { CivRefRow } from '../db.js';
-import { LATE_BRONZE_BASIC, LATE_BRONZE_EXPERT } from '../civs.js';
+import { LATE_BRONZE_BASIC, LATE_BRONZE_EXPERT, getCivAstProfile } from '../civs.js';
 
 type AstStatus = 'advance' | 'stay' | 'regress' | 'unknown';
 
@@ -12,7 +12,8 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
   if (curIdx === -1) return 'unknown';
 
   const lateSet = expert ? LATE_BRONZE_EXPERT : LATE_BRONZE_BASIC;
-  const stoneAgeMax = lateSet.has(p.civ_number) ? 20 : 15;
+  const { stoneEnd } = getCivAstProfile(p.civ_number, expert);
+  const stoneAgeMax = stoneEnd - 5;
   const inStoneAge = p.ast_level <= stoneAgeMax;
 
   if (cityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
@@ -20,8 +21,16 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
 
   // Check the requirement stored AT THE CURRENT level — that's what you need to advance from it
   const currentLevel = levels[curIdx];
-  // Slow-start empires treat level 20 as Stone Age — no requirement to advance from it
-  if (currentLevel.level === 20 && lateSet.has(p.civ_number)) return 'advance';
+  // Slow-start empires: Stone Age extends to stoneEnd — no requirement to advance from it
+  if (currentLevel.level === stoneEnd && stoneEnd > 20) return 'advance';
+
+  // In basic mode, override stored MBA req with EBA city-only req for slow/late-start civs
+  if (!expert && (currentLevel.level === 35 || currentLevel.level === 40)) {
+    const { ebaEnd } = getCivAstProfile(p.civ_number, false);
+    if (currentLevel.level <= ebaEnd) {
+      return cityCount >= 2 ? 'advance' : 'stay';
+    }
+  }
 
   const req = expert ? currentLevel.expert_req : currentLevel.basic_req;
   if (!req || req === 'None') return 'advance';

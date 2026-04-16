@@ -92,6 +92,6 @@ INSERT OR IGNORE INTO ast_levels (level, era, basic_req, expert_req) VALUES
   (55, 'Late Bronze Age',  '3 cities + 3 advances (≥100 each)', '4 cities + 12 advances'),
   (60, 'Late Bronze Age',  '3 cities + 3 advances (≥100 each)', '4 cities + 12 advances'),
   (65, 'Early Iron Age',   '4 cities + 2 advances (≥200 each)', '5 cities + 10 advances (<100 each) + 38 VP'),
-  (70, 'Late Iron Age',    '5 cities + 3 advances (≥200 each)', '6 cities + all 17 advances (<100 each) + 56 VP'),
+  (70, 'Early Iron Age',   '5 cities + 3 advances (≥200 each)', '6 cities + all 17 advances (<100 each) + 56 VP'),
   (75, 'Late Iron Age',    'N/A',                           '6 cities + all 17 advances (<100 each) + 56 VP'),
   (80, 'Late Iron Age',    'N/A',                           'N/A');

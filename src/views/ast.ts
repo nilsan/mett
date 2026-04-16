@@ -1,46 +1,53 @@
 import type { FullState } from '../db.js';
-import { LATE_BRONZE_BASIC, LATE_BRONZE_EXPERT } from '../civs.js';
+import { getCivAstProfile } from '../civs.js';
 
 const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
 
 interface AgeBand {
   name: string;
-  shortName: string;   // used when column span is too narrow for full name
+  shortName: string;
   expertReq: string;
   basicReq: string;
   levels: number[];
   cls: string;
 }
 
-const AGE_BANDS: AgeBand[] = [
-  { name: 'Start',             shortName: '',            expertReq: '',                                      basicReq: '',                                 levels: [0],            cls: 'age-start'   },
-  { name: 'Stone Age',         shortName: 'Stone',       expertReq: 'No requirements',                       basicReq: 'No requirements',                  levels: [5, 10, 15, 20],  cls: 'age-stone'   },
-  { name: 'Early Bronze Age',  shortName: 'E. Bronze',   expertReq: '3 Cities',                              basicReq: '2 Cities',                         levels: [25, 30, 35],   cls: 'age-ebronze' },
-  { name: 'Middle Bronze Age', shortName: 'M. Bronze',   expertReq: '3 Cities + 5 VP in Advances',           basicReq: '3 Cities + 3 Advances',            levels: [40, 45, 50],   cls: 'age-mbronze' },
-  { name: 'Late Bronze Age',   shortName: 'L. Bronze',   expertReq: '4 Cities + 12 Advances',                basicReq: '3 Cities + 3 Advances (>100 VP)',  levels: [55, 60, 65],   cls: 'age-lbronze' },
-  { name: 'Early Iron Age',    shortName: 'E. Iron',     expertReq: '5 Cities + 10 Advances ≤100 + 38 VP',  basicReq: '4 Cities + 2 Advances >200 VP',    levels: [70],           cls: 'age-eiron'   },
-  { name: 'Late Iron Age',     shortName: 'L. Iron',     expertReq: '6 Cities + 17 Advances ≤100 + 56 VP',  basicReq: '5 Cities + 3 Advances >200 VP',    levels: [75, 80],       cls: 'age-liron'   },
-];
+// Age band definitions are mode-specific (EIA/LIA split differs between basic and expert)
+function getAgeBands(expert: boolean): AgeBand[] {
+  return [
+    { name: 'Start',             shortName: '',          expertReq: '',                                     basicReq: '',                                levels: [0],               cls: 'age-start'   },
+    { name: 'Stone Age',         shortName: 'Stone',     expertReq: 'No requirements',                      basicReq: 'No requirements',                 levels: [5, 10, 15, 20],   cls: 'age-stone'   },
+    { name: 'Early Bronze Age',  shortName: 'E. Bronze', expertReq: '3 Cities',                             basicReq: '2 Cities',                        levels: [25, 30, 35],      cls: 'age-ebronze' },
+    { name: 'Middle Bronze Age', shortName: 'M. Bronze', expertReq: '3 Cities + 5 VP in Advances',          basicReq: '3 Cities + 3 Advances',           levels: [40, 45, 50],      cls: 'age-mbronze' },
+    { name: 'Late Bronze Age',   shortName: 'L. Bronze', expertReq: '4 Cities + 12 Advances',               basicReq: '3 Cities + 3 Adv (≥100 VP each)', levels: [55, 60, 65],      cls: 'age-lbronze' },
+    ...(expert ? [
+      { name: 'Early Iron Age',  shortName: 'E. Iron',   expertReq: '5 Cities + 10 Adv ≤100 + 38 VP',      basicReq: '',                                levels: [70],              cls: 'age-eiron'   },
+      { name: 'Late Iron Age',   shortName: 'L. Iron',   expertReq: '6 Cities + 17 Adv ≤100 + 56 VP',      basicReq: '',                                levels: [75, 80],          cls: 'age-liron'   },
+    ] : [
+      { name: 'Early Iron Age',  shortName: 'E. Iron',   expertReq: '',                                     basicReq: '4 Cities + 2 Adv ≥200 VP each',  levels: [70],              cls: 'age-eiron'   },
+      { name: 'Late Iron Age',   shortName: 'L. Iron',   expertReq: '',                                     basicReq: '5 Cities + 3 Adv ≥200 VP each', levels: [75],              cls: 'age-liron'   },
+    ]),
+  ] as AgeBand[];
+}
 
-// Map each level → its band class (default for all empires)
-const levelBand: Record<number, string> = {};
-for (const b of AGE_BANDS) for (const l of b.levels) levelBand[l] = b.cls;
-
-// Per-empire band class: slow-start empires treat level 25 as Stone Age (5 stone age rounds)
+// Per-empire band class using the canonical AST profile (see civs.ts getCivAstProfile).
+// All civs: LBA=[55,60,65], EIA=[70] (both modes), LIA=[75,80] expert / [75] basic.
 function civBandClass(civNumber: number, level: number, expert: boolean): string {
-  if (level === 25) {
-    const lateSet = expert ? LATE_BRONZE_EXPERT : LATE_BRONZE_BASIC;
-    if (lateSet.has(civNumber)) return 'age-stone';
-  }
-  return levelBand[level] ?? '';
+  if (level === 0) return 'age-start';
+  const { stoneEnd, ebaEnd } = getCivAstProfile(civNumber, expert);
+  if (level <= stoneEnd) return 'age-stone';
+  if (level <= ebaEnd)   return 'age-ebronze';
+  if (level <= 50)       return 'age-mbronze';
+  if (level <= 65)       return 'age-lbronze';
+  if (level === 70)      return 'age-eiron';   // EIA = level 70 in both modes
+  return 'age-liron';                          // LIA = 75 (basic) or 75+80 (expert)
 }
 
 // Returns true when this cell is the LAST cell of its age band for this empire
 function isAgeEnd(civNumber: number, level: number, expert: boolean): boolean {
-  const lateSet = expert ? LATE_BRONZE_EXPERT : LATE_BRONZE_BASIC;
-  const stoneEnd = lateSet.has(civNumber) ? 25 : 20;
-  // Boundaries: end of Stone Age (per-empire), then fixed ends for all later ages
-  return level === stoneEnd || level === 35 || level === 50 || level === 65 || level === 70 || level === 80;
+  const { stoneEnd, ebaEnd } = getCivAstProfile(civNumber, expert);
+  const liaEnd = expert ? 80 : 75;
+  return level === stoneEnd || level === ebaEnd || level === 50 || level === 65 || level === 70 || level === liaEnd;
 }
 
 export function renderAst(state: FullState): string {
@@ -63,9 +70,11 @@ export function renderAst(state: FullState): string {
     ).join('');
     const rowClass = (atLevel[l.level] ?? []).length ? 'ast-row-occupied' : '';
     const req = (expert ? l.expert_req : l.basic_req) ?? '—';
+    // In basic mode, level 70 is EIA (two EIA columns); schema era = 'Early Iron Age' too
+    const era = (!expert && l.level === 70) ? 'Early Iron Age' : l.era;
     return `<tr class="${rowClass}">
       <td><div class="ast-civs-cell">${civsHere || ''}</div></td>
-      <td class="ast-era-cell">${l.era}</td>
+      <td class="ast-era-cell">${era}</td>
       <td class="ast-level-cell">${l.level}</td>
       <td class="ast-req-cell">${req}</td>
     </tr>`;
@@ -75,38 +84,48 @@ export function renderAst(state: FullState): string {
   // Sort players by Empire number (matches the physical board)
   const sorted = [...players].sort((a, b) => a.civ_number - b.civ_number);
 
+  // Basic mode only goes to level 75; expert uses all 17 columns (0–80)
+  const boardLevels = expert ? AST_LEVELS : AST_LEVELS.filter(l => l <= 75);
+
+  const AGE_BANDS = getAgeBands(expert);
+
+  // Map each level → its default band class (for level number header cells)
+  const levelBand: Record<number, string> = {};
+  for (const b of AGE_BANDS) for (const l of b.levels) levelBand[l] = b.cls;
+
   // Age band header row — single-column bands show no text (color identifies them; legend below)
   const bandHeaders = AGE_BANDS.map(b =>
     `<th colspan="${b.levels.length}" class="ab-header ${b.cls}" title="${b.name}">
-      ${b.levels.length > 1 ? `<span class="ab-name">${b.shortName}</span>` : ''}
+      ${b.levels.length > 1 && b.name ? `<span class="ab-name">${b.shortName}</span>` : ''}
     </th>`
   ).join('');
 
-  // Requirements legend (skip the pre-game Start entry)
-  const reqLegend = AGE_BANDS.filter(b => b.cls !== 'age-start').map(b =>
+  // Requirements legend (skip the pre-game Start entry and unnamed bands)
+  const reqLegend = AGE_BANDS.filter(b => b.cls !== 'age-start' && b.name).map(b =>
     `<li><span class="ab-legend-dot ${b.cls}"></span><strong>${b.name}:</strong> ${expert ? b.expertReq : b.basicReq}</li>`
   ).join('');
 
   // Level number header row — level 0 is the START position, shown as "S"
-  const fixedAgeEnds = new Set([20, 35, 50, 65, 70, 80]);
-  const levelHeaders = AST_LEVELS.map(l =>
-    `<th class="ab-level-num ${levelBand[l]}${l === 0 ? ' ab-start-col' : ''}${fixedAgeEnds.has(l) ? ' ab-age-end' : ''}">${l === 0 ? 'S' : l}</th>`
+  // Age-end borders are per the default (normal civ) boundaries
+  // Default age-end column markers (for normal civs — slow/late-start show per-cell borders)
+  const defaultAgeEnds = new Set([20, 35, 50, 65, 70, expert ? 80 : 75]);  // EIA ends at 70 in both modes
+  const levelHeaders = boardLevels.map(l =>
+    `<td class="ab-level-num ${levelBand[l] ?? 'age-liron'}${l === 0 ? ' ab-start-col' : ''}${defaultAgeEnds.has(l) ? ' ab-age-end' : ''}">${l === 0 ? 'S' : l}</td>`
   ).join('');
 
-  // Round marker row — 0-indexed: column i shows round i (S=0, level5=1, level10=2, …)
-  // current_round in DB starts at 1, so the active column is index current_round-1
-  const roundBeyondBoard = game.active && game.current_round - 1 >= AST_LEVELS.length;
-  const roundCells = AST_LEVELS.map((l, i) => {
-    const displayRound = i; // 0 at START, 1 at level 5, etc.
-    const isCurrent = game.active && !roundBeyondBoard && displayRound === game.current_round - 1;
+  // Round marker row — column i shows round i+1 (Start=1, level5=2, …)
+  const roundBeyondBoard = game.active && game.current_round > boardLevels.length;
+  const roundCells = boardLevels.map((l, i) => {
+    const displayRound = i + 1; // 1-indexed: Start=1, level5=2, …, level75=16 (basic) or level80=17 (expert)
+    const isCurrent = game.active && !roundBeyondBoard && displayRound === game.current_round;
     const startCls = l === 0 ? ' ab-start-col' : '';
-    const endCls = fixedAgeEnds.has(l) ? ' ab-age-end' : '';
+    const endCls = defaultAgeEnds.has(l) ? ' ab-age-end' : '';
     return `<td class="ab-round-num${startCls}${endCls}${isCurrent ? ' ab-round-current' : ''}">${displayRound}</td>`;
   }).join('');
 
   // Player rows
   const boardRows = sorted.map(p => {
-    const cells = AST_LEVELS.map(l => {
+    const cells = boardLevels.map(l => {
       const here = p.ast_level === l;
       const bandCls = civBandClass(p.civ_number, l, expert);
       const startCls = l === 0 ? ' ab-start-col' : '';
@@ -126,7 +145,7 @@ export function renderAst(state: FullState): string {
 
   // Empty state for board when no players
   const boardEmpty = players.length === 0
-    ? `<tr><td colspan="${AST_LEVELS.length + 1}" style="text-align:center;padding:2rem;opacity:0.5">No active game</td></tr>`
+    ? `<tr><td colspan="${boardLevels.length + 1}" style="text-align:center;padding:2rem;opacity:0.5">No active game</td></tr>`
     : '';
 
   return /* html */`
@@ -173,18 +192,18 @@ export function renderAst(state: FullState): string {
             <th class="ab-civ-label ab-corner"></th>
             ${bandHeaders}
           </tr>
-          <tr>
-            <th class="ab-civ-label ab-corner ab-vp-label">VP →</th>
-            ${levelHeaders}
-          </tr>
         </thead>
         <tbody>
           ${boardRows || boardEmpty}
         </tbody>
         <tfoot>
           <tr>
+            <td class="ab-civ-label ab-corner ab-vp-label">VP →</td>
+            ${levelHeaders}
+          </tr>
+          <tr>
             <td class="ab-civ-label ab-corner ab-round-label${roundBeyondBoard ? ' ab-round-current' : ''}">
-              ${roundBeyondBoard ? `R${game.current_round - 1} →` : 'Round →'}
+              ${roundBeyondBoard ? `R${game.current_round} →` : 'Round →'}
             </td>
             ${roundCells}
           </tr>

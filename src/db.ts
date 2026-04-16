@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { LATE_BRONZE_BASIC, LATE_BRONZE_EXPERT } from './civs.js';
+import { LATE_BRONZE_BASIC, LATE_BRONZE_EXPERT, LATE_START, getCivAstProfile } from './civs.js';
 
 const DB_PATH = process.env.DATABASE_PATH ?? join(import.meta.dir, '..', 'data', 'mett.db');
 
@@ -30,6 +30,10 @@ export function getDb(): Database {
     migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
     migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
     migrate('ALTER TABLE game ADD COLUMN admin_password TEXT');
+    // Fix basic EIA/LIA era assignments: in basic mode, level 70 = EIA (last step before LIA)
+    _db!.query("UPDATE ast_levels SET era='Early Iron Age', basic_req='5 cities + 3 advances (≥200 each)' WHERE level=70").run();
+    _db!.query("UPDATE ast_levels SET era='Late Iron Age', basic_req='N/A', expert_req='6 cities + all 17 advances (<100 each) + 56 VP' WHERE level=75").run();
+
     // Seed password from env var on first run, defaulting to PASSWORD
     const envPassword = process.env.ADMIN_PASSWORD ?? 'PASSWORD';
     const row = _db!.query<{ admin_password: string | null }, []>('SELECT admin_password FROM game WHERE id=1').get();
@@ -136,9 +140,18 @@ const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75
 // The requirement stored AT a level is the requirement to advance FROM that level.
 // e.g. to advance from 45 to 50, check level 45's requirement — not level 50's.
 function meetsAstRequirements(player: PlayerRow, currentLevel: AstLevelRow, cityCount: number, expert: boolean): boolean {
-  // Slow-start empires treat level 20 as Stone Age — no requirement to advance from it
-  const lateSet = expert ? LATE_BRONZE_EXPERT : LATE_BRONZE_BASIC;
-  if (currentLevel.level === 20 && lateSet.has(player.civ_number)) return true;
+  // Slow-start empires' Stone Age extends to level stoneEnd — no req to advance from it
+  const { stoneEnd, ebaEnd } = getCivAstProfile(player.civ_number, expert);
+  if (currentLevel.level === stoneEnd && stoneEnd > 20) return true;
+
+  // In basic mode, some civs have EBA extending past level 35 — override the stored MBA req
+  // with the EBA city-only requirement if the civ's ebaEnd is > 35 and we're at 35 or 40.
+  if (!expert && (currentLevel.level === 35 || currentLevel.level === 40)) {
+    const { ebaEnd } = getCivAstProfile(player.civ_number, false);
+    if (currentLevel.level <= ebaEnd) {
+      return cityCount >= 2;  // basic EBA requirement: 2 cities
+    }
+  }
 
   const req = expert ? currentLevel.expert_req : currentLevel.basic_req;
   if (!req || req === 'None') return true;   // no requirement → always advance
@@ -187,16 +200,14 @@ function autoAdvanceAst(round: number, expert: boolean): void {
   ).all(round);
   const astRows = db.query<AstLevelRow, []>('SELECT * FROM ast_levels ORDER BY level ASC').all();
 
-  const lateSet = expert ? LATE_BRONZE_EXPERT : LATE_BRONZE_BASIC;
-
   for (const player of players) {
     const cityEntry = censusRows.find(c => c.player_id === player.id);
     const cityCount = cityEntry?.city_count ?? 0;
     const curIdx = AST_LEVELS.indexOf(player.ast_level);
     if (curIdx === -1) continue;
 
-    // Stone Age extends one level further for slow-start empires
-    const stoneAgeMax = lateSet.has(player.civ_number) ? 20 : 15;
+    const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
+    const stoneAgeMax = stoneEnd - 5;  // last level where 0 cities is safe
     const inStoneAge = player.ast_level <= stoneAgeMax;
 
     if (cityCount === 0 && !inStoneAge) {
@@ -229,19 +240,22 @@ export function endGame(): void {
   getDb().query('UPDATE game SET active=0, is_final_round=0 WHERE id=1').run();
 }
 
-/** After an AST level change, check if the game-end condition is met.
- *  Expert: first player reaches 75 → is_final_round = 1 (one more full round).
- *  Basic:  first player reaches 80 → is_final_round = 1 immediately.
+/** After an AST advance, check if the game-end condition is met and set is_final_round.
+ *  Basic:  max 16 rounds. Triggers when any player reaches 75 OR round 15 ends (→ round 16 is last).
+ *  Expert: max 17 rounds. Triggers when any player reaches 75 (→ one more round to reach 80).
  */
 export function checkAndSetFinalRound(): void {
   const db = getDb();
   const game = getGame();
-  if (!game.active || game.is_final_round) return; // already triggered or inactive
-  const trigger = game.expert ? 75 : 80;
-  const hit = db.query<{ count: number }, [number]>(
-    'SELECT COUNT(*) AS count FROM players WHERE ast_level >= ?'
-  ).get(trigger);
-  if (hit && hit.count > 0) {
+  if (!game.active || game.is_final_round) return;
+  const expert = game.expert === 1;
+  // game.current_round is the round just completed (before increment in advanceRound)
+  const maxRound = expert ? 17 : 16;
+  const roundLimitReached = game.current_round >= maxRound - 1;
+  const playerAt75 = db.query<{ count: number }, [number]>(
+    'SELECT COUNT(*) AS count FROM players WHERE ast_level >= 75'
+  ).get(75);
+  if ((playerAt75 && playerAt75.count > 0) || roundLimitReached) {
     db.query('UPDATE game SET is_final_round=1 WHERE id=1').run();
   }
 }

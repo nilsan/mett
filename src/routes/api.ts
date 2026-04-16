@@ -60,7 +60,8 @@ api.post('/game/round/next', (c) => {
   if (!db.allCitiesSubmitted(game.current_round)) {
     return c.json({ error: 'All empires must have a city count before advancing the round' }, 400);
   }
-  if (game.is_final_round) {
+  const maxRound = game.expert ? 17 : 16;
+  if (game.is_final_round || game.current_round >= maxRound) {
     db.endGame();
     broadcastState();
     return new Response(JSON.stringify({ ok: true, ended: true }), {

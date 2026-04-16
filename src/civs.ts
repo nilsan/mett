@@ -89,12 +89,48 @@ export const SETUP_RECOMMENDATIONS: Record<number, SetupRecommendation> = {
   },
 };
 
-// Empires that require no cities to advance from Stone Age to Early Bronze Age (level 20).
-// These empires have 5 stone age steps instead of 4.
-// Basic mode: Minoa (1), Saba (2)
-// Expert mode: Minoa (1), Saba (2), Kushan (10), Iberia (13)
-export const LATE_BRONZE_BASIC = new Set([1, 2]);
-export const LATE_BRONZE_EXPERT = new Set([1, 2, 10, 13]);
+// ─── AST era profile sets ─────────────────────────────────────────────────────
+//
+// EXPERT MODE — two groups:
+//   Slow-start (5 Stone, 2 EBA, 3 MBA): Minoa(1), Saba(2), Kushan(10), Iberia(13)
+//   Normal     (4 Stone, 3 EBA, 3 MBA): all other civs
+//
+// BASIC MODE — three groups:
+//   Slow-start (5 Stone, 3 EBA, 2 MBA): Minoa(1), Saba(2)
+//   Late-start (4 Stone, 4 EBA, 2 MBA): Celt(5), Carthage(7), Iberia(13), Parthia(18)
+//   Normal     (4 Stone, 3 EBA, 3 MBA): all other civs
+//
+// All civs: 3 LBA, 1 EIA, 2 LIA (expert) / 1 LIA (basic) — plus level 80 unreachable in basic
+//
+// The "stoneEnd" and "ebaEnd" values are the LAST COLUMN of that era.
+// Stone always starts at 5; EBA starts at stoneEnd+5; MBA ends at 50; LBA = [55,60,65].
+
+export const LATE_BRONZE_BASIC  = new Set([1, 2]);           // slow-start in basic
+export const LATE_BRONZE_EXPERT = new Set([1, 2, 10, 13]);   // slow-start in expert
+export const LATE_START         = new Set([5, 7, 13, 18]);   // late-start (basic only)
+
+export interface CivAstProfile {
+  stoneEnd: number;  // last Stone Age level (20 or 25)
+  ebaEnd:   number;  // last EBA level      (35 or 40)
+  // MBA always ends at 50; LBA at 65; EIA at 70; LIA at 75 (basic) or 80 (expert)
+}
+
+/** Return the per-empire AST era profile for the given mode. */
+export function getCivAstProfile(civNumber: number, expert: boolean): CivAstProfile {
+  if (expert) {
+    // Slow-start civs: 5 Stone (end=25), 2 EBA (end=35)
+    if (LATE_BRONZE_EXPERT.has(civNumber)) return { stoneEnd: 25, ebaEnd: 35 };
+    // Normal: 4 Stone (end=20), 3 EBA (end=35)
+    return { stoneEnd: 20, ebaEnd: 35 };
+  } else {
+    // Slow-start civs: 5 Stone (end=25), 3 EBA (end=40)
+    if (LATE_BRONZE_BASIC.has(civNumber)) return { stoneEnd: 25, ebaEnd: 40 };
+    // Late-start civs: 4 Stone (end=20), 4 EBA (end=40)
+    if (LATE_START.has(civNumber))        return { stoneEnd: 20, ebaEnd: 40 };
+    // Normal: 4 Stone (end=20), 3 EBA (end=35)
+    return { stoneEnd: 20, ebaEnd: 35 };
+  }
+}
 
 export function getCivBySlug(slug: string): CivDef | undefined {
   return CIVS.find(c => c.slug === slug);

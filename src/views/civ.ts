@@ -1,5 +1,5 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
-import { LATE_BRONZE_BASIC, LATE_BRONZE_EXPERT } from '../civs.js';
+import { getCivAstProfile } from '../civs.js';
 
 interface ReqStatus {
   willRegress: boolean;          // city_count === 0 and not at floor
@@ -20,9 +20,9 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number, 
   const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
   const regrессLevel = currentLevelIdx > 0 ? AST_LEVELS[currentLevelIdx - 1] : AST_LEVELS[0];
 
-  // Stone Age extends one extra level for slow-start empires — 0 cities is safe in Stone Age
-  const lateSet = expert ? LATE_BRONZE_EXPERT : LATE_BRONZE_BASIC;
-  const stoneAgeMax = lateSet.has(player.civ_number) ? 20 : 15;
+  // 0 cities is safe in Stone Age — use the civ's actual Stone Age end level
+  const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
+  const stoneAgeMax = stoneEnd - 5;  // last level where 0 cities won't regress you
   const inStoneAge = player.ast_level <= stoneAgeMax;
 
   if (cityCount === 0 && !inStoneAge) {
@@ -83,20 +83,32 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number, 
   };
 }
 
-const AST_AGE_BANDS = [
-  { label: '',          span: 1, cls: 'age-start'   },
-  { label: 'Stone',     span: 4, cls: 'age-stone'   },
-  { label: 'E. Bronze', span: 3, cls: 'age-ebronze' },
-  { label: 'M. Bronze', span: 3, cls: 'age-mbronze' },
-  { label: 'L. Bronze', span: 3, cls: 'age-lbronze' },
-  { label: 'E. Iron',   span: 1, cls: 'age-eiron'   },
-  { label: 'L. Iron',   span: 2, cls: 'age-liron'   },
-];
+function getCivAgeBands(civNumber: number, expert: boolean) {
+  const { stoneEnd, ebaEnd } = getCivAstProfile(civNumber, expert);
+  // stoneSpan: Stone Age columns after Start (levels 5 to stoneEnd, step 5)
+  const stoneSpan = stoneEnd / 5;              // 20→4 or 25→5
+  // ebaSpan: EBA columns (from stoneEnd+5 to ebaEnd)
+  const ebaSpan   = (ebaEnd - stoneEnd) / 5;  // varies per group
+  // mbaSpan: MBA columns (from ebaEnd+5 to 50, always ends at 50)
+  const mbaSpan   = (50 - ebaEnd) / 5;
+  // EIA = 1 column (level 70) in both modes; LIA = 1 (basic) or 2 (expert)
+  const liaSpan   = expert ? 2 : 1;
+  return [
+    { label: '',          span: 1,        cls: 'age-start'   },
+    { label: 'Stone',     span: stoneSpan, cls: 'age-stone'   },
+    { label: 'E. Bronze', span: ebaSpan,  cls: 'age-ebronze' },
+    { label: 'M. Bronze', span: mbaSpan,  cls: 'age-mbronze' },
+    { label: 'L. Bronze', span: 3,        cls: 'age-lbronze' },
+    { label: 'E. Iron',   span: 1,        cls: 'age-eiron'   },
+    { label: 'L. Iron',   span: liaSpan,  cls: 'age-liron'   },
+    ...(expert ? [] : [{ label: '', span: 1, cls: 'age-liron' }]),  // level 80 unreachable in basic
+  ];
+}
 
-function astBar(levels: AstLevelRow[], currentLevel: number, expert: boolean): string {
+function astBar(levels: AstLevelRow[], currentLevel: number, expert: boolean, civNumber: number): string {
   const N = levels.length; // 17
 
-  const labelDivs = AST_AGE_BANDS.map(b =>
+  const labelDivs = getCivAgeBands(civNumber, expert).map(b =>
     `<div class="ast-age-label ${b.cls}" style="grid-column:span ${b.span}">${b.label}</div>`
   ).join('');
 
@@ -133,12 +145,17 @@ export function renderCiv(
   const currentLevelIdx = levels.findIndex(l => l.level === player.ast_level);
   const currentLevel = levels[currentLevelIdx] ?? null;
   const nextLevel = levels[currentLevelIdx + 1] ?? null;
-  const lateSet = expert ? LATE_BRONZE_EXPERT : LATE_BRONZE_BASIC;
+  const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
   // The requirement stored AT the current level is what you need to advance FROM it.
   const nextReq = nextLevel
     ? (() => {
-        // Slow-start empires treat level 20 as Stone Age — no requirement to advance from it
-        if (currentLevel?.level === 20 && lateSet.has(player.civ_number)) return 'None';
+        // Slow-start empires: Stone Age extends to stoneEnd — no requirement to advance from it
+        if (currentLevel?.level === stoneEnd && stoneEnd > 20) return 'None';
+        // In basic mode, override stored MBA req for slow/late civs still in EBA at 35 or 40
+        if (!expert && (currentLevel?.level === 35 || currentLevel?.level === 40)) {
+          const { ebaEnd } = getCivAstProfile(player.civ_number, false);
+          if ((currentLevel?.level ?? 0) <= ebaEnd) return '2 cities';
+        }
         const req = (expert ? currentLevel?.expert_req : currentLevel?.basic_req) ?? null;
         if (!req || req === 'None' || req === 'N/A') return 'None';
         return req;
@@ -317,7 +334,7 @@ export function renderCiv(
           ${body}
         </div>`;
       })() : '<p class="ast-complete">🏆 Maximum A.S.T. position reached!</p>'}
-      ${astBar(levels, player.ast_level, expert)}
+      ${astBar(levels, player.ast_level, expert, player.civ_number)}
     </section>
 
   </div><!-- .civ-body -->
