@@ -1,0 +1,13 @@
+services:
+  mett:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../data:/app/data
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /app/data/mett.db
+      PORT: 3000
