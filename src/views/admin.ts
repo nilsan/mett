@@ -129,7 +129,7 @@ function renderSetup(allCivs: CivRefRow[], query = ''): string {
   </section>
 
   <section class="setup-section">
-    <h3>2. Player Count</h3>
+    <h3>2. Player Count &amp; Scenario</h3>
     <div class="player-count-row">
       <label for="player-count">Number of players:</label>
       <select id="player-count" class="player-count-select">
@@ -137,8 +137,21 @@ function renderSetup(allCivs: CivRefRow[], query = ''): string {
           `<option value="${n}" ${n === 18 ? 'selected' : ''}>${n}</option>`
         ).join('')}
       </select>
-      <span class="setup-hint" id="setup-hint"></span>
     </div>
+    <div class="scenario-toggle-row" id="scenario-toggle-row" style="display:none">
+      <span class="scenario-toggle-label">Scenario:</span>
+      <div class="mode-toggle-row">
+        <label>
+          <input type="radio" name="scenario" value="west" checked>
+          <strong>West</strong>
+        </label>
+        <label>
+          <input type="radio" name="scenario" value="east">
+          <strong>East</strong>
+        </label>
+      </div>
+    </div>
+    <span class="setup-hint" id="setup-hint"></span>
   </section>
 
   <section class="setup-section" id="name-section" style="display:none">

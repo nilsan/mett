@@ -13,11 +13,12 @@
   // ─────────────────────────────────────────────────────────────────────────
   function initSetup() {
     const allCivs = window.ALL_CIVS || [];  // injected by server
-    let recommendations = {};
+    let scenarioData = { west: {}, east: {}, combined: {} };
     // currentSelection: array of {id, number, name, color, text, region}
     let currentSelection = [];
 
     const playerCountSelect = document.getElementById('player-count');
+    const scenarioToggleRow = document.getElementById('scenario-toggle-row');
     const hintEl = document.getElementById('setup-hint');
     const nameSection = document.getElementById('name-section');
     const nameInputsEl = document.getElementById('name-inputs');
@@ -27,16 +28,29 @@
     fetch('/api/setup-recommendations')
       .then(r => r.json())
       .then(data => {
-        recommendations = data;
-        applyRecommendation(parseInt(playerCountSelect.value, 10));
+        scenarioData = data;
+        applyRecommendation();
       });
 
     playerCountSelect.addEventListener('change', () => {
-      applyRecommendation(parseInt(playerCountSelect.value, 10));
+      const n = parseInt(playerCountSelect.value, 10);
+      scenarioToggleRow.style.display = n <= 9 ? '' : 'none';
+      applyRecommendation();
     });
 
-    function applyRecommendation(n) {
-      const rec = recommendations[n];
+    document.querySelectorAll('input[name="scenario"]').forEach(radio => {
+      radio.addEventListener('change', () => applyRecommendation());
+    });
+
+    function getScenario() {
+      const n = parseInt(playerCountSelect.value, 10);
+      if (n >= 10) return scenarioData.combined[n] ?? null;
+      const side = document.querySelector('input[name="scenario"]:checked')?.value ?? 'west';
+      return scenarioData[side]?.[n] ?? null;
+    }
+
+    function applyRecommendation() {
+      const rec = getScenario();
       if (!rec) {
         hintEl.textContent = '';
         currentSelection = [];

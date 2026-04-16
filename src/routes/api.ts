@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import * as db from '../db.js';
 import { broadcastState } from '../ws.js';
-import { SETUP_RECOMMENDATIONS } from '../civs.js';
+import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS } from '../civs.js';
 import { isAdminAuthed } from './pages.js';
 
 const api = new Hono();
@@ -26,7 +26,7 @@ api.get('/civs', (c) => {
 });
 
 api.get('/setup-recommendations', (c) => {
-  return c.json(SETUP_RECOMMENDATIONS);
+  return c.json({ west: WEST_SCENARIOS, east: EAST_SCENARIOS, combined: SETUP_RECOMMENDATIONS });
 });
 
 api.post('/game/start', async (c) => {

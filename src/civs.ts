@@ -31,26 +31,44 @@ export const CIVS: CivDef[] = [
   { number: 18, name: 'Parthia',  slug: 'parthia',  color: '#847C49', textColor: 'white', defRegion: 'east' },
 ];
 
-// Recommended civ selection per player count for the combined (West+East) game.
+// Recommended civ selection per player count.
 // Based on official Mega Empires Scenarios rulebook (mega-empires.com).
-// Each entry: [civ numbers in play, { number: region override }]
-// region override = 'east' means that civ plays in East block even though it originates from West
+// regionOverrides: civs that play in the opposite block from their default region.
 export interface SetupRecommendation {
   civNumbers: number[];
-  // civs that play in the opposite block from their default region
   regionOverrides: Record<number, 'west' | 'east'>;
   note?: string;
 }
 
+// ─── West-only scenarios (3–9 players) ───────────────────────────────────────
+// Cumulative: each count adds one civ to the previous.
+// W3: Hellas, Minoa, Hatti
+// W4: + Celt | W5: + Carthage | W6: + Rome | W7: + Iberia | W8: + Egypt | W9: + Assyria
+export const WEST_SCENARIOS: Record<number, SetupRecommendation> = {
+  3: { civNumbers: [15, 1, 9],                   regionOverrides: {} },
+  4: { civNumbers: [15, 1, 9, 5],                regionOverrides: {} },
+  5: { civNumbers: [15, 1, 9, 5, 7],             regionOverrides: {} },
+  6: { civNumbers: [15, 1, 9, 5, 7, 11],         regionOverrides: {} },
+  7: { civNumbers: [15, 1, 9, 5, 7, 11, 13],     regionOverrides: {} },
+  8: { civNumbers: [15, 1, 9, 5, 7, 11, 13, 17], regionOverrides: {} },
+  9: { civNumbers: [15, 1, 9, 5, 7, 11, 13, 17, 3], regionOverrides: {} },
+};
+
+// ─── East-only scenarios (3–9 players) ───────────────────────────────────────
+// E3: Babylon, Assyria, Kushan
+// E4: + Indus | E5: + Maurya | E6: + Dravidia | E7: + Persia | E8: + Saba | E9: + Parthia
+export const EAST_SCENARIOS: Record<number, SetupRecommendation> = {
+  3: { civNumbers: [6, 3, 10],                    regionOverrides: {} },
+  4: { civNumbers: [6, 3, 10, 16],                regionOverrides: {} },
+  5: { civNumbers: [6, 3, 10, 16, 4],             regionOverrides: {} },
+  6: { civNumbers: [6, 3, 10, 16, 4, 8],          regionOverrides: {} },
+  7: { civNumbers: [6, 3, 10, 16, 4, 8, 12],      regionOverrides: {} },
+  8: { civNumbers: [6, 3, 10, 16, 4, 8, 12, 2],   regionOverrides: {} },
+  9: { civNumbers: [6, 3, 10, 16, 4, 8, 12, 2, 18], regionOverrides: {} },
+};
+
+// ─── Combined scenarios (10–18 players, West + East) ─────────────────────────
 export const SETUP_RECOMMENDATIONS: Record<number, SetupRecommendation> = {
-  // West-only game
-  3:  { civNumbers: [15, 9, 1], regionOverrides: {} },
-  4:  { civNumbers: [15, 9, 1, 3], regionOverrides: {} },
-  5:  { civNumbers: [15, 9, 1, 3, 11], regionOverrides: {} },
-  6:  { civNumbers: [15, 9, 7, 1, 3, 11], regionOverrides: {} },
-  7:  { civNumbers: [15, 13, 9, 7, 1, 3, 11], regionOverrides: {} },
-  8:  { civNumbers: [17, 15, 13, 9, 7, 1, 3, 11], regionOverrides: {} },
-  9:  { civNumbers: [17, 15, 13, 9, 7, 5, 1, 3, 11], regionOverrides: {} },
   // Combined game (West + East)
   10: { civNumbers: [15, 9, 1, 17, 3, 6, 12, 2, 14, 18], regionOverrides: {} },
   11: { civNumbers: [15, 9, 1, 17, 3, 10, 6, 12, 2, 14, 18], regionOverrides: {} },
