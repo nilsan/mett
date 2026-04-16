@@ -3,6 +3,19 @@
  * Handles both the game setup wizard and the active game admin controls.
  */
 (function () {
+  // ── Shared: Change Password toggle (all pages) ────────────────────────────
+  const pwdToggle = document.getElementById('pwd-toggle');
+  const pwdFormWrap = document.getElementById('pwd-form-wrap');
+  if (pwdToggle && pwdFormWrap) {
+    // If form is already visible (error/ok state), reflect that in button text
+    if (pwdFormWrap.style.display !== 'none') pwdToggle.textContent = 'Hide Password Form';
+    pwdToggle.addEventListener('click', () => {
+      const visible = pwdFormWrap.style.display !== 'none';
+      pwdFormWrap.style.display = visible ? 'none' : '';
+      pwdToggle.textContent = visible ? 'Change Password' : 'Hide Password Form';
+    });
+  }
+
   // ── Detect which mode we're in ─────────────────────────────────────────────
   const isSetup = !!document.getElementById('player-count');
   if (isSetup) initSetup();
@@ -294,7 +307,16 @@
       });
     }
 
-    // ── Debug buttons ──────────────────────────────────────────────────────
+    // ── Simulation toggle (danger zone btn → round section buttons) ──────────
+    const simToggle = document.getElementById('sim-toggle');
+    const simControls = document.getElementById('sim-controls');
+    if (simToggle && simControls) {
+      simToggle.addEventListener('click', () => {
+        const visible = simControls.style.display !== 'none';
+        simControls.style.display = visible ? 'none' : '';
+        simToggle.textContent = visible ? 'Show Simulation' : 'Hide Simulation';
+      });
+    }
     document.getElementById('debug-census')?.addEventListener('click', async () => {
       await post('/api/debug/census', {});
     });

@@ -1492,6 +1492,17 @@ body {
 .city-admin-input::placeholder { color: var(--mett-muted); }
 
 .danger-section { border-color: #442222; }
+.btn-outline-danger {
+  background: transparent;
+  border: 1px solid var(--mett-danger);
+  color: var(--mett-danger);
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.danger-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+#sim-controls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
 
 .ast-req-table { font-size: 0.8rem; }
 .ast-req-table .ast-req-vp { font-weight: 700; width: 2.5rem; color: var(--mett-accent); }

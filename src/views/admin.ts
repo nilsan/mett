@@ -66,22 +66,21 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
   return 'advance';
 }
 
-function changePasswordSection(query: string): string {
+function pwdFormHtml(query: string): string {
   const error = query.includes('pwd_error=1') ? 'Current password is incorrect.'
     : query.includes('pwd_error=2') ? 'New password cannot be empty.'
     : '';
   const ok = query.includes('pwd_ok=1');
-  return `
-  <section class="admin-section danger-section">
-    <h3>Change Password</h3>
-    ${ok ? '<p class="pwd-ok">Password updated.</p>' : ''}
-    ${error ? `<p class="login-error">${error}</p>` : ''}
-    <form method="POST" action="/admin/change-password" class="change-pwd-form">
+  const showOpen = !!(error || ok);
+  return `<div id="pwd-form-wrap" style="${showOpen ? '' : 'display:none'}">
+    ${ok ? '<p class="pwd-ok" style="margin:0.5rem 0 0">Password updated.</p>' : ''}
+    ${error ? `<p class="login-error" style="margin:0.5rem 0 0">${error}</p>` : ''}
+    <form method="POST" action="/admin/change-password" class="change-pwd-form" style="margin-top:0.5rem">
       <input type="password" name="current" placeholder="Current password" class="login-input" autocomplete="current-password">
       <input type="password" name="next" placeholder="New password" class="login-input" autocomplete="new-password">
       <button type="submit" class="btn-primary">Update Password</button>
     </form>
-  </section>`;
+  </div>`;
 }
 
 export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = ''): string {
@@ -163,7 +162,14 @@ function renderSetup(allCivs: CivRefRow[], query = ''): string {
     <button id="start-game" class="btn-primary" disabled>Start Game</button>
     <p id="start-error" class="error-msg"></p>
   </section>
-  ${changePasswordSection(query)}
+
+  <section class="setup-section danger-section">
+    <h3>Danger Zone</h3>
+    <div class="danger-row">
+      <button id="pwd-toggle" class="btn-danger">Change Password</button>
+    </div>
+    ${pwdFormHtml(query)}
+  </section>
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
 <script src="/js/admin.js"></script>
@@ -326,10 +332,13 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
   </section>
 
   <section class="admin-section danger-section">
-    <h3>Start New Game</h3>
-    <button id="reset-game" class="btn-danger">Reset &amp; New Game</button>
+    <h3>Danger Zone</h3>
+    <div class="danger-row">
+      <button id="reset-game" class="btn-danger">Reset &amp; New Game</button>
+      <button id="pwd-toggle" class="btn-danger">Change Password</button>
+    </div>
+    ${pwdFormHtml(query)}
   </section>
-  ${changePasswordSection(query)}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
 <script src="/js/admin.js"></script>
@@ -440,7 +449,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
         }
       </span>
     </div>
-    <div class="debug-controls">
+    <div id="sim-controls" style="display:none">
       <button id="debug-census" class="btn-danger">⚄ Random Census</button>
       <button id="debug-cities" class="btn-danger">⚄ Random Cities</button>
       <button id="debug-advances" class="btn-danger">⚄ Simulate Advances</button>
@@ -465,26 +474,16 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
     </div>
   </section>
 
-  <section class="admin-section ast-req-section">
-    <h3>A.S.T. Requirements <span class="mode-badge" style="font-size:0.7rem">${expert ? 'Expert' : 'Basic'}</span></h3>
-    <div class="table-scroll">
-      <table class="mett-table ast-req-table">
-        <thead><tr><th>VP</th><th>Era</th><th>Requirement</th></tr></thead>
-        <tbody>
-          ${state.astLevels.filter(l => l.level > 0).map(l => {
-            const req = (expert ? l.expert_req : l.basic_req) ?? '—';
-            return `<tr><td class="ast-req-vp">${l.level}</td><td class="ast-req-era">${l.era}</td><td>${req}</td></tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  </section>
 
-<section class="admin-section danger-section">
+  <section class="admin-section danger-section">
     <h3>Danger Zone</h3>
-    <button id="reset-game" class="btn-danger">Reset / New Game</button>
+    <div class="danger-row">
+      <button id="reset-game" class="btn-danger">Reset / New Game</button>
+      <button id="pwd-toggle" class="btn-danger">Change Password</button>
+      <button id="sim-toggle" class="btn-danger">Show Simulation</button>
+    </div>
+    ${pwdFormHtml(query)}
   </section>
-  ${changePasswordSection(query)}
 </div>
 <script>
   window.CURRENT_ROUND = ${game.current_round};
