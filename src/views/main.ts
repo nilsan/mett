@@ -39,6 +39,7 @@ export function renderMain(state: FullState): string {
 
   // Census table
   const censusOrdered = moveOrder(pwc, revealed);
+  const allCitiesRevealed = pwc.length > 0 && pwc.every(p => p.census?.city_count != null);
   const censusRows = censusOrdered.map(p => {
     const submitted = p.census?.population != null;
     const milCell = p.military
@@ -53,12 +54,19 @@ export function renderMain(state: FullState): string {
     } else {
       popCell = `<td class="census-pop submitted-hidden">✓</td>`;
     }
-    const cityCount = p.census?.city_count;
-    const cityCell = `<td class="city-col">${cityCount != null ? cityCount : ''}</td>`;
+    const citySubmitted = p.census?.city_count != null;
+    let cityCell: string;
+    if (!citySubmitted) {
+      cityCell = `<td class="city-col census-pop not-submitted">?</td>`;
+    } else if (allCitiesRevealed) {
+      cityCell = `<td class="city-col census-pop">${p.census!.city_count}</td>`;
+    } else {
+      cityCell = `<td class="city-col census-pop submitted-hidden">✓</td>`;
+    }
     return `<tr>
       <td class="empire-col"><div class="empire-col-inner">${civBadge(p, true)}</div></td>
-      ${cityCell}
       ${milCell}
+      ${cityCell}
       ${popCell}
     </tr>`;
   }).join('');
@@ -280,8 +288,8 @@ ${game.active ? `
     <table class="mett-table census-table">
       <thead><tr>
         <th>Empire</th>
-        <th class="city-col" title="Cities">🏛</th>
         <th class="mil-col" title="Military">⚔</th>
+        <th class="city-col" title="Cities">🏛</th>
         <th class="census-pop">POP</th>
       </tr></thead>
       <tbody>${censusRows || '<tr><td colspan="4">No players</td></tr>'}</tbody>

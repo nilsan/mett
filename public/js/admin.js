@@ -260,14 +260,16 @@
       });
     }
 
-    // Force reveal census
-    const revealBtn = document.getElementById('force-reveal');
-    if (revealBtn) {
-      revealBtn.addEventListener('click', async () => {
-        await post('/api/census/reveal', {});
+    // Prepare for AST — clear city counts, switch to post-calamity phase
+    const prepareAstBtn = document.getElementById('prepare-ast');
+    if (prepareAstBtn) {
+      prepareAstBtn.addEventListener('click', async () => {
+        prepareAstBtn.disabled = true;
+        await post('/api/game/cities/clear', {});
         location.reload();
       });
     }
+
 
     // Reset game
     const resetBtn = document.getElementById('reset-game');

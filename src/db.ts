@@ -28,6 +28,7 @@ export function getDb(): Database {
     migrate('ALTER TABLE players ADD COLUMN ast_moved INTEGER NOT NULL DEFAULT 0');
     migrate('ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0');
     migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
+    migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
   }
   return _db;
 }
@@ -41,6 +42,7 @@ export interface GameRow {
   active: number;
   census_revealed: number;
   is_final_round: number;
+  cities_phase: number;  // 0 = pre-trade, 1 = post-calamity
   started_at: string | null;
 }
 
@@ -100,7 +102,7 @@ export function startGame(expert: number): void {
   // Clear existing players + census
   db.exec('DELETE FROM census');
   db.exec('DELETE FROM players');
-  db.query('UPDATE game SET expert=?, current_round=1, active=1, census_revealed=0, is_final_round=0, started_at=? WHERE id=1')
+  db.query('UPDATE game SET expert=?, current_round=1, active=1, census_revealed=0, is_final_round=0, cities_phase=0, started_at=? WHERE id=1')
     .run(expert, new Date().toISOString());
 }
 
@@ -108,7 +110,7 @@ export function resetGame(): void {
   const db = getDb();
   db.exec('DELETE FROM census');
   db.exec('DELETE FROM players');
-  db.query('UPDATE game SET active=0, current_round=1, census_revealed=0, is_final_round=0, started_at=NULL WHERE id=1').run();
+  db.query('UPDATE game SET active=0, current_round=1, census_revealed=0, is_final_round=0, cities_phase=0, started_at=NULL WHERE id=1').run();
 }
 
 const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
@@ -201,7 +203,7 @@ export function advanceRound(): number {
   checkAndSetLateIronAgeBonus();
   checkAndSetFinalRound();
   const nextRound = game.current_round + 1;
-  db.query('UPDATE game SET current_round=?, census_revealed=0 WHERE id=1').run(nextRound);
+  db.query('UPDATE game SET current_round=?, census_revealed=0, cities_phase=0 WHERE id=1').run(nextRound);
   return nextRound;
 }
 
@@ -370,6 +372,12 @@ export function allCitiesSubmitted(round: number): boolean {
     'SELECT COUNT(*) AS count FROM census WHERE round=? AND city_count IS NOT NULL'
   ).get(round);
   return submitted!.count === players.length;
+}
+
+export function clearCityCount(round: number): void {
+  const db = getDb();
+  db.query('UPDATE census SET city_count=NULL WHERE round=?').run(round);
+  db.query('UPDATE game SET cities_phase=1 WHERE id=1').run();
 }
 
 

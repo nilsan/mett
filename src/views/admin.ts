@@ -299,10 +299,13 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[]): string {
   const expert = game.expert === 1;
   const AST_LEVELS = state.astLevels.map(l => l.level);
   const isFinalRound = game.is_final_round === 1;
+  const citiesPhase = game.cities_phase === 1; // false=pre-trade, true=post-calamity
   const n = players.length;
   const censusCount = census.filter(c => c.population != null).length;
   const citiesCount = census.filter(c => c.city_count != null).length;
   const allCitiesReady = n > 0 && citiesCount === n;
+  // Pre-trade phase complete = all cities in AND not yet cleared for post-calamity
+  const showPrepareAst = allCitiesReady && !citiesPhase;
 
   const playerRows = players.map(p => {
     const c = census.find(x => x.player_id === p.id);
@@ -377,19 +380,23 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[]): string {
         <span class="sub-prog-count">${censusCount}/${n}</span>
       </div>
       <div class="sub-prog-item${citiesCount === n ? ' sub-prog-done' : ''}">
-        <span class="sub-prog-label">Cities</span>
+        <span class="sub-prog-label">Cities ${citiesPhase ? '(post-calamity)' : '(pre-trade)'}</span>
         <span class="sub-prog-count">${citiesCount}/${n}</span>
       </div>
     </div>
     <div class="round-controls">
-      <button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled title="All empires must submit post-calamity city count first"'}>
+      ${showPrepareAst
+        ? `<button id="prepare-ast" class="btn-primary">Prepare for AST — Round ${game.current_round}</button>`
+        : `<button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled'}>
         ${isFinalRound ? 'End Game' : `Advance to Round ${game.current_round + 1}`}
-      </button>
-      <span class="round-hint">All empires must submit post-calamity city count before advancing</span>
-      ${!game.census_revealed ? `
-      <button id="force-reveal" class="secondary">
-        Force Reveal Census
-      </button>` : ''}
+      </button>`
+      }
+      <span class="round-hint">
+        ${citiesPhase
+          ? 'All empires must submit post-calamity city count before advancing'
+          : 'Submit city count before trading, then use Prepare for AST to collect post-calamity counts'
+        }
+      </span>
     </div>
     <div class="debug-controls">
       <button id="debug-census" class="btn-danger">⚄ Random Census</button>

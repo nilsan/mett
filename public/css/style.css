@@ -178,7 +178,6 @@ body {
   width: 34px;
   text-align: center;
   font-size: 0.85rem;
-  color: var(--mett-text);
   white-space: nowrap;
 }
 .census-table .mil-col {

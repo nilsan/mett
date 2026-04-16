@@ -64,6 +64,13 @@ api.post('/game/round/next', (c) => {
   });
 });
 
+api.post('/game/cities/clear', (c) => {
+  const game = db.getGame();
+  db.clearCityCount(game.current_round);
+  broadcastState();
+  return c.json({ ok: true });
+});
+
 api.post('/census/reveal', () => {
   db.revealCensus();
   broadcastState();
