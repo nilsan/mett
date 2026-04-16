@@ -6,9 +6,15 @@ import { isAdminAuthed } from './pages.js';
 
 const api = new Hono();
 
-// Protect all mutating API endpoints — read-only GET /api/state and /api/civs are public
+// Player-facing POST endpoints — no auth required (players submit from their own civ page)
+const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/adv']);
+
+// Protect all mutating API endpoints — read-only GETs and player actions are public
 api.use('*', async (c, next) => {
   if (c.req.method === 'GET') return next();
+  const path = c.req.path;  // e.g. /api/players/3/census
+  const lastSegment = path.slice(path.lastIndexOf('/'));
+  if (path.includes('/players/') && PLAYER_PUBLIC.has(lastSegment)) return next();
   if (!isAdminAuthed(c.req.raw)) {
     return c.json({ error: 'Unauthorized' }, 401);
   }

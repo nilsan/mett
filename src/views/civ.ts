@@ -101,12 +101,13 @@ function getCivAgeBands(civNumber: number, expert: boolean) {
     { label: 'L. Bronze', span: 3,        cls: 'age-lbronze' },
     { label: 'E. Iron',   span: 1,        cls: 'age-eiron'   },
     { label: 'L. Iron',   span: liaSpan,  cls: 'age-liron'   },
-    ...(expert ? [] : [{ label: '', span: 1, cls: 'age-liron' }]),  // level 80 unreachable in basic
   ];
 }
 
 function astBar(levels: AstLevelRow[], currentLevel: number, expert: boolean, civNumber: number): string {
-  const N = levels.length; // 17
+  // Basic mode stops at 75 — level 80 is unreachable and not shown
+  if (!expert) levels = levels.filter(l => l.level <= 75);
+  const N = levels.length;
 
   const labelDivs = getCivAgeBands(civNumber, expert).map(b =>
     `<div class="ast-age-label ${b.cls}" style="grid-column:span ${b.span}">${b.label}</div>`

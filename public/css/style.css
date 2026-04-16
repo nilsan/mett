@@ -825,7 +825,9 @@ body {
 .ast-bar-wrap {
   overflow-x: auto;
   margin-top: 0.75rem;
+  scrollbar-width: none; /* Firefox */
 }
+.ast-bar-wrap::-webkit-scrollbar { display: none; } /* Chrome/Safari */
 
 :root { --ast-node-size: 2rem; --ast-node-gap: 3px; }
 
