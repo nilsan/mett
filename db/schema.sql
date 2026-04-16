@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS game (
   current_round INTEGER NOT NULL DEFAULT 1,
   active        INTEGER NOT NULL DEFAULT 0,  -- 0=setup, 1=active
   census_revealed INTEGER NOT NULL DEFAULT 0, -- 0=hidden, 1=revealed for current round
+  cities_phase  INTEGER NOT NULL DEFAULT 0,   -- 0=pre-trade, 1=post-calamity
   started_at    TEXT
 );
 INSERT OR IGNORE INTO game (id, expert, current_round, active) VALUES (1, 1, 1, 0);
