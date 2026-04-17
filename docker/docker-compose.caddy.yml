@@ -10,7 +10,7 @@ services:
     expose:
       - "3000"
     volumes:
-      - ../data:/app/data
+      - ~/docker/mett:/app/data
     restart: unless-stopped
     environment:
       DATABASE_PATH: /app/data/mett.db

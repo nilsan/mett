@@ -1,6 +1,3 @@
-# Replace "mett.yourdomain.com" with your actual domain name.
-# Caddy will automatically obtain and renew a TLS certificate via Let's Encrypt.
-
-mett.yourdomain.com {
+me.example.com {
     reverse_proxy mett:3000
 }
