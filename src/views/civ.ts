@@ -20,9 +20,9 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number |
   const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
   const regrессLevel = currentLevelIdx > 0 ? AST_LEVELS[currentLevelIdx - 1] : AST_LEVELS[0];
 
-  // Levels strictly inside Stone Age (< stoneEnd) are safe from regression
+  // stoneEnd level itself is still safe from regression; regression only outside Stone Age
   const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
-  const inStoneAge = player.ast_level < stoneEnd;
+  const inStoneAge = player.ast_level <= stoneEnd;
 
   if (cityCount === 0 && !inStoneAge) {
     return {

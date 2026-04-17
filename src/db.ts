@@ -211,7 +211,7 @@ function autoAdvanceAst(round: number, expert: boolean): void {
     if (curIdx === -1) continue;
 
     const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
-    const inStoneAge = player.ast_level < stoneEnd;
+    const inStoneAge = player.ast_level <= stoneEnd;
 
     if (cityCount === 0 && !inStoneAge) {
       // Regress one step — only outside Stone Age (Stone Age req is "None", 0 cities is fine)

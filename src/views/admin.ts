@@ -12,8 +12,8 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
   if (curIdx === -1) return 'unknown';
 
   const { stoneEnd } = getCivAstProfile(p.civ_number, expert);
-  // Levels strictly inside Stone Age (< stoneEnd) are free — stoneEnd itself requires EBA entry req
-  const inStoneAge = p.ast_level < stoneEnd;
+  // stoneEnd level itself is still safe from regression; regression only outside Stone Age
+  const inStoneAge = p.ast_level <= stoneEnd;
 
   if (cityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
   if (curIdx >= AST_LEVELS.length - 1) return 'stay'; // already at max
@@ -383,10 +383,10 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
       </td>
       <td data-label="A.S.T.">
         <div class="ast-ctrl">
-          ${astStatus === 'regress'
-            ? `<span class="ast-status-dot ast-status-regress" title="${dotTitle}"></span><span class="ast-status-dot ast-status-regress" title="${dotTitle}"></span>`
-            : `<span class="ast-status-dot ast-status-${astStatus}" title="${dotTitle}"></span>`
-          }
+          <div class="ast-status-dots">
+            <span class="ast-status-dot ast-status-${astStatus}" title="${dotTitle}"></span>
+            <span class="ast-status-dot ${astStatus === 'regress' ? 'ast-status-regress' : 'ast-status-hidden'}" title="${dotTitle}"></span>
+          </div>
           <button class="ast-btn ast-dec" data-player-id="${p.id}" data-dir="-1">−</button>
           <select class="ast-select" data-player-id="${p.id}" data-server-value="${p.ast_level}">${astOptions}</select>
           <button class="ast-btn ast-inc" data-player-id="${p.id}" data-dir="1">+</button>
