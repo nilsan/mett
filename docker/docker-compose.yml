@@ -3,11 +3,29 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     volumes:
-      - ../data:/app/data
+      - ~/docker/mett:/app/data
     restart: unless-stopped
     environment:
       DATABASE_PATH: /app/data/mett.db
       PORT: 3000
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      - mett
+
+volumes:
+  caddy_data:
+  caddy_config:
