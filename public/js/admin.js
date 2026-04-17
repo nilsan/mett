@@ -311,10 +311,16 @@
     const simToggle = document.getElementById('sim-toggle');
     const simControls = document.getElementById('sim-controls');
     if (simToggle && simControls) {
+      // Restore visibility across reloads
+      if (sessionStorage.getItem('simVisible') === '1') {
+        simControls.style.display = '';
+        simToggle.textContent = 'Hide Simulation';
+      }
       simToggle.addEventListener('click', () => {
         const visible = simControls.style.display !== 'none';
         simControls.style.display = visible ? 'none' : '';
         simToggle.textContent = visible ? 'Show Simulation' : 'Hide Simulation';
+        sessionStorage.setItem('simVisible', visible ? '0' : '1');
       });
     }
     document.getElementById('debug-census')?.addEventListener('click', async () => {
