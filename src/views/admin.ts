@@ -12,21 +12,22 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
   if (curIdx === -1) return 'unknown';
 
   const { stoneEnd } = getCivAstProfile(p.civ_number, expert);
-  // Stone Age ends at stoneEnd (inclusive) — 0 cities does not regress within Stone Age
-  const inStoneAge = p.ast_level <= stoneEnd;
+  // Levels strictly inside Stone Age (< stoneEnd) are free — stoneEnd itself requires EBA entry req
+  const inStoneAge = p.ast_level < stoneEnd;
 
   if (cityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
   if (curIdx >= AST_LEVELS.length - 1) return 'stay'; // already at max
 
   // Check the requirement stored AT THE CURRENT level — that's what you need to advance from it
   const currentLevel = levels[curIdx];
-  // Slow-start empires (stoneEnd=25): ALL Stone Age levels are free, including level 20
-  if (stoneEnd > 20 && currentLevel.level <= stoneEnd) return 'advance';
+  // Slow-start civs (stoneEnd=25): level 20 is mid-Stone-Age for them — advance freely
+  // Level 25 (stoneEnd) uses the DB value ("2 cities") — EBA entry requirement applies there
+  if (stoneEnd > 20 && currentLevel.level < stoneEnd) return 'advance';
 
   // In basic mode, override stored MBA req with EBA city-only req for slow/late-start civs
   if (!expert && (currentLevel.level === 35 || currentLevel.level === 40)) {
     const { ebaEnd } = getCivAstProfile(p.civ_number, false);
-    if (currentLevel.level <= ebaEnd) {
+    if (currentLevel.level < ebaEnd) {
       return cityCount >= 2 ? 'advance' : 'stay';
     }
   }
@@ -382,7 +383,10 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
       </td>
       <td data-label="A.S.T.">
         <div class="ast-ctrl">
-          <span class="ast-status-dot ast-status-${astStatus}" title="${dotTitle}"></span>
+          ${astStatus === 'regress'
+            ? `<span class="ast-status-dot ast-status-regress" title="${dotTitle}"></span><span class="ast-status-dot ast-status-regress" title="${dotTitle}"></span>`
+            : `<span class="ast-status-dot ast-status-${astStatus}" title="${dotTitle}"></span>`
+          }
           <button class="ast-btn ast-dec" data-player-id="${p.id}" data-dir="-1">−</button>
           <select class="ast-select" data-player-id="${p.id}" data-server-value="${p.ast_level}">${astOptions}</select>
           <button class="ast-btn ast-inc" data-player-id="${p.id}" data-dir="1">+</button>
@@ -397,14 +401,14 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
       </td>
       <td data-label="Cities">
         <div class="ast-ctrl">
-          <button class="city-dec" data-player-id="${p.id}" data-dir="-1">−</button>
+          <button class="ast-btn city-dec" data-player-id="${p.id}" data-dir="-1">−</button>
           <select class="city-admin-select" data-player-id="${p.id}" data-server-value="${c?.city_count ?? ''}">
             <option value="">—</option>
             ${Array.from({length: 10}, (_, i) =>
               `<option value="${i}"${c?.city_count === i ? ' selected' : ''}>${i}</option>`
             ).join('')}
           </select>
-          <button class="city-inc" data-player-id="${p.id}" data-dir="1">+</button>
+          <button class="ast-btn city-inc" data-player-id="${p.id}" data-dir="1">+</button>
         </div>
       </td>
     </tr>`;

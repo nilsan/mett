@@ -361,7 +361,7 @@
       });
     });
 
-    document.querySelectorAll('.ast-btn').forEach(btn => {
+    document.querySelectorAll('.ast-dec, .ast-inc').forEach(btn => {
       btn.addEventListener('click', async () => {
         const sel = document.querySelector(`.ast-select[data-player-id="${btn.dataset.playerId}"]`);
         if (!sel) return;
