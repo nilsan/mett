@@ -15,7 +15,7 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
   // stoneEnd level itself is still safe from regression; regression only outside Stone Age
   const inStoneAge = p.ast_level <= stoneEnd;
 
-  if (cityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
+  if (expert && cityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
   if (curIdx >= AST_LEVELS.length - 1) return 'stay'; // already at max
 
   // Check the requirement stored AT THE CURRENT level — that's what you need to advance from it

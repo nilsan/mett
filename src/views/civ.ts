@@ -24,7 +24,7 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number |
   const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
   const inStoneAge = player.ast_level <= stoneEnd;
 
-  if (cityCount === 0 && !inStoneAge) {
+  if (expert && cityCount === 0 && !inStoneAge) {
     return {
       willRegress: currentLevelIdx > 0,
       regrессLevel,

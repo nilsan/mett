@@ -213,8 +213,8 @@ function autoAdvanceAst(round: number, expert: boolean): void {
     const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
     const inStoneAge = player.ast_level <= stoneEnd;
 
-    if (cityCount === 0 && !inStoneAge) {
-      // Regress one step — only outside Stone Age (Stone Age req is "None", 0 cities is fine)
+    if (expert && cityCount === 0 && !inStoneAge) {
+      // Regress one step — expert mode only; basic mode has no 0-city regression rule
       if (curIdx > 0) {
         db.query('UPDATE players SET ast_level=? WHERE id=?').run(AST_LEVELS[curIdx - 1], player.id);
       }
