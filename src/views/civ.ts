@@ -20,10 +20,9 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number, 
   const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
   const regrессLevel = currentLevelIdx > 0 ? AST_LEVELS[currentLevelIdx - 1] : AST_LEVELS[0];
 
-  // 0 cities is safe in Stone Age — use the civ's actual Stone Age end level
+  // 0 cities is safe in Stone Age — Stone Age ends at stoneEnd (inclusive)
   const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
-  const stoneAgeMax = stoneEnd - 5;  // last level where 0 cities won't regress you
-  const inStoneAge = player.ast_level <= stoneAgeMax;
+  const inStoneAge = player.ast_level <= stoneEnd;
 
   if (cityCount === 0 && !inStoneAge) {
     return {
@@ -150,8 +149,8 @@ export function renderCiv(
   // The requirement stored AT the current level is what you need to advance FROM it.
   const nextReq = nextLevel
     ? (() => {
-        // Slow-start empires: Stone Age extends to stoneEnd — no requirement to advance from it
-        if (currentLevel?.level === stoneEnd && stoneEnd > 20) return 'None';
+        // Slow-start empires (stoneEnd=25): ALL Stone Age levels are free, including level 20
+        if (stoneEnd > 20 && (currentLevel?.level ?? 0) <= stoneEnd) return 'None';
         // In basic mode, override stored MBA req for slow/late civs still in EBA at 35 or 40
         if (!expert && (currentLevel?.level === 35 || currentLevel?.level === 40)) {
           const { ebaEnd } = getCivAstProfile(player.civ_number, false);

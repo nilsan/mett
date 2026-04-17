@@ -11,18 +11,17 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
   const curIdx = AST_LEVELS.indexOf(p.ast_level);
   if (curIdx === -1) return 'unknown';
 
-  const lateSet = expert ? LATE_BRONZE_EXPERT : LATE_BRONZE_BASIC;
   const { stoneEnd } = getCivAstProfile(p.civ_number, expert);
-  const stoneAgeMax = stoneEnd - 5;
-  const inStoneAge = p.ast_level <= stoneAgeMax;
+  // Stone Age ends at stoneEnd (inclusive) — 0 cities does not regress within Stone Age
+  const inStoneAge = p.ast_level <= stoneEnd;
 
   if (cityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
   if (curIdx >= AST_LEVELS.length - 1) return 'stay'; // already at max
 
   // Check the requirement stored AT THE CURRENT level — that's what you need to advance from it
   const currentLevel = levels[curIdx];
-  // Slow-start empires: Stone Age extends to stoneEnd — no requirement to advance from it
-  if (currentLevel.level === stoneEnd && stoneEnd > 20) return 'advance';
+  // Slow-start empires (stoneEnd=25): ALL Stone Age levels are free, including level 20
+  if (stoneEnd > 20 && currentLevel.level <= stoneEnd) return 'advance';
 
   // In basic mode, override stored MBA req with EBA city-only req for slow/late-start civs
   if (!expert && (currentLevel.level === 35 || currentLevel.level === 40)) {
@@ -398,14 +397,14 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
       </td>
       <td data-label="Cities">
         <div class="ast-ctrl">
-          <button class="ast-btn city-dec" data-player-id="${p.id}" data-dir="-1">−</button>
+          <button class="city-dec" data-player-id="${p.id}" data-dir="-1">−</button>
           <select class="city-admin-select" data-player-id="${p.id}" data-server-value="${c?.city_count ?? ''}">
             <option value="">—</option>
             ${Array.from({length: 10}, (_, i) =>
               `<option value="${i}"${c?.city_count === i ? ' selected' : ''}>${i}</option>`
             ).join('')}
           </select>
-          <button class="ast-btn city-inc" data-player-id="${p.id}" data-dir="1">+</button>
+          <button class="city-inc" data-player-id="${p.id}" data-dir="1">+</button>
         </div>
       </td>
     </tr>`;
