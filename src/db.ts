@@ -143,15 +143,16 @@ const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75
 // The requirement stored AT a level is the requirement to advance FROM that level.
 // e.g. to advance from 45 to 50, check level 45's requirement — not level 50's.
 function meetsAstRequirements(player: PlayerRow, currentLevel: AstLevelRow, cityCount: number, expert: boolean): boolean {
-  // Slow-start empires' Stone Age extends to level stoneEnd — no req to advance from it
+  // Slow-start civs (stoneEnd=25): levels strictly inside Stone Age are free (including level 20)
+  // Level stoneEnd itself requires the EBA entry requirement — handled by DB value
   const { stoneEnd, ebaEnd } = getCivAstProfile(player.civ_number, expert);
-  if (currentLevel.level === stoneEnd && stoneEnd > 20) return true;
+  if (stoneEnd > 20 && currentLevel.level < stoneEnd) return true;
 
-  // In basic mode, some civs have EBA extending past level 35 — override the stored MBA req
-  // with the EBA city-only requirement if the civ's ebaEnd is > 35 and we're at 35 or 40.
+  // In basic mode, override stored req with EBA city-only req for civs still within EBA at 35 or 40.
+  // Use strict < ebaEnd so last EBA level correctly requires MBA entry req, not EBA req.
   if (!expert && (currentLevel.level === 35 || currentLevel.level === 40)) {
     const { ebaEnd } = getCivAstProfile(player.civ_number, false);
-    if (currentLevel.level <= ebaEnd) {
+    if (currentLevel.level < ebaEnd) {
       return cityCount >= 2;  // basic EBA requirement: 2 cities
     }
   }
@@ -210,8 +211,7 @@ function autoAdvanceAst(round: number, expert: boolean): void {
     if (curIdx === -1) continue;
 
     const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
-    const stoneAgeMax = stoneEnd - 5;  // last level where 0 cities is safe
-    const inStoneAge = player.ast_level <= stoneAgeMax;
+    const inStoneAge = player.ast_level < stoneEnd;
 
     if (cityCount === 0 && !inStoneAge) {
       // Regress one step — only outside Stone Age (Stone Age req is "None", 0 cities is fine)

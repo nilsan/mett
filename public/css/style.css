@@ -818,6 +818,7 @@ body {
 }
 .req-ok { color: var(--mett-success); }
 .req-fail { color: var(--mett-danger); }
+.req-unknown { color: var(--mett-muted); }
 .req-have { font-weight: 400; font-size: 0.8rem; color: var(--mett-muted); }
 .ast-next.req-all-ok { border-color: var(--mett-success); }
 .ast-next.req-not-met { border-color: var(--mett-danger); }

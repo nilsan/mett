@@ -4,19 +4,19 @@ import { getCivAstProfile } from '../civs.js';
 interface ReqStatus {
   willRegress: boolean;          // city_count === 0 and not at floor
   regrессLevel: number;          // what level they'd regress to
-  meetsCities: boolean;
+  meetsCities: boolean | null;   // null when city count unknown
   meetsAdvances: boolean;
   meetsVP: boolean;
   reqCities: number;
   reqAdvCount: number;
   reqAdvType: string;            // 'any' | '<100' | '≥100' | '≥200' | 'all17'
   reqVP: number;                 // 0 if no VP requirement
-  haveCities: number;
+  haveCities: number | null;     // null when city count unknown
   haveAdv: number;               // relevant card count per type
   haveVP: number;
 }
 
-function checkReq(reqText: string | null, player: PlayerRow, cityCount: number, currentLevelIdx: number, expert: boolean): ReqStatus | null {
+function checkReq(reqText: string | null, player: PlayerRow, cityCount: number | null, currentLevelIdx: number, expert: boolean): ReqStatus | null {
   const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
   const regrессLevel = currentLevelIdx > 0 ? AST_LEVELS[currentLevelIdx - 1] : AST_LEVELS[0];
 
@@ -38,7 +38,8 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number, 
 
   const cityMatch = reqText.match(/(\d+) cities/);
   const reqCities = cityMatch ? parseInt(cityMatch[1], 10) : 0;
-  const meetsCities = cityCount >= reqCities;
+  // null city count = unknown; don't mark as failing (but show "?" in UI)
+  const meetsCities = cityCount !== null ? cityCount >= reqCities : null;
 
   let reqAdvCount = 0, reqAdvType = 'any', haveAdv = 0, meetsAdvances = true;
   let reqVP = 0, haveVP = player.adv_points, meetsVP = true;
@@ -78,7 +79,7 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number, 
     willRegress: false, regrессLevel,
     meetsCities, meetsAdvances, meetsVP,
     reqCities, reqAdvCount, reqAdvType, reqVP,
-    haveCities: cityCount, haveAdv, haveVP,
+    haveCities: cityCount ?? null, haveAdv, haveVP,
   };
 }
 
@@ -297,9 +298,8 @@ export function renderCiv(
       </div>
       ${nextLevel ? (() => {
         const cityCount = census?.city_count ?? null;
-        const status = cityCount !== null
-          ? checkReq(nextReq, player, cityCount, currentLevelIdx, expert)
-          : null;
+        // Always run checkReq — advances/VP are always evaluable even without city count
+        const status = checkReq(nextReq, player, cityCount, currentLevelIdx, expert);
 
         if (status?.willRegress) {
           return `<div class="ast-next req-not-met">
@@ -311,10 +311,15 @@ export function renderCiv(
         const rows: string[] = [];
         let allMet = true;
         if (status) {
-          allMet = status.meetsCities && status.meetsAdvances && status.meetsVP;
+          // meetsCities null = unknown; treat as not-failing for allMet but show "?" in row
+          allMet = (status.meetsCities !== false) && status.meetsAdvances && status.meetsVP;
           if (status.reqCities > 0) {
-            const ok = status.meetsCities;
-            rows.push(`<span class="req-row${ok ? ' req-ok' : ' req-fail'}">${ok ? '✓' : '✗'} ${status.reqCities} cities <span class="req-have">(you have ${status.haveCities})</span></span>`);
+            if (status.meetsCities === null) {
+              rows.push(`<span class="req-row req-unknown">? ${status.reqCities} cities <span class="req-have">(not yet submitted)</span></span>`);
+            } else {
+              const ok = status.meetsCities;
+              rows.push(`<span class="req-row${ok ? ' req-ok' : ' req-fail'}">${ok ? '✓' : '✗'} ${status.reqCities} cities <span class="req-have">(you have ${status.haveCities})</span></span>`);
+            }
           }
           if (status.reqAdvCount > 0) {
             const ok = status.meetsAdvances;
