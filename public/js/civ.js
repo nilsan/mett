@@ -39,7 +39,7 @@
 
   // ── City count ────────────────────────────────────────────────────────────
   const cityInput = document.getElementById('city-input');
-  if (cityInput) cityInput.value = cityInput.dataset.serverValue || '0';
+  if (cityInput && cityInput.dataset.serverValue !== '') cityInput.value = cityInput.dataset.serverValue;
   const cityBtn = document.getElementById('submit-city');
 
   document.getElementById('city-dec')?.addEventListener('click', () => {

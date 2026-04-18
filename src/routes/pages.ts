@@ -6,7 +6,7 @@ import { renderAdmin } from '../views/admin.js';
 import { renderCiv } from '../views/civ.js';
 import { renderAst } from '../views/ast.js';
 import { renderTrade } from '../views/trade.js';
-import { getFullState, getAllCivs, getPlayerCensus, getAdminPassword, setAdminPassword } from '../db.js';
+import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, getAdminPassword, setAdminPassword } from '../db.js';
 import { CIVS } from '../civs.js';
 
 const COOKIE_NAME = 'mett_admin';
@@ -88,7 +88,8 @@ pages.get('/admin', (c) => {
   if (!isAdminAuthed(c.req.raw)) return c.redirect('/login');
   const state = getFullState();
   const allCivs = getAllCivs();
-  const html = layout('Admin', renderAdmin(state, allCivs, c.req.url), 'admin');
+  const prevCensus = state.game.current_round > 1 ? getCensusForRound(state.game.current_round - 1) : [];
+  const html = layout('Admin', renderAdmin(state, allCivs, c.req.url, prevCensus), 'admin');
   return c.html(html);
 });
 

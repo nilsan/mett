@@ -196,15 +196,15 @@ body {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 50%;
-  background: #e05555;
-  box-shadow: 0 0 4px #e05555aa;
+  background: var(--mett-danger);
+  box-shadow: 0 0 4px var(--mett-danger);
   vertical-align: middle;
 }
 
 .census-pop { font-weight: 700; text-align: right; font-size: 1rem; white-space: nowrap; }
 .pending-pop { color: var(--mett-warning); font-size: 0.85rem; }
 .submitted-hidden { color: #4a8a5a; font-size: 0.85rem; }   /* muted green ✓ */
-.not-submitted    { color: #8a3a3a; font-size: 0.85rem; }   /* muted red ? */
+.not-submitted    { color: var(--mett-warning); font-size: 0.85rem; }
 
 /* Military icon — red dot in census table, ⚔ on header/buttons */
 
@@ -411,7 +411,7 @@ body {
   .admin-table td, .admin-table th { padding: 0.15rem 0.2rem; height: 1.6rem; }
   .admin-table .player-name-input { width: 72px; font-size: 0.68rem; }
   .admin-table .adv-input { width: 46px; font-size: 0.68rem; }
-  .census-admin-input, .city-admin-input, .city-admin-select { width: 42px; font-size: 0.68rem; padding: 0.12rem 0.15rem; }
+  .census-admin-input { width: 42px !important; font-size: 0.68rem; padding: 0.12rem 0.15rem; }
   .admin-table .rank-input { width: 34px; font-size: 0.65rem; }
   .ast-btn { width: 1.2rem; height: 1.2rem; font-size: 0.75rem; }
   .ast-select { font-size: 0.66rem; padding: 0.1rem 0.15rem; }
@@ -684,6 +684,7 @@ body {
 
 .census-submitted { color: var(--mett-success); font-weight: 600; margin: 0 0 0.35rem; font-size: 0.9rem; }
 .census-pending { color: var(--mett-warning); margin: 0 0 0.35rem; font-size: 0.9rem; }
+.status-icon-fixed { display: inline-block; width: 1em; text-align: center; flex-shrink: 0; }
 
 .census-input-row,
 .adv-input-row {
@@ -1368,6 +1369,7 @@ body {
 .admin-table { font-size: 0.84rem; }
 .admin-table td { height: 1.75rem; padding: 0.15rem 0.4rem; }
 .admin-table th { padding: 0.25rem 0.4rem; font-size: 0.68rem; }
+.admin-table th { width: 14.28%; }
 
 .admin-table .player-name-input {
   background: transparent;
@@ -1414,7 +1416,7 @@ body {
   flex-shrink: 0;
 }
 .ast-status-advance  { background: var(--mett-success); }
-.ast-status-stay     { background: var(--mett-danger); }
+.ast-status-stay     { background: var(--mett-warning); }
 .ast-status-regress  { background: var(--mett-danger); }
 .ast-status-unknown  { background: var(--mett-border); }
 .ast-status-hidden   { background: transparent; }
@@ -1470,19 +1472,21 @@ body {
 }
 
 .city-admin-select {
-  width: 54px;
   background: var(--mett-surface2);
   border: 1px solid var(--mett-border);
   border-radius: 4px;
   color: var(--mett-text);
   padding: 0.1rem 0.25rem;
   font-size: 0.82rem;
-  margin: 0;
+  width: 68px;
 }
 
+.census-admin-input { width: 94px !important; flex: none; }
+.census-admin-input::-webkit-inner-spin-button,
+.census-admin-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; display: none; }
+.census-admin-input { -moz-appearance: textfield; }
 .census-admin-input,
 .city-admin-input {
-  width: 52px;
   background: var(--mett-surface2);
   border: 1px solid var(--mett-border);
   border-radius: 3px;

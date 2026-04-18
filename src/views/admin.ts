@@ -1,4 +1,4 @@
-import type { FullState, PlayerRow, AstLevelRow } from '../db.js';
+import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import type { CivRefRow } from '../db.js';
 import { LATE_BRONZE_BASIC, LATE_BRONZE_EXPERT, getCivAstProfile } from '../civs.js';
 
@@ -83,14 +83,14 @@ function pwdFormHtml(query: string): string {
   </div>`;
 }
 
-export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = ''): string {
+export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = []): string {
   const { game, players } = state;
 
   if (!game.active) {
     if (players.length > 0) return renderGameOver(state, allCivs, query);
     return renderSetup(allCivs, query);
   }
-  return renderActiveAdmin(state, allCivs, query);
+  return renderActiveAdmin(state, allCivs, query, prevCensus);
 }
 
 function renderSetup(allCivs: CivRefRow[], query = ''): string {
@@ -345,7 +345,7 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
 `;
 }
 
-function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): string {
+function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = []): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
   const AST_LEVELS = state.astLevels.map(l => l.level);
@@ -360,6 +360,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
 
   const playerRows = players.map(p => {
     const c = census.find(x => x.player_id === p.id);
+    const prev = prevCensus.find(x => x.player_id === p.id);
     const submitted = c?.population != null;
     const astOptions = AST_LEVELS.map(l =>
       `<option value="${l}" ${p.ast_level === l ? 'selected' : ''}>${l}</option>`
@@ -375,40 +376,39 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
       <td data-label="Player">
         <input type="text" class="player-name-input" value="${p.name}" data-player-id="${p.id}">
       </td>
+      <td data-label="Census">
+        <div class="ast-ctrl">
+          <input type="number" class="census-admin-input" min="1" max="55" autocomplete="off"
+            value="${submitted ? c!.population : ''}"
+            data-server-value="${submitted ? c!.population : ''}"
+            placeholder="–" data-player-id="${p.id}">
+          <span class="${submitted ? 'census-submitted' : 'census-pending'} status-icon-fixed">${submitted ? '✓' : '?'}</span>
+        </div>
+      </td>
+      <td data-label="Cities">
+        <div class="ast-ctrl">
+          <select class="city-admin-select" data-player-id="${p.id}" data-server-value="${c?.city_count ?? ''}">
+            ${Array.from({length: 10}, (_, i) =>
+              `<option value="${i}"${(c?.city_count ?? prev?.city_count ?? 0) === i ? ' selected' : ''}>${i}</option>`
+            ).join('')}
+          </select>
+          <span class="${c?.city_count != null ? 'census-submitted' : 'census-pending'} status-icon-fixed">${c?.city_count != null ? '✓' : '?'}</span>
+        </div>
+      </td>
       <td data-label="Military">
         <button class="mil-toggle ${p.military ? 'mil-on' : 'mil-off'}" data-player-id="${p.id}"
           title="${p.military ? 'Has Military — click to remove' : 'No Military — click to grant'}">
           ⚔ ${p.military ? 'Yes' : 'No'}
         </button>
       </td>
+      <td data-label="Adv VP" class="adv-pts-cell">${p.adv_points}</td>
       <td data-label="A.S.T.">
         <div class="ast-ctrl">
+          <select class="ast-select" data-player-id="${p.id}" data-server-value="${p.ast_level}">${astOptions}</select>
           <div class="ast-status-dots">
             <span class="ast-status-dot ast-status-${astStatus}" title="${dotTitle}"></span>
             <span class="ast-status-dot ${astStatus === 'regress' ? 'ast-status-regress' : 'ast-status-hidden'}" title="${dotTitle}"></span>
           </div>
-          <button class="ast-btn ast-dec" data-player-id="${p.id}" data-dir="-1">−</button>
-          <select class="ast-select" data-player-id="${p.id}" data-server-value="${p.ast_level}">${astOptions}</select>
-          <button class="ast-btn ast-inc" data-player-id="${p.id}" data-dir="1">+</button>
-        </div>
-      </td>
-      <td data-label="Adv VP" class="adv-pts-cell">${p.adv_points}</td>
-      <td data-label="Census">
-        <input type="number" class="census-admin-input" min="1" max="55" autocomplete="off"
-          value="${submitted ? c!.population : ''}"
-          data-server-value="${submitted ? c!.population : ''}"
-          placeholder="–" data-player-id="${p.id}">
-      </td>
-      <td data-label="Cities">
-        <div class="ast-ctrl">
-          <button class="ast-btn city-dec" data-player-id="${p.id}" data-dir="-1">−</button>
-          <select class="city-admin-select" data-player-id="${p.id}" data-server-value="${c?.city_count ?? ''}">
-            <option value="">—</option>
-            ${Array.from({length: 10}, (_, i) =>
-              `<option value="${i}"${c?.city_count === i ? ' selected' : ''}>${i}</option>`
-            ).join('')}
-          </select>
-          <button class="ast-btn city-inc" data-player-id="${p.id}" data-dir="1">+</button>
         </div>
       </td>
     </tr>`;
@@ -466,11 +466,11 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = ''): 
         <thead><tr>
           <th>Empire</th>
           <th>Player Name</th>
-          <th>Military</th>
-          <th>A.S.T. Position</th>
-          <th>Adv VP</th>
           <th>Census</th>
           <th title="Cities on board">Cities</th>
+          <th>Military</th>
+          <th>Adv VP</th>
+          <th>A.S.T. Position</th>
         </tr></thead>
         <tbody>${playerRows || '<tr><td colspan="6">No players</td></tr>'}</tbody>
       </table>

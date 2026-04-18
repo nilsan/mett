@@ -361,20 +361,6 @@
       });
     });
 
-    document.querySelectorAll('.ast-dec, .ast-inc').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const sel = document.querySelector(`.ast-select[data-player-id="${btn.dataset.playerId}"]`);
-        if (!sel) return;
-        const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
-        const cur = parseInt(sel.value, 10);
-        const idx = AST_LEVELS.indexOf(cur);
-        const dir = parseInt(btn.dataset.dir, 10);
-        const next = AST_LEVELS[idx + dir];
-        if (next == null) return;
-        sel.value = next;
-        await post(`/api/players/${btn.dataset.playerId}/ast`, { level: next });
-      });
-    });
 
     // Tie-break rank dropdowns (game-over view)
     document.querySelectorAll('select.rank-select').forEach(sel => {
@@ -418,27 +404,11 @@
 
     // City count dropdowns — submit on change
     document.querySelectorAll('select.city-admin-select').forEach(sel => {
-      sel.value = sel.dataset.serverValue ?? '';  // bypass browser form restoration
+      if (sel.dataset.serverValue !== '') sel.value = sel.dataset.serverValue;
       sel.addEventListener('change', async () => {
         const val = parseInt(sel.value, 10);
         if (isNaN(val) || val < 0 || val > 9) return;
         await post(`/api/players/${sel.dataset.playerId}/city-count`, { city_count: val });
-      });
-    });
-
-    // City count +/- buttons
-    document.querySelectorAll('.city-dec, .city-inc').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const sel = document.querySelector(`.city-admin-select[data-player-id="${btn.dataset.playerId}"]`);
-        if (!sel) return;
-        const dir = parseInt(btn.dataset.dir, 10);
-        const cur = parseInt(sel.value, 10);
-        const base = isNaN(cur) ? (dir > 0 ? -1 : null) : cur;
-        if (base === null) return;
-        const next = base + dir;
-        if (next < 0 || next > 9) return;
-        sel.value = next;
-        await post(`/api/players/${btn.dataset.playerId}/city-count`, { city_count: next });
       });
     });
 

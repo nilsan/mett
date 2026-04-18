@@ -240,7 +240,7 @@ export function renderCiv(
           <button id="city-dec" class="adv-btn">−</button>
           <select id="city-input" class="census-input" data-server-value="${cityCountSubmitted ? census!.city_count : ''}">
             ${Array.from({length: 10}, (_, i) =>
-              `<option value="${i}"${(cityCountSubmitted ? census!.city_count === i : i === 0) ? ' selected' : ''}>${i}</option>`
+              `<option value="${i}"${(cityCountSubmitted ? census!.city_count === i : i === (prevCensus?.city_count ?? 0)) ? ' selected' : ''}>${i}</option>`
             ).join('')}
           </select>
           <button id="city-inc" class="adv-btn">+</button>
