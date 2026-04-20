@@ -170,6 +170,15 @@ export function renderMain(state: FullState): string {
     </tr>`;
   }).join('');
 
+  // ── AST order (rightmost column) ────────────────────────────────────────
+  const astOrderSorted = [...pwc].sort((a, b) =>
+    b.ast_level !== a.ast_level ? b.ast_level - a.ast_level : a.civ_number - b.civ_number
+  );
+  const astOrderRows = astOrderSorted.map((p, i) => {
+    const groupStart = i > 0 && astOrderSorted[i - 1].ast_level !== p.ast_level;
+    return `<tr${groupStart ? ' class="ast-order-group-start"' : ''}>${empireCell(p)}</tr>`;
+  }).join('');
+
   // ── AST board ───────────────────────────────────────────────────────────
   const sorted = [...players].sort((a, b) => a.civ_number - b.civ_number);
   const boardLevels = expert ? AST_LEVELS : AST_LEVELS.filter(l => l <= 75);
@@ -297,6 +306,13 @@ export function renderMain(state: FullState): string {
       </table>
     </div>
     <ul class="ab-legend">${reqLegend}</ul>
+  </section>
+
+  <section class="table-section ast-order-section">
+    <h3>A.S.T. Order</h3>
+    <table class="mett-table ast-order-table">
+      <tbody>${astOrderRows || '<tr><td style="opacity:0.4">—</td></tr>'}</tbody>
+    </table>
   </section>
 </div>
 <script src="/js/main.js"></script>
