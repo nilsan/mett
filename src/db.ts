@@ -227,15 +227,30 @@ function autoAdvanceAst(round: number, expert: boolean): void {
   }
 }
 
-export function advanceRound(): number {
+/** Advance to the next round. Returns the new round number, or null if the game ended
+ *  (basic mode: game ends immediately when any player reaches Late Iron Age). */
+export function advanceRound(): number | null {
   const db = getDb();
   const game = getGame();
-  let nextRound!: number;
+  const expert = game.expert === 1;
+  let nextRound: number | null = null;
   db.transaction(() => {
-    // Auto-advance/regress AST from this round's city counts before incrementing
-    autoAdvanceAst(game.current_round, game.expert === 1);
+    autoAdvanceAst(game.current_round, expert);
     checkAndSetLateIronAgeBonus();
-    checkAndSetFinalRound();
+    if (!expert) {
+      // Basic: game ends at the close of the round where any player first reaches Late Iron Age.
+      const atLia = db.query<{ count: number }, []>(
+        'SELECT COUNT(*) AS count FROM players WHERE ast_level >= 75'
+      ).get();
+      if (atLia && atLia.count > 0) {
+        db.query('UPDATE game SET active=0, is_final_round=0 WHERE id=1').run();
+        return; // nextRound stays null
+      }
+    } else {
+      // Expert: when any player reaches the first Late Iron Age column (75),
+      // set is_final_round so the NEXT advance ends the game (giving one extra round).
+      checkAndSetFinalRound();
+    }
     nextRound = game.current_round + 1;
     db.query('UPDATE game SET current_round=?, census_revealed=0, cities_phase=0 WHERE id=1').run(nextRound);
   })();
@@ -246,22 +261,16 @@ export function endGame(): void {
   getDb().query('UPDATE game SET active=0, is_final_round=0 WHERE id=1').run();
 }
 
-/** After an AST advance, check if the game-end condition is met and set is_final_round.
- *  Basic:  max 16 rounds. Triggers when any player reaches 75 OR round 15 ends (→ round 16 is last).
- *  Expert: max 17 rounds. Triggers when any player reaches 75 (→ one more round to reach 80).
- */
+/** Expert only: set is_final_round when any player reaches level ≥75 (first Late Iron Age column).
+ *  The subsequent advance call will end the game — giving one extra round to play. */
 export function checkAndSetFinalRound(): void {
   const db = getDb();
   const game = getGame();
   if (!game.active || game.is_final_round) return;
-  const expert = game.expert === 1;
-  // game.current_round is the round just completed (before increment in advanceRound)
-  const maxRound = expert ? 17 : 16;
-  const roundLimitReached = game.current_round >= maxRound - 1;
-  const playerAt75 = db.query<{ count: number }, [number]>(
+  const atLia = db.query<{ count: number }, []>(
     'SELECT COUNT(*) AS count FROM players WHERE ast_level >= 75'
-  ).get(75);
-  if ((playerAt75 && playerAt75.count > 0) || roundLimitReached) {
+  ).get();
+  if (atLia && atLia.count > 0) {
     db.query('UPDATE game SET is_final_round=1 WHERE id=1').run();
   }
 }
@@ -329,7 +338,18 @@ export function toggleMilitary(playerId: number): number {
 }
 
 export function setAstLevel(playerId: number, level: number): void {
-  getDb().query('UPDATE players SET ast_level=? WHERE id=?').run(level, playerId);
+  const db = getDb();
+  db.query('UPDATE players SET ast_level=? WHERE id=?').run(level, playerId);
+  // If the admin moved a player back below LIA, the expert end-trigger may no longer apply.
+  const game = getGame();
+  if (game.active && game.expert === 1 && game.is_final_round) {
+    const atLia = db.query<{ count: number }, []>(
+      'SELECT COUNT(*) AS count FROM players WHERE ast_level >= 75'
+    ).get();
+    if (!atLia || atLia.count === 0) {
+      db.query('UPDATE game SET is_final_round=0 WHERE id=1').run();
+    }
+  }
 }
 
 /** After any AST update, grant the Late Iron Age bonus (5VP) to the one player

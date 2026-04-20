@@ -21,10 +21,10 @@ function getAgeBands(expert: boolean): AgeBand[] {
     { name: 'Middle Bronze Age', shortName: 'M. Bronze', expertReq: '3 Cities + 5 VP in Advances',          basicReq: '3 Cities + 3 Advances',           levels: [40, 45, 50],      cls: 'age-mbronze' },
     { name: 'Late Bronze Age',   shortName: 'L. Bronze', expertReq: '4 Cities + 12 Advances',               basicReq: '3 Cities + 3 Adv (≥100 VP each)', levels: [55, 60, 65],      cls: 'age-lbronze' },
     ...(expert ? [
-      { name: 'Early Iron Age',  shortName: 'E. Iron',   expertReq: '5 Cities + 10 Adv ≤100 + 38 VP',      basicReq: '',                                levels: [70],              cls: 'age-eiron'   },
+      { name: 'Early Iron Age',  shortName: 'E.I.',      expertReq: '5 Cities + 10 Adv ≤100 + 38 VP',      basicReq: '',                                levels: [70],              cls: 'age-eiron'   },
       { name: 'Late Iron Age',   shortName: 'L. Iron',   expertReq: '6 Cities + 17 Adv ≤100 + 56 VP',      basicReq: '',                                levels: [75, 80],          cls: 'age-liron'   },
     ] : [
-      { name: 'Early Iron Age',  shortName: 'E. Iron',   expertReq: '',                                     basicReq: '4 Cities + 2 Adv ≥200 VP each',  levels: [70],              cls: 'age-eiron'   },
+      { name: 'Early Iron Age',  shortName: 'E.I.',      expertReq: '',                                     basicReq: '4 Cities + 2 Adv ≥200 VP each',  levels: [70],              cls: 'age-eiron'   },
       { name: 'Late Iron Age',   shortName: 'L. Iron',   expertReq: '',                                     basicReq: '5 Cities + 3 Adv ≥200 VP each', levels: [75],              cls: 'age-liron'   },
     ]),
   ] as AgeBand[];
@@ -70,7 +70,7 @@ export function renderAst(state: FullState): string {
   // Age band header row — single-column bands show no text (color identifies them; legend below)
   const bandHeaders = AGE_BANDS.map(b =>
     `<th colspan="${b.levels.length}" class="ab-header ${b.cls}" title="${b.name}">
-      ${b.levels.length > 1 && b.name ? `<span class="ab-name">${b.shortName}</span>` : ''}
+      ${b.shortName ? `<span class="ab-name">${b.shortName}</span>` : ''}
     </th>`
   ).join('');
 
@@ -87,11 +87,13 @@ export function renderAst(state: FullState): string {
     `<td class="ab-level-num ${levelBand[l] ?? 'age-liron'}${l === 0 ? ' ab-start-col' : ''}${defaultAgeEnds.has(l) ? ' ab-age-end' : ''}">${l === 0 ? 'S' : l}</td>`
   ).join('');
 
-  // Round marker row — column i shows round i+1 (Start=1, level5=2, …)
+  // Round marker row — column i shows round i+1 (Start=1, level5=2, …, last=16+/17+)
   const roundBeyondBoard = game.active && game.current_round > boardLevels.length;
+  const lastRoundIdx = boardLevels.length - 1;
   const roundCells = boardLevels.map((l, i) => {
-    const displayRound = i + 1; // 1-indexed: Start=1, level5=2, …, level75=16 (basic) or level80=17 (expert)
-    const isCurrent = game.active && !roundBeyondBoard && displayRound === game.current_round;
+    const num = i + 1;
+    const displayRound = i === lastRoundIdx ? `${num}+` : `${num}`;
+    const isCurrent = game.active && !roundBeyondBoard && num === game.current_round;
     const startCls = l === 0 ? ' ab-start-col' : '';
     const endCls = defaultAgeEnds.has(l) ? ' ab-age-end' : '';
     return `<td class="ab-round-num${startCls}${endCls}${isCurrent ? ' ab-round-current' : ''}">${displayRound}</td>`;

@@ -66,19 +66,16 @@ api.post('/game/round/next', (c) => {
   if (!db.allCitiesSubmitted(game.current_round)) {
     return c.json({ error: 'All empires must have a city count before advancing the round' }, 400);
   }
-  const maxRound = game.expert ? 17 : 16;
-  if (game.is_final_round || game.current_round >= maxRound) {
+  // Expert final round: is_final_round was set last advance — this advance ends the game.
+  if (game.is_final_round) {
     db.endGame();
     broadcastState();
-    return new Response(JSON.stringify({ ok: true, ended: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return c.json({ ok: true, ended: true });
   }
   const round = db.advanceRound();
   broadcastState();
-  return new Response(JSON.stringify({ ok: true, round }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  // round === null means basic game ended (player reached Late Iron Age this round)
+  return c.json(round === null ? { ok: true, ended: true } : { ok: true, round });
 });
 
 api.post('/game/cities/clear', (c) => {
