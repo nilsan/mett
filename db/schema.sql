@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS players (
   civ_id      INTEGER NOT NULL REFERENCES civs(id),
   name        TEXT    NOT NULL,
   military    INTEGER NOT NULL DEFAULT 0,
+  wonder      INTEGER NOT NULL DEFAULT 0,
   ast_level   INTEGER NOT NULL DEFAULT 0,  -- current AST points (0,5,10...80)
   adv_points  INTEGER NOT NULL DEFAULT 0,  -- total civilization advance VP
   region      TEXT    NOT NULL             -- "west" or "east" for this game (may differ from default)

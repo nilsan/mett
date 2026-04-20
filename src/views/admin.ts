@@ -395,11 +395,13 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           <span class="${c?.city_count != null ? 'census-submitted' : 'census-pending'} status-icon-fixed">${c?.city_count != null ? '✓' : '?'}</span>
         </div>
       </td>
-      <td data-label="Military">
-        <button class="mil-toggle ${p.military ? 'mil-on' : 'mil-off'}" data-player-id="${p.id}"
-          title="${p.military ? 'Has Military — click to remove' : 'No Military — click to grant'}">
-          ⚔ ${p.military ? 'Yes' : 'No'}
-        </button>
+      <td data-label="Mil / Won">
+        <div class="mil-won-cell">
+          <button class="mil-toggle icon-toggle ${p.military ? 'mil-on' : 'mil-off'}" data-player-id="${p.id}"
+            title="${p.military ? 'Has Military — click to remove' : 'No Military — click to grant'}">⚔</button>
+          <button class="won-toggle icon-toggle ${p.wonder ? 'won-on' : 'won-off'}" data-player-id="${p.id}"
+            title="${p.wonder ? 'Has Wonder — click to remove' : 'No Wonder — click to grant'}">★</button>
+        </div>
       </td>
       <td data-label="Adv VP" class="adv-pts-cell">${p.adv_points}</td>
       <td data-label="A.S.T.">
@@ -468,7 +470,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           <th>Player Name</th>
           <th>Census</th>
           <th title="Cities on board">Cities</th>
-          <th>Military</th>
+          <th>Mil / Won</th>
           <th>Adv VP</th>
           <th>A.S.T. Position</th>
         </tr></thead>

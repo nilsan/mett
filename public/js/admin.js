@@ -353,6 +353,15 @@
       });
     });
 
+    // Wonder toggles
+    document.querySelectorAll('.won-toggle').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        await post(`/api/players/${btn.dataset.playerId}/wonder`, {});
+        location.reload();
+      });
+    });
+
     // AST controls
     document.querySelectorAll('.ast-select').forEach(sel => {
       sel.value = sel.dataset.serverValue ?? '';  // bypass browser form restoration

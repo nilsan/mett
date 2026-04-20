@@ -139,6 +139,20 @@
     });
   }
 
+  // ── Wonder toggle (active game only) ──────────────────────────────────────
+  const wonBtn = document.getElementById('won-toggle');
+  if (gameActive && wonBtn) {
+    wonBtn.addEventListener('click', async () => {
+      wonBtn.disabled = true;
+      await fetch(`/api/players/${playerId}/wonder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      location.reload();
+    });
+  }
+
   // ── Live reload on relevant state changes ──────────────────────────────────
   let reloadTimer = null;
   window.addEventListener('mett:state', () => {

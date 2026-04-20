@@ -7,7 +7,7 @@ import { isAdminAuthed } from './pages.js';
 const api = new Hono();
 
 // Player-facing POST endpoints — no auth required (players submit from their own civ page)
-const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/adv']);
+const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/adv']);
 
 // Protect all mutating API endpoints — read-only GETs and player actions are public
 api.use('*', async (c, next) => {
@@ -133,6 +133,13 @@ api.post('/players/:id/military', (c) => {
   const next = db.toggleMilitary(playerId);
   broadcastState();
   return c.json({ ok: true, military: next });
+});
+
+api.post('/players/:id/wonder', (c) => {
+  const playerId = Number(c.req.param('id'));
+  const next = db.toggleWonder(playerId);
+  broadcastState();
+  return c.json({ ok: true, wonder: next });
 });
 
 api.post('/players/:id/ast', async (c) => {

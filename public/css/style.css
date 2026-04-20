@@ -219,8 +219,9 @@ body {
 
 /* Military icon — red dot in census table, ⚔ on header/buttons */
 
-/* Military toggle on civ page */
-.mil-toggle-civ {
+/* Military & Wonder toggles on civ page */
+.mil-won-row { display: flex; flex-direction: column; gap: 0.5rem; }
+.mil-toggle-civ, .won-toggle-civ {
   width: 100%;
   padding: 0.5rem 1rem;
   border-radius: 0.25rem;
@@ -231,6 +232,11 @@ body {
 }
 .mil-toggle-civ.mil-on  { background: #3a2020; border-color: #cc5555; color: #ff8888; }
 .mil-toggle-civ.mil-off { background: var(--mett-surface2); color: var(--mett-muted); }
+.won-toggle-civ.won-on  { background: #2a2a10; border-color: #aaaa22; color: #dddd44; }
+.won-toggle-civ.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
+
+/* WON indicator in census table */
+.census-table .won-active { color: #dddd44; font-size: 0.75em; text-align: center; }
 
 /* Requirement label in AST table */
 .req-label { text-align: center; color: var(--mett-muted); font-size: 0.85rem; width: 2.5rem; }
@@ -735,7 +741,7 @@ body {
   .admin-table .adv-input { width: 3.625rem; }
   .ast-btn { width: 1.4rem; height: 1.4rem; font-size: 0.85rem; }
   .ast-select { font-size: 0.76rem; }
-  .mil-toggle { font-size: 0.72rem; padding: 0.15rem 0.35rem; }
+  .mil-toggle:not(.icon-toggle), .won-toggle:not(.icon-toggle) { font-size: 0.72rem; padding: 0.15rem 0.35rem; }
   .setup-section, .admin-section { padding: 0.4rem 0.6rem; }
 }
 @media (max-width: 43.75em) {
@@ -749,7 +755,7 @@ body {
   .ast-btn { width: 1.2rem; height: 1.2rem; font-size: 0.75rem; }
   .ast-select { font-size: 0.66rem; padding: 0.1rem 0.15rem; }
   .ast-ctrl { gap: 0.15rem; }
-  .mil-toggle { font-size: 0.62rem; padding: 0.1rem 0.2rem; }
+  .mil-toggle:not(.icon-toggle), .won-toggle:not(.icon-toggle) { font-size: 0.62rem; padding: 0.1rem 0.2rem; }
   .admin-section { padding: 0.3rem 0.4rem; }
 
   /* All tables on phone — minimal column gaps */
@@ -983,7 +989,7 @@ body {
   .adv-total-value { font-size: 0.9rem; min-width: 2rem; }
 
   /* Military */
-  .mil-toggle-civ { padding: 0.28rem 0.5rem; font-size: 0.78rem; }
+  .mil-toggle-civ, .won-toggle-civ { padding: 0.28rem 0.5rem; font-size: 0.78rem; }
 
   /* AST section */
   .ast-current { margin-bottom: 0.18rem; gap: 0.3rem; }
@@ -1742,7 +1748,8 @@ th.ab-player-col {
   outline: none;
 }
 
-.mil-toggle {
+.mil-won-cell { display: flex; flex-direction: row; gap: 0.25rem; align-items: center; }
+.mil-toggle, .won-toggle {
   border: 0.0625rem solid var(--mett-border);
   border-radius: 0.1875rem;
   padding: 0.12rem 0.35rem;
@@ -1750,8 +1757,21 @@ th.ab-player-col {
   cursor: pointer;
   white-space: nowrap;
 }
+/* Icon-only compact variant used in admin table */
+.icon-toggle {
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  font-size: 0.9rem;
+  text-align: center;
+  line-height: 1.8rem;
+  border-radius: 0.1875rem;
+  flex-shrink: 0;
+}
 .mil-toggle.mil-on { background: #3a2020; border-color: #cc5555; color: #ff8888; }
 .mil-toggle.mil-off { background: var(--mett-surface2); color: var(--mett-muted); }
+.won-toggle.won-on  { background: #2a2a10; border-color: #aaaa22; color: #dddd44; }
+.won-toggle.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
 
 .ast-ctrl {
   display: flex;
@@ -1984,6 +2004,11 @@ button.secondary {
   font-size: 0.625rem;
   font-weight: 700;
   line-height: 1;
+}
+.trade-chip-wonder {
+  background: #2a2a10;
+  border-color: #aaaa22;
+  color: #dddd44;
 }
 .trade-table .trade-group-start td {
   border-top: 0.125rem solid var(--mett-accent);

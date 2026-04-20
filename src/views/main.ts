@@ -48,9 +48,12 @@ function empireCell(p: PlayerRow): string {
   return `<td class="empire-cell" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</td>`;
 }
 
-function cardChips(cityCount: number): string {
-  if (cityCount === 0) return '<span class="trade-no-cards">—</span>';
-  return `<div class="trade-chips">${Array.from({ length: cityCount }, (_, i) => `<span class="trade-chip">${i + 1}</span>`).join('')}</div>`;
+function cardChips(cityCount: number, wonder = false): string {
+  const bonusChip = wonder && cityCount < 9;
+  if (cityCount === 0 && !bonusChip) return '<span class="trade-no-cards">—</span>';
+  const chips = Array.from({ length: cityCount }, (_, i) => `<span class="trade-chip">${i + 1}</span>`);
+  if (bonusChip) chips.push(`<span class="trade-chip trade-chip-wonder">X</span>`);
+  return `<div class="trade-chips">${chips.join('')}</div>`;
 }
 
 export function renderMain(state: FullState): string {
@@ -87,7 +90,7 @@ export function renderMain(state: FullState): string {
     const cityCell = p.city_count != null
       ? `<td class="city-col">${p.city_count}</td>`
       : `<td class="city-col not-submitted">?</td>`;
-    const wonCell = `<td class="won-col"></td>`;
+    const wonCell = p.wonder ? `<td class="won-col won-active">★</td>` : `<td class="won-col"></td>`;
     return `<tr>${empireCell(p)}${wonCell}${milCell}${cityCell}${popCell}</tr>`;
   }).join('');
 
@@ -111,7 +114,7 @@ export function renderMain(state: FullState): string {
           : `<td class="trade-card-col not-submitted">?</td>`;
       } else {
         cardCell = p.city_count != null
-          ? `<td class="trade-card-col">${cardChips(p.city_count)}</td>`
+          ? `<td class="trade-card-col">${cardChips(p.city_count, p.wonder === 1)}</td>`
           : `<td class="trade-card-col not-submitted">?</td>`;
       }
       const groupStart = allCitiesSubmitted && i > 0 && list[i - 1].city_count !== p.city_count;

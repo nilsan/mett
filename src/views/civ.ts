@@ -24,7 +24,10 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number |
   const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
   const inStoneAge = player.ast_level <= stoneEnd;
 
-  if (expert && cityCount === 0 && !inStoneAge) {
+  // Wonder acts as +1 city for all AST purposes (advancement and regression prevention)
+  const effectiveCities = cityCount !== null ? cityCount + (player.wonder ? 1 : 0) : null;
+
+  if (expert && effectiveCities === 0 && !inStoneAge) {
     return {
       willRegress: currentLevelIdx > 0,
       regrессLevel,
@@ -39,7 +42,7 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number |
   const cityMatch = reqText.match(/(\d+) cities/);
   const reqCities = cityMatch ? parseInt(cityMatch[1], 10) : 0;
   // null city count = unknown; don't mark as failing (but show "?" in UI)
-  const meetsCities = cityCount !== null ? cityCount >= reqCities : null;
+  const meetsCities = effectiveCities !== null ? effectiveCities >= reqCities : null;
 
   let reqAdvCount = 0, reqAdvType = 'any', haveAdv = 0, meetsAdvances = true;
   let reqVP = 0, haveVP = player.adv_points, meetsVP = true;
@@ -79,7 +82,7 @@ function checkReq(reqText: string | null, player: PlayerRow, cityCount: number |
     willRegress: false, regrессLevel,
     meetsCities, meetsAdvances, meetsVP,
     reqCities, reqAdvCount, reqAdvType, reqVP,
-    haveCities: cityCount ?? null, haveAdv, haveVP,
+    haveCities: effectiveCities ?? null, haveAdv, haveVP,
   };
 }
 
@@ -279,10 +282,15 @@ export function renderCiv(
     </section>
 
     <section class="civ-section">
-      <h3>Military</h3>
-      <button id="mil-toggle" class="mil-toggle-civ ${player.military ? 'mil-on' : 'mil-off'}">
-        ${player.military ? '⚔ Has Military — tap to remove' : '✕ No Military — tap to grant'}
-      </button>
+      <h3>Military &amp; Wonder</h3>
+      <div class="mil-won-row">
+        <button id="mil-toggle" class="mil-toggle-civ ${player.military ? 'mil-on' : 'mil-off'}">
+          ${player.military ? '⚔ Has Military — tap to remove' : '✕ No Military — tap to grant'}
+        </button>
+        <button id="won-toggle" class="won-toggle-civ ${player.wonder ? 'won-on' : 'won-off'}">
+          ${player.wonder ? '★ Has Wonder — tap to remove' : '✕ No Wonder — tap to grant'}
+        </button>
+      </div>
     </section>
 
     <section class="civ-section ast-section">
@@ -318,7 +326,10 @@ export function renderCiv(
               rows.push(`<span class="req-row req-unknown">? ${status.reqCities} cities <span class="req-have">(not yet submitted)</span></span>`);
             } else {
               const ok = status.meetsCities;
-              rows.push(`<span class="req-row${ok ? ' req-ok' : ' req-fail'}">${ok ? '✓' : '✗'} ${status.reqCities} cities <span class="req-have">(you have ${status.haveCities})</span></span>`);
+              const cityNote = player.wonder && cityCount !== null && cityCount < status.haveCities!
+                ? `${cityCount} + ★`
+                : `${status.haveCities}`;
+              rows.push(`<span class="req-row${ok ? ' req-ok' : ' req-fail'}">${ok ? '✓' : '✗'} ${status.reqCities} cities <span class="req-have">(you have ${cityNote})</span></span>`);
             }
           }
           if (status.reqAdvCount > 0) {
@@ -351,6 +362,7 @@ export function renderCiv(
   window.PLAYER_ID = ${player.id};
   window.GAME_ACTIVE = ${game.active};
   window.MILITARY = ${player.military};
+  window.WONDER = ${player.wonder};
 </script>
 <script src="/js/civ.js"></script>
 `;

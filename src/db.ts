@@ -30,6 +30,7 @@ export function getDb(): Database {
     migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
     migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
     migrate('ALTER TABLE game ADD COLUMN admin_password TEXT');
+    migrate('ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0');
     // Fix basic EIA/LIA era assignments: in basic mode, level 70 = EIA (last step before LIA)
     _db!.query("UPDATE ast_levels SET era='Early Iron Age', basic_req='5 cities + 3 advances (≥200 each)' WHERE level=70").run();
     _db!.query("UPDATE ast_levels SET era='Late Iron Age', basic_req='N/A', expert_req='6 cities + all 17 advances (<100 each) + 56 VP' WHERE level=75").run();
@@ -73,6 +74,7 @@ export interface PlayerRow {
   civ_id: number;
   name: string;
   military: number;
+  wonder: number;
   ast_level: number;
   adv_points: number;
   adv_1vp: number;
@@ -207,20 +209,22 @@ function autoAdvanceAst(round: number, expert: boolean): void {
   for (const player of players) {
     const cityEntry = censusRows.find(c => c.player_id === player.id);
     const cityCount = cityEntry?.city_count ?? 0;
+    // Wonder acts as +1 city for all AST purposes (advancement and regression prevention)
+    const effectiveCityCount = cityCount + (player.wonder ? 1 : 0);
     const curIdx = AST_LEVELS.indexOf(player.ast_level);
     if (curIdx === -1) continue;
 
     const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
     const inStoneAge = player.ast_level <= stoneEnd;
 
-    if (expert && cityCount === 0 && !inStoneAge) {
-      // Regress one step — expert mode only; basic mode has no 0-city regression rule
+    if (expert && effectiveCityCount === 0 && !inStoneAge) {
+      // Regress one step — expert mode only; wonder prevents regression (effectiveCityCount >= 1 when wonder)
       if (curIdx > 0) {
         db.query('UPDATE players SET ast_level=? WHERE id=?').run(AST_LEVELS[curIdx - 1], player.id);
       }
     } else if (curIdx < AST_LEVELS.length - 1) {
       const currentLevelRow = astRows.find(r => r.level === player.ast_level);
-      if (currentLevelRow && meetsAstRequirements(player, currentLevelRow, cityCount, expert)) {
+      if (currentLevelRow && meetsAstRequirements(player, currentLevelRow, effectiveCityCount, expert)) {
         db.query('UPDATE players SET ast_level=? WHERE id=?').run(AST_LEVELS[curIdx + 1], player.id);
       }
     }
@@ -288,7 +292,7 @@ export function setRound(round: number): void {
 
 const PLAYER_SELECT = `
   SELECT
-    p.id, p.civ_id, p.name, p.military, p.ast_level, p.adv_points,
+    p.id, p.civ_id, p.name, p.military, p.wonder, p.ast_level, p.adv_points,
     p.adv_1vp, p.adv_3vp, p.adv_6vp, p.region, p.rank_order, p.late_iron_age_bonus,
     c.number AS civ_number, c.name AS civ_name, c.slug AS civ_slug,
     c.color AS civ_color, c.text_color AS civ_text_color
@@ -334,6 +338,14 @@ export function toggleMilitary(playerId: number): number {
   const current = db.query<{ military: number }, [number]>('SELECT military FROM players WHERE id=?').get(playerId);
   const next = current!.military ? 0 : 1;
   db.query('UPDATE players SET military=? WHERE id=?').run(next, playerId);
+  return next;
+}
+
+export function toggleWonder(playerId: number): number {
+  const db = getDb();
+  const current = db.query<{ wonder: number }, [number]>('SELECT wonder FROM players WHERE id=?').get(playerId);
+  const next = current!.wonder ? 0 : 1;
+  db.query('UPDATE players SET wonder=? WHERE id=?').run(next, playerId);
   return next;
 }
 
