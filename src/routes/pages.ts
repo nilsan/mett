@@ -1,13 +1,11 @@
 import { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { layout } from '../views/layout.js';
-import { renderMain } from '../views/main.js';
 import { renderAdmin } from '../views/admin.js';
 import { renderCiv } from '../views/civ.js';
 import { renderAst } from '../views/ast.js';
 import { renderTrade } from '../views/trade.js';
-import { renderS2 } from '../views/s2.js';
-import { renderS3 } from '../views/s3.js';
+import { renderMain } from '../views/main.js';
 import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, getAdminPassword, setAdminPassword } from '../db.js';
 import { CIVS } from '../civs.js';
 
@@ -107,17 +105,6 @@ pages.get('/trade', (c) => {
   return c.html(html);
 });
 
-pages.get('/s3', (c) => {
-  const state = getFullState();
-  const html = layout('METT S3', renderS3(state), 'main');
-  return c.html(html);
-});
-
-pages.get('/s2', (c) => {
-  const state = getFullState();
-  const html = layout('METT S2', renderS2(state), 'main');
-  return c.html(html);
-});
 
 // Individual civ pages — must come after named routes
 pages.get('/:slug', (c) => {
