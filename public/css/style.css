@@ -414,7 +414,7 @@ body {
 .status-grid .mett-table td    { height: 2.4rem; padding: 0.05rem 0.3rem; font-size: inherit; border-bottom: none; }
 .status-grid .trade-card-col   { width: auto; padding-bottom: 0.08rem; }
 .status-grid .trade-chips      { gap: 0.05rem; }
-.status-grid .trade-chip       { width: 0.8rem; height: 1rem; font-size: 0.5rem; }
+.status-grid .trade-chip       { width: 0.8rem; height: 1.25rem; font-size: 0.5rem; }
 
 /* Fixed layout with explicit width (= sum of column widths) so empire column respects stated 5.5rem.
    table-layout:fixed + width:auto causes Chrome to use fill-available, ignoring max-width on cells. */
@@ -507,11 +507,12 @@ body {
   width: 1.3rem;
   height: 1.3rem;
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.52rem;
   font-weight: 700;
+  vertical-align: middle;
 }
 
 /* ─── S3 phone layout — single column, normal density ────────────────────── */
@@ -553,6 +554,101 @@ body {
   /* Trade chips */
   .status-grid .trade-chip { width: 1.2rem; height: 1.4rem; font-size: 0.7rem; }
   .trade-east { margin-top: 0.75rem; }
+}
+
+/* ─── S3 WQHD layout — 2560px CSS px (native 2560p, or 4K @ 1.5×) ─────────── */
+
+@media (min-width: 160rem) {
+  .status-grid .table-section   { padding: 0.45rem 0.55rem; }
+  .status-grid .table-section h3 { font-size: 0.82rem; margin-bottom: 0.35rem; }
+  .status-grid .table-hint       { font-size: 0.72rem; }
+  .status-grid .ab-legend        { font-size: 0.62rem; gap: 0.15rem; }
+
+  .status-grid .mett-table       { font-size: 0.88rem; border-spacing: 0 5px; }
+  .status-grid .mett-table th    { font-size: 0.7rem; padding: 0.15rem 0.4rem; }
+  .status-grid .mett-table td    { height: 2.8rem; padding: 0.08rem 0.4rem; }
+  .status-grid .trade-chip       { width: 0.95rem; height: 1.5rem; font-size: 0.6rem; }
+
+  /* Census: keep auto column with a wider fixed table (empire 7.5rem + narrow cols = 13rem) */
+  .status-grid .census-table { width: 13rem; }
+  .status-grid .census-table thead th:first-child { width: 7.5rem; }
+  .status-grid .mil-col    { width: 1.5rem; min-width: 1.5rem; }
+  .status-grid .city-col   { width: 1.5rem; min-width: 1.5rem; }
+  .status-grid .census-pop { width: 2.5rem; min-width: 2.5rem; }
+  .status-grid .rank       { width: 1.5rem; min-width: 1.5rem; }
+  .status-grid .adv-pts    { width: 2.2rem; min-width: 2.2rem; }
+  .status-grid .ast-pts    { width: 2.2rem; min-width: 2.2rem; }
+  .status-grid .total-vp   { width: 2.8rem; min-width: 2.8rem; }
+
+  .empire-cell { font-size: 1.0rem !important; width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem; }
+  .civ-num { font-size: 0.7rem; min-width: 1.15rem; }
+  .player-name-col { max-width: 9rem; }
+
+  /* Trade separator: re-center 1px line in the now-5px gap */
+  .status-grid .trade-table .trade-group-start td::before { top: -2.5px; }
+
+  /* AST board: scale up to match row heights */
+  .ab-table.status-ast { font-size: 0.78rem !important; border-spacing: 0 5px !important; }
+  .status-ast thead th { font-size: 0.7rem; padding: 0.15rem 0.4rem; }
+  .status-ast thead tr { height: 1.3rem; }
+  .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
+  .status-ast td.empire-cell { padding: 0.08rem 0.4rem; font-size: 1.0rem; }
+  .status-ast .ab-cell      { width: 2.2rem; height: 2.8rem; }
+  .status-ast .ab-level-num { width: 2.2rem; font-size: 0.62rem !important; }
+  .status-ast .ab-round-num { width: 2.2rem; font-size: 0.62rem !important; }
+  .status-ast .ab-name      { font-size: 0.65rem !important; }
+  .status-ast .ab-magnet    { width: 1.5rem; height: 1.5rem; font-size: 0.62rem; }
+}
+
+/* ─── S3 4K layout — 3072px CSS px (4K @ 1.25×) ───────────────────────────── */
+
+@media (min-width: 192rem) {
+  .status-grid {
+    grid-template-columns: 2.2fr 1.1fr 1.8fr 4.5fr;
+    gap: 0.75rem;
+  }
+
+  .status-header h2 { font-size: 1.2rem; }
+  .status-header .game-status { font-size: 1rem; }
+
+  .status-grid .table-section   { padding: 0.55rem 0.65rem; }
+  .status-grid .table-section h3 { font-size: 0.95rem; margin-bottom: 0.4rem; }
+  .status-grid .table-hint       { font-size: 0.82rem; }
+  .status-grid .ab-legend        { font-size: 0.72rem; gap: 0.2rem; }
+
+  .status-grid .mett-table       { font-size: 1rem; border-spacing: 0 6px; }
+  .status-grid .mett-table th    { font-size: 0.8rem; padding: 0.18rem 0.45rem; }
+  .status-grid .mett-table td    { height: 3.2rem; padding: 0.1rem 0.45rem; }
+  .status-grid .trade-chip       { width: 1.1rem; height: 1.75rem; font-size: 0.7rem; }
+
+  /* Census: fill the 1fr column */
+  .status-grid .census-table { width: 100%; }
+  .status-grid .census-table thead th:first-child { width: auto; }
+  .status-grid .mil-col    { width: 1.8rem; min-width: 1.8rem; }
+  .status-grid .city-col   { width: 1.8rem; min-width: 1.8rem; }
+  .status-grid .census-pop { width: 3rem;   min-width: 3rem; }
+  .status-grid .rank       { width: 1.7rem; min-width: 1.7rem; }
+  .status-grid .adv-pts    { width: 2.6rem; min-width: 2.6rem; }
+  .status-grid .ast-pts    { width: 2.6rem; min-width: 2.6rem; }
+  .status-grid .total-vp   { width: 3.3rem; min-width: 3.3rem; }
+
+  .empire-cell { font-size: 1.15rem !important; width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem; }
+  .civ-num { font-size: 0.75rem; min-width: 1.25rem; }
+  .player-name-col { max-width: 10rem; }
+
+  /* Trade separator: re-center in 6px gap */
+  .status-grid .trade-table .trade-group-start td::before { top: -3px; }
+
+  .ab-table.status-ast { font-size: 0.9rem !important; border-spacing: 0 6px !important; }
+  .status-ast thead th { font-size: 0.8rem; padding: 0.18rem 0.45rem; }
+  .status-ast thead tr { height: 1.6rem; }
+  .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
+  .status-ast td.empire-cell { padding: 0.1rem 0.45rem; font-size: 1.15rem; }
+  .status-ast .ab-cell      { width: 2.6rem; height: 3.2rem; }
+  .status-ast .ab-level-num { width: 2.6rem; font-size: 0.72rem !important; }
+  .status-ast .ab-round-num { width: 2.6rem; font-size: 0.72rem !important; }
+  .status-ast .ab-name      { font-size: 0.76rem !important; }
+  .status-ast .ab-magnet    { width: 1.8rem; height: 1.8rem; font-size: 0.72rem; }
 }
 
 /* ─── Main 3-column layout ────────────────────────────────────────────────── */
