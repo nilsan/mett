@@ -30,7 +30,7 @@ body {
 
 .mett-nav {
   background: var(--mett-surface);
-  border-bottom: 1px solid var(--mett-border);
+  border-bottom: 0.0625rem solid var(--mett-border);
   padding: 0.15rem 0.75rem;
   position: sticky;
   top: 0;
@@ -88,7 +88,7 @@ body {
 .final-round-badge {
   display: inline-block;
   padding: 0.15rem 0.5rem;
-  border-radius: 9999px;
+  border-radius: 624.9375rem;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -120,33 +120,33 @@ body {
 
 .civ-badge {
   display: inline-block;
-  padding: 3px 8px;
-  border-radius: 3px;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 0.1875rem;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 0.875rem;
   white-space: nowrap;
-  border: 1px solid rgba(0,0,0,0.15);
+  border: 0.0625rem solid rgba(0,0,0,0.15);
 }
 
 .civ-badge-sm {
   display: inline-block;
   padding: 0.1rem 0.4rem;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   font-weight: 700;
   font-size: 0.75rem;
   white-space: nowrap;
-  border: 1px solid rgba(0,0,0,0.15);
+  border: 0.0625rem solid rgba(0,0,0,0.15);
 }
 
-.region-west .civ-badge { border-left: 3px solid rgba(0,0,0,0.3); }
-.region-east .civ-badge { border-right: 3px solid rgba(255,255,255,0.3); }
+.region-west .civ-badge { border-left: 0.1875rem solid rgba(0,0,0,0.3); }
+.region-east .civ-badge { border-right: 0.1875rem solid rgba(255,255,255,0.3); }
 
 .civ-badge-with-num {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding-left: 4px;
-  width: 115px;
+  gap: 0.3125rem;
+  padding-left: 0.25rem;
+  width: 7.1875rem;
   box-sizing: border-box;
 }
 .civ-badge-label { min-width: 0; }
@@ -154,11 +154,11 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 1.25rem;
+  height: 1.25rem;
   border-radius: 50%;
   background: rgba(0,0,0,0.22);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -175,20 +175,20 @@ body {
 .empire-col-inner { display: flex; align-items: center; overflow: hidden; min-width: 0; }
 .empire-col-inner .civ-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .census-table .city-col {
-  width: 34px;
+  width: 2.125rem;
   text-align: center;
   font-size: 0.85rem;
   white-space: nowrap;
 }
 .census-table .mil-col {
-  width: 34px;
+  width: 2.125rem;
   text-align: center;
   padding-left: 0.25rem;
   padding-right: 0.25rem;
   white-space: nowrap;
 }
 .census-table thead .mil-col { color: #cc4444; }
-.census-pop { width: 52px; }
+.census-pop { width: 3.25rem; }
 
 /* Red military dot */
 .mil-dot {
@@ -197,7 +197,7 @@ body {
   height: 0.55rem;
   border-radius: 50%;
   background: var(--mett-danger);
-  box-shadow: 0 0 4px var(--mett-danger);
+  box-shadow: 0 0 0.25rem var(--mett-danger);
   vertical-align: middle;
 }
 
@@ -212,8 +212,8 @@ body {
 .mil-toggle-civ {
   width: 100%;
   padding: 0.5rem 1rem;
-  border-radius: 4px;
-  border: 1px solid var(--mett-border);
+  border-radius: 0.25rem;
+  border: 0.0625rem solid var(--mett-border);
   font-size: 0.9rem;
   cursor: pointer;
   text-align: center;
@@ -231,7 +231,7 @@ body {
   list-style: none;
   font-size: 0.75rem;
   color: var(--mett-muted);
-  border-top: 1px solid var(--mett-border);
+  border-top: 0.0625rem solid var(--mett-border);
   line-height: 1.7;
 }
 .req-legend li strong { color: var(--mett-text); margin-right: 0.3rem; }
@@ -254,12 +254,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
   border-radius: 50%;
   background: var(--mett-surface2);
   color: var(--mett-muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   margin-right: 0.4rem;
   flex-shrink: 0;
@@ -270,7 +270,7 @@ body {
 /* Leaderboard ties */
 .rank-tie { color: var(--mett-warning); font-weight: 900; font-size: 1rem; }
 .lb-tied td { background: rgba(204,136,0,0.06); }
-.lb-group-start td { border-top: 2px solid var(--mett-border); }
+.lb-group-start td { border-top: 0.125rem solid var(--mett-border); }
 
 /* ─── Tables ──────────────────────────────────────────────────────────────── */
 
@@ -287,13 +287,13 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 0.5rem 0.6rem;
-  border-bottom: 1px solid var(--mett-border);
+  border-bottom: 0.0625rem solid var(--mett-border);
   white-space: nowrap;
 }
 
 .mett-table td {
   padding: 0.3rem 0.55rem;
-  border-bottom: 1px solid var(--mett-border);
+  border-bottom: 0.0625rem solid var(--mett-border);
   vertical-align: middle;
   height: 2rem;  /* fixed row height so tables align across columns */
   overflow: hidden;
@@ -310,17 +310,17 @@ body {
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
-  padding: 3px 8px 4px 4px;
-  width: 115px;
+  gap: 0.0625rem;
+  padding: 0.1875rem 0.5rem 0.25rem 0.25rem;
+  width: 7.1875rem;
   box-sizing: border-box;
 }
 .lb-emp-top {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 0.3125rem;
 }
-.lb-badge-name { display: none; font-size: 10px; opacity: 0.8; padding-left: 2px; white-space: nowrap; }
+.lb-badge-name { display: none; font-size: 0.625rem; opacity: 0.8; padding-left: 0.125rem; white-space: nowrap; }
 /* Player name in go-empire — visible by default, block on mobile for card layout */
 .go-player-name { display: none; font-size: 0.78rem; color: var(--mett-muted); margin-top: 0.1rem; }
 .adv-pts { text-align: right; }
@@ -346,6 +346,215 @@ body {
 
 .table-scroll { overflow-x: auto; }
 
+/* ─── S2 status page layout ──────────────────────────────────────────────── */
+
+.s2-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+  align-items: stretch;
+  min-width: 0;
+}
+.s2-grid > * { min-width: 0; }
+
+/* Force uniform row height across all three tables */
+.s2-grid .mett-table td { height: 2.2rem; }
+
+@media (max-width: 87.5em) {
+  .s2-grid { gap: 1rem; }
+  .s2-grid .mett-table td { height: 1.9rem; }
+}
+@media (max-width: 68.75em) {
+  .s2-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .s2-grid .mett-table td { height: 1.75rem; }
+}
+@media (max-width: 43.75em) {
+  .s2-grid { grid-template-columns: 1fr; }
+}
+
+/* S2 AST board — match table row heights */
+.s2-ast .ab-cell        { height: 2.2rem; }
+.s2-ast .ab-magnet      { width: 1.6rem; height: 1.6rem; }
+
+@media (max-width: 87.5em) {
+  .s2-ast .ab-cell   { height: 1.9rem; }
+  .s2-ast .ab-magnet { width: 1.4rem; height: 1.4rem; }
+}
+@media (max-width: 68.75em) {
+  .s2-ast .ab-cell   { height: 1.75rem; }
+  .s2-ast .ab-magnet { width: 1.3rem; height: 1.3rem; }
+}
+
+/* ─── S3 status page layout (4-column, TV-optimised) ─────────────────────── */
+
+.s3-grid {
+  display: grid;
+  /* leaderboard | census | trade | AST */
+  /* census is auto: fixed-width table gets exactly its size, no overflow, no wasted space */
+  grid-template-columns: 2.2fr auto 1.8fr 4.5fr;
+  gap: 0.5rem;
+  align-items: stretch;
+  min-width: 0;
+}
+.s3-grid > * { min-width: 0; }
+.s3-grid .mett-table { width: 100%; }
+
+/* Compact page header on s3 */
+.s3-page-header { margin: 0.1rem 0 0.3rem; }
+.s3-page-header h2 { font-size: 0.9rem; }
+.s3-page-header .game-status { font-size: 0.75rem; }
+
+/* Compact table density — everything scaled for 16:9 fit */
+.s3-grid .table-section   { padding: 0.35rem 0.45rem; display: flex; flex-direction: column; }
+.s3-grid .table-section h3 { font-size: 0.68rem; margin-bottom: 0.25rem; }
+.s3-grid .table-hint       { font-size: 0.6rem; margin-top: auto; margin-bottom: 0; padding-top: 0.2rem; }
+.s3-grid .ab-legend        { margin-top: auto; font-size: 0.52rem; padding: 0.2rem 0 0; gap: 0.1rem; }
+.s3-grid .mett-table       { font-size: 0.72rem; border-collapse: separate; border-spacing: 0 4px; }
+.s3-grid .mett-table th    { font-size: 0.58rem; padding: 0.12rem 0.3rem; }
+.s3-grid .mett-table td    { height: 2.4rem; padding: 0.05rem 0.3rem; font-size: inherit; border-bottom: none; }
+.s3-grid .trade-card-col   { width: auto; padding-bottom: 0.08rem; }
+.s3-grid .trade-chips      { gap: 0.05rem; }
+.s3-grid .trade-chip       { width: 0.8rem; height: 1rem; font-size: 0.5rem; }
+
+/* Fixed layout with explicit width (= sum of column widths) so empire column respects stated 5.5rem.
+   table-layout:fixed + width:auto causes Chrome to use fill-available, ignoring max-width on cells. */
+.s3-grid .census-table { table-layout: fixed; width: 10.2rem; }
+.s3-grid .census-table thead th:first-child { width: 5.5rem; }
+
+/* Narrow columns — same across all s3 tables */
+.s3-grid .mil-col    { width: 1.3rem; min-width: 1.3rem; }
+.s3-grid .city-col   { width: 1.3rem; min-width: 1.3rem; }
+.s3-grid .census-pop { width: 2.1rem; min-width: 2.1rem; }
+.s3-grid .rank       { width: 1.2rem; min-width: 1.2rem; }
+.s3-grid .adv-pts    { width: 1.9rem; min-width: 1.9rem; }
+.s3-grid .ast-pts    { width: 1.9rem; min-width: 1.9rem; }
+.s3-grid .total-vp   { width: 2.4rem; min-width: 2.4rem; }
+
+/* Full-width colored empire cells — fixed width so all tables align */
+.s3-empire-cell {
+  font-weight: 600;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 5.5rem;
+  min-width: 5.5rem;
+  max-width: 5.5rem;
+  border-radius: 0.2rem;
+}
+.s3-civ-num {
+  display: inline-block;
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 700;
+  min-width: 0.9rem;
+  text-align: center;
+  border-radius: 0.125rem;
+  padding: 0.02rem 0.15rem;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
+/* Trade group separator — pseudo-element centered in the 4px border-spacing gap.
+   border-top alone lands at the bottom of the gap; top:-2px centers a 1px line in it. */
+.s3-grid .trade-table .trade-group-start td {
+  border-top: none;
+  overflow: visible;
+  position: relative;
+}
+.s3-grid .trade-table .trade-group-start td::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--mett-accent);
+  pointer-events: none;
+}
+
+/* Gap between the West and East trade tables */
+.s3-trade-east { margin-top: 0.5rem; }
+
+/* Player name column in s3 leaderboard */
+.s3-player-name {
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+/* AST board compact sizing for s3 — !important beats the wide media-query rule */
+.ab-table.s3-ast {
+  width: auto !important;
+  font-size: 0.65rem !important;
+  border-collapse: separate !important;
+  border-spacing: 0 4px !important;
+}
+/* Match AST thead height to other tables' theads so row 1 aligns across all columns.
+   Setting height on <tr> works as min-height and is not affected by border-box cell sizing. */
+.s3-ast thead th { font-size: 0.58rem; padding: 0.12rem 0.3rem; }
+.s3-ast thead tr { height: 1.135rem; }
+.s3-ast .ab-civ-label { width: 5.5rem; min-width: 5.5rem; }
+.s3-ast td.s3-empire-cell { padding: 0.05rem 0.3rem; font-size: 0.72rem; }
+.s3-ast .ab-cell      { width: 1.9rem; height: 2.4rem; }
+.s3-ast .ab-level-num { width: 1.9rem; font-size: 0.52rem !important; }
+.s3-ast .ab-round-num { width: 1.9rem; font-size: 0.52rem !important; }
+.s3-ast .ab-name      { font-size: 0.55rem !important; }
+.s3-ast .ab-magnet {
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 0.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.52rem;
+  font-weight: 700;
+}
+
+/* ─── S3 phone layout — single column, normal density ────────────────────── */
+
+@media (max-width: 43.75em) {
+  .s3-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Undo TV-compact sizing */
+  .s3-page-header { margin: 0.5rem 0 0.75rem; }
+  .s3-page-header h2 { font-size: 1.2rem; }
+  .s3-page-header .game-status { font-size: 0.9rem; }
+  .s3-grid .table-section   { padding: 0.6rem 0.8rem; }
+  .s3-grid .table-section h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
+  .s3-grid .table-hint       { font-size: 0.78rem; margin-top: 0.35rem; }
+  .s3-grid .mett-table       { font-size: 0.84rem; }
+  .s3-grid .mett-table th    { font-size: 0.72rem; padding: 0.35rem 0.5rem; }
+  .s3-grid .mett-table td    { height: 2rem; padding: 0.15rem 0.5rem; }
+
+  /* Census: back to normal auto layout filling full width */
+  .s3-grid .census-table { table-layout: auto; width: 100%; }
+  .s3-grid .census-table thead th:first-child { width: auto; }
+  .s3-grid .mil-col    { width: 2.5rem; min-width: 2.5rem; }
+  .s3-grid .city-col   { width: 2.5rem; min-width: 2.5rem; }
+  .s3-grid .census-pop { width: 3.5rem; min-width: 3.5rem; }
+
+  /* Empire cells: unconstrained, fill remaining space */
+  .s3-empire-cell { width: auto; min-width: 5rem; max-width: none; font-size: 0.84rem; }
+
+  /* Leaderboard columns */
+  .s3-grid .rank     { width: 1.8rem; min-width: 1.8rem; }
+  .s3-grid .adv-pts  { width: 2.5rem; min-width: 2.5rem; }
+  .s3-grid .ast-pts  { width: 2.5rem; min-width: 2.5rem; }
+  .s3-grid .total-vp { width: 3rem;   min-width: 3rem; }
+  .s3-player-name    { max-width: none; }
+
+  /* Trade chips */
+  .s3-grid .trade-chip { width: 1.2rem; height: 1.4rem; font-size: 0.7rem; }
+  .s3-trade-east { margin-top: 0.75rem; }
+}
+
 /* ─── Main 3-column layout ────────────────────────────────────────────────── */
 
 .main-grid {
@@ -358,28 +567,28 @@ body {
 }
 .main-grid > * { min-width: 0; }
 
-@media (max-width: 1100px) {
+@media (max-width: 68.75em) {
   .main-grid { grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 700px) {
+@media (max-width: 43.75em) {
   .main-grid { grid-template-columns: 1fr; }
 }
 
 /* ─── Status page responsive font scaling ─────────────────────────────────── */
-@media (max-width: 1400px) {
+@media (max-width: 87.5em) {
   .mett-table { font-size: 0.84rem; }
   .mett-table th { font-size: 0.7rem; padding: 0.4rem 0.5rem; }
   .mett-table td { height: 1.9rem; padding: 0.25rem 0.5rem; }
   .table-section { padding: 0.6rem; }
   .main-grid { gap: 1rem; }
 }
-@media (max-width: 1100px) {
+@media (max-width: 68.75em) {
   .mett-table { font-size: 0.8rem; }
   .mett-table td { height: 1.75rem; }
   .table-section { padding: 0.5rem; }
   .main-grid { gap: 0.6rem; }
 }
-@media (max-width: 700px) {
+@media (max-width: 43.75em) {
   .mett-table { font-size: 0.78rem; }
   main.container-fluid { padding-left: 0.3rem !important; padding-right: 0.3rem !important; }
   .lb-player-col { display: none; }
@@ -388,31 +597,31 @@ body {
 }
 
 /* ─── Admin page responsive font scaling ──────────────────────────────────── */
-@media (max-width: 1200px) {
+@media (max-width: 75em) {
   .admin-table { font-size: 0.82rem; }
   .admin-table td { height: 1.9rem; }
-  .admin-table .player-name-input { width: 110px; font-size: 0.82rem; }
-  .admin-table .adv-input { width: 68px; }
+  .admin-table .player-name-input { width: 6.875rem; font-size: 0.82rem; }
+  .admin-table .adv-input { width: 4.25rem; }
   .mett-header h2 { font-size: 1.2rem; }
   .admin-header h2 { font-size: 1.2rem; }
 }
-@media (max-width: 900px) {
+@media (max-width: 56.25em) {
   .admin-table { font-size: 0.76rem; }
-  .admin-table .player-name-input { width: 90px; font-size: 0.76rem; }
-  .admin-table .adv-input { width: 58px; }
+  .admin-table .player-name-input { width: 5.625rem; font-size: 0.76rem; }
+  .admin-table .adv-input { width: 3.625rem; }
   .ast-btn { width: 1.4rem; height: 1.4rem; font-size: 0.85rem; }
   .ast-select { font-size: 0.76rem; }
   .mil-toggle { font-size: 0.72rem; padding: 0.15rem 0.35rem; }
   .setup-section, .admin-section { padding: 0.4rem 0.6rem; }
 }
-@media (max-width: 700px) {
+@media (max-width: 43.75em) {
   /* Admin — ultra compact for phone */
   .admin-table { font-size: 0.68rem; }
   .admin-table td, .admin-table th { padding: 0.15rem 0.2rem; height: 1.6rem; }
-  .admin-table .player-name-input { width: 72px; font-size: 0.68rem; }
-  .admin-table .adv-input { width: 46px; font-size: 0.68rem; }
-  .census-admin-input { width: 42px !important; font-size: 0.68rem; padding: 0.12rem 0.15rem; }
-  .admin-table .rank-input { width: 34px; font-size: 0.65rem; }
+  .admin-table .player-name-input { width: 4.5rem; font-size: 0.68rem; }
+  .admin-table .adv-input { width: 2.875rem; font-size: 0.68rem; }
+  .census-admin-input { width: 2.625rem !important; font-size: 0.68rem; padding: 0.12rem 0.15rem; }
+  .admin-table .rank-input { width: 2.125rem; font-size: 0.65rem; }
   .ast-btn { width: 1.2rem; height: 1.2rem; font-size: 0.75rem; }
   .ast-select { font-size: 0.66rem; padding: 0.1rem 0.15rem; }
   .ast-ctrl { gap: 0.15rem; }
@@ -425,8 +634,8 @@ body {
 
 .table-section {
   background: var(--mett-surface);
-  border: 1px solid var(--mett-border);
-  border-radius: 5px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.3125rem;
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
@@ -451,14 +660,14 @@ body {
 .census-ready-banner,
 .final-round-banner {
   padding: 1rem 1.5rem;
-  border-radius: 5px;
+  border-radius: 0.3125rem;
   margin-bottom: 1.5rem;
   font-weight: 500;
 }
 
 .final-round-banner {
   background: #3a1010;
-  border: 1px solid var(--mett-danger);
+  border: 0.0625rem solid var(--mett-danger);
   color: #ff9999;
 }
 
@@ -471,7 +680,7 @@ body {
 .go-score-detail { display: none; }
 
 /* ─── Game-over table: card layout on narrow/large-text screens ───────────── */
-@media (max-width: 700px) {
+@media (max-width: 43.75em) {
   .game-over-table thead { display: none; }
   .game-over-table,
   .game-over-table tbody { display: block; }
@@ -482,7 +691,7 @@ body {
     align-items: stretch;  /* all three cells same height as empire badge */
     gap: 0.5rem;
     padding: 0.45rem 0.1rem;
-    border-bottom: 1px solid var(--mett-border);
+    border-bottom: 0.0625rem solid var(--mett-border);
   }
   .game-over-table tr.lb-tied { background: rgba(204,136,0,0.06); }
   .game-over-table td { height: auto; overflow: visible; }
@@ -549,13 +758,13 @@ body {
 
 .no-game-banner {
   background: var(--mett-surface);
-  border: 1px solid var(--mett-border);
+  border: 0.0625rem solid var(--mett-border);
   color: var(--mett-muted);
 }
 
 .census-ready-banner {
   background: #1a3a1a;
-  border: 1px solid var(--mett-success);
+  border: 0.0625rem solid var(--mett-success);
   color: var(--mett-success);
 }
 
@@ -564,7 +773,7 @@ body {
 .civ-hero {
   background: var(--civ-color, #333);
   color: var(--civ-text, #fff);
-  border-radius: 6px;
+  border-radius: 0.375rem;
   padding: 0.45rem 0.85rem;
   margin-bottom: 0.4rem;
   position: relative;
@@ -599,7 +808,7 @@ body {
   letter-spacing: 0.1em;
   background: rgba(0,0,0,0.2);
   padding: 0.15rem 0.4rem;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   align-self: flex-start;
   text-transform: uppercase;
 }
@@ -616,7 +825,7 @@ body {
   grid-column: 1 / -1;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 43.75em) {
   /* Container gutters */
   main.container-fluid { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
 
@@ -635,7 +844,7 @@ body {
   /* Census — status line very tight, input row compact */
   .census-submitted, .census-pending { font-size: 0.7rem; margin-bottom: 0.08rem; }
   .census-input-row, .adv-input-row { gap: 0.2rem; }
-  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.82rem; padding: 0 0 0 0.4rem; height: 1.65rem; min-height: 0; line-height: 1.65rem; box-sizing: border-box; border-radius: 3px; }
+  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.82rem; padding: 0 0 0 0.4rem; height: 1.65rem; min-height: 0; line-height: 1.65rem; box-sizing: border-box; border-radius: 0.1875rem; }
   .btn-submit { font-size: 0.74rem; padding: 0 0.5rem; height: 1.65rem; min-height: 0; box-sizing: border-box; }
   .move-order { font-size: 0.68rem; margin-top: 0.1rem; }
 
@@ -643,7 +852,7 @@ body {
   .adv-cards { gap: 0.1rem; }
   .adv-card-row { gap: 0.18rem; margin: 0; }
   .adv-card-label { font-size: 0.66rem; }
-  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.76rem; padding: 0 0.3rem 0 0; width: 3rem; height: 1.5rem; min-height: 0; line-height: 1.5rem; text-align: right; box-sizing: border-box; border-radius: 3px; margin: 0 !important; }
+  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.76rem; padding: 0 0.3rem 0 0; width: 3rem; height: 1.5rem; min-height: 0; line-height: 1.5rem; text-align: right; box-sizing: border-box; border-radius: 0.1875rem; margin: 0 !important; }
   .adv-btn { width: 1.5rem; height: 1.5rem; min-height: 0; font-size: 0.85rem; }
   .adv-total-row { margin-top: 0.1rem; padding-top: 0.15rem; gap: 0.2rem; }
   .adv-total-label { font-size: 0.68rem; }
@@ -661,15 +870,15 @@ body {
   .ast-next h4 { font-size: 0.7rem; margin-bottom: 0.12rem; }
   .ast-req-text { font-size: 0.78rem; }
   .ast-mode-note { font-size: 0.64rem; margin-top: 0.1rem; }
-  :root { --ast-node-size: 1.5rem; --ast-node-gap: 2px; }
+  :root { --ast-node-size: 1.5rem; --ast-node-gap: 0.125rem; }
   .ast-node { font-size: 0.55rem; }
-  .ast-age-label { font-size: 0.38rem; padding: 1px 0; margin-bottom: 1px; }
+  .ast-age-label { font-size: 0.38rem; padding: 0.0625rem 0; margin-bottom: 0.0625rem; }
 }
 
 .civ-section {
   background: var(--mett-surface);
-  border: 1px solid var(--mett-border);
-  border-radius: 5px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.3125rem;
   padding: 0.4rem 0.6rem;
 }
 
@@ -697,10 +906,10 @@ body {
   --pico-form-element-spacing-vertical: 0.25rem;
   --pico-form-element-spacing-horizontal: 0.5rem;
   flex: 1;
-  max-width: 160px;
+  max-width: 10rem;
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   color: var(--mett-text);
   font-size: 0.95rem;
   margin: 0 !important;
@@ -716,8 +925,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--mett-border);
-  border-radius: 3px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.1875rem;
   background: var(--mett-surface2);
   color: var(--mett-text);
   cursor: pointer;
@@ -733,8 +942,8 @@ body {
   width: 4rem;
   text-align: right;
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 3px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.1875rem;
   color: var(--mett-text);
   font-size: 0.88rem;
   margin: 0 !important;
@@ -749,7 +958,7 @@ body {
   gap: 0.35rem;
   margin-top: 0.25rem;
   padding-top: 0.3rem;
-  border-top: 1px solid var(--mett-border);
+  border-top: 0.0625rem solid var(--mett-border);
 }
 .adv-total-label { flex: 1; font-size: 0.85rem; color: var(--mett-muted); }
 .adv-total-value { font-weight: 800; font-size: 1rem; min-width: 2.5rem; text-align: right; }
@@ -758,7 +967,7 @@ body {
   background: var(--mett-accent);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   padding: 0.3rem 0.8rem;
   font-size: 0.88rem;
   font-weight: 600;
@@ -789,8 +998,8 @@ body {
 
 .ast-next {
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-accent);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-accent);
+  border-radius: 0.25rem;
   padding: 0.35rem 0.55rem;
   margin-bottom: 0.35rem;
 }
@@ -831,7 +1040,7 @@ body {
 }
 .ast-bar-wrap::-webkit-scrollbar { display: none; } /* Chrome/Safari */
 
-:root { --ast-node-size: 2rem; --ast-node-gap: 3px; }
+:root { --ast-node-size: 2rem; --ast-node-gap: 0.1875rem; }
 
 .ast-progress-grid {
   display: grid;
@@ -848,9 +1057,9 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
-  border-radius: 3px 3px 0 0;
-  padding: 2px 0;
-  margin-bottom: 2px;
+  border-radius: 0.1875rem 0.1875rem 0 0;
+  padding: 0.125rem 0;
+  margin-bottom: 0.125rem;
 }
 
 .ast-node {
@@ -859,7 +1068,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
+  border-radius: 0.1875rem;
   font-size: 0.65rem;
   font-weight: 700;
   cursor: default;
@@ -869,10 +1078,10 @@ body {
 .ast-node.active {
   background: var(--mett-accent);
   color: #fff;
-  box-shadow: 0 0 8px var(--mett-accent);
+  box-shadow: 0 0 0.5rem var(--mett-accent);
   transform: scale(1.1);
 }
-.ast-node.future { background: var(--mett-surface); border: 1px solid var(--mett-border); color: var(--mett-muted); }
+.ast-node.future { background: var(--mett-surface); border: 0.0625rem solid var(--mett-border); color: var(--mett-muted); }
 
 /* ─── AST Full Table ──────────────────────────────────────────────────────── */
 
@@ -896,7 +1105,7 @@ body {
 }
 
 /* ast-civs-cell is now an inner div (not td) to avoid display:flex on td causing row jump */
-.ast-civs-cell { display: flex; flex-direction: column; gap: 2px; min-width: 100px; align-items: flex-start; }
+.ast-civs-cell { display: flex; flex-direction: column; gap: 0.125rem; min-width: 6.25rem; align-items: flex-start; }
 
 .ast-table-wrap { overflow-x: auto; }
 
@@ -904,8 +1113,8 @@ body {
   margin-bottom: 0.5rem;
   padding: 0.3rem 0.5rem;
   background: var(--mett-surface);
-  border-radius: 4px;
-  border: 1px solid var(--mett-border);
+  border-radius: 0.25rem;
+  border: 0.0625rem solid var(--mett-border);
   font-size: 0.82rem;
 }
 .ast-mode-toggle p { margin: 0; }
@@ -921,8 +1130,8 @@ body {
 .ast-toggle-btn {
   padding: 0.25rem 0.9rem;
   font-size: 0.85rem;
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   background: var(--mett-surface);
   color: var(--mett-muted);
   cursor: pointer;
@@ -946,51 +1155,74 @@ body {
 .ab-table {
   border-collapse: collapse;
   table-layout: fixed;
-  /* width is sum of columns: 100px label + 17 × 30px = 610px */
-  width: 610px;
+  /* width is sum of columns: 6.25rem label + 17 × 1.875rem = 38.125rem */
+  width: 38.125rem;
   font-size: 0.72rem;
 }
 
-/* Scale up on wider screens: 1100px → 160px label + 17×48px = 976px */
-@media (min-width: 1100px) {
+/* Scale up on wider screens: 68.75rem → 10rem label + 17×3rem = 61rem */
+@media (min-width: 68.75em) {
   .ab-scroll { display: block; }
-  .ab-table { width: 976px; font-size: 0.82rem; }
-  .ab-civ-label { width: 130px; }
-  .ab-level-num { width: 48px; font-size: 0.72rem; }
-  .ab-cell { width: 48px; height: 34px; }
-  .ab-magnet { width: 26px; height: 26px; }
+  .ab-table { width: 61rem; font-size: 0.82rem; }
+  .ab-civ-label { width: 8.125rem; }
+  .ab-level-num { width: 3rem; font-size: 0.72rem; }
+  .ab-cell { width: 3rem; height: 2.125rem; }
+  .ab-magnet { width: 1.625rem; height: 1.625rem; }
   .ab-name { font-size: 0.72rem; }
   .ab-round-num { font-size: 0.72rem; }
 }
 
-/* Even wider: 1400px → 180px label + 17×58px = 1166px */
-@media (min-width: 1400px) {
-  .ab-table { width: 1166px; font-size: 0.88rem; }
-  .ab-civ-label { width: 135px; }
-  .ab-level-num { width: 58px; font-size: 0.76rem; }
-  .ab-cell { width: 58px; height: 40px; }
-  .ab-magnet { width: 30px; height: 30px; }
+/* Even wider: 87.5rem → 11.25rem label + 17×3.625rem = 72.875rem */
+@media (min-width: 87.5em) {
+  .ab-table { width: 72.875rem; font-size: 0.88rem; }
+  .ab-civ-label { width: 8.4375rem; }
+  .ab-level-num { width: 3.625rem; font-size: 0.76rem; }
+  .ab-cell { width: 3.625rem; height: 2.5rem; }
+  .ab-magnet { width: 1.875rem; height: 1.875rem; }
   .ab-name { font-size: 0.76rem; }
   .ab-round-num { font-size: 0.76rem; }
 }
 
 .ab-table th, .ab-table td {
   padding: 0;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 0.0625rem solid rgba(255,255,255,0.08);
 }
 
 /* Civ label column — sticky so it stays visible when scrolling */
 .ab-civ-label {
-  width: 125px;
+  width: 7.8125rem;
   padding: 0.2rem 0.4rem;
   background: var(--mett-bg);
   position: sticky;
   left: 0;
   z-index: 2;
-  border-right: 2px solid rgba(0,0,0,0.5) !important;
+  border-right: 0.125rem solid rgba(0,0,0,0.5) !important;
 }
 
 .ab-corner { background: var(--mett-bg) !important; z-index: 3; }
+
+.ab-player-col {
+  position: sticky;
+  left: 10rem;
+  background: inherit;
+  z-index: 2;
+  width: 10rem;
+  min-width: 10rem;
+  max-width: 10rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 0.0625rem solid var(--mett-border);
+}
+th.ab-player-col {
+  font-size: 0.65rem;
+  color: var(--mett-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
 
 .ab-vp-label {
   font-size: 0.6rem;
@@ -1014,7 +1246,7 @@ body {
   padding: 0.2rem 0.1rem;
   vertical-align: middle;
   overflow: hidden;
-  border-bottom: 2px solid rgba(0,0,0,0.4) !important;
+  border-bottom: 0.125rem solid rgba(0,0,0,0.4) !important;
 }
 
 .ab-name {
@@ -1034,8 +1266,8 @@ body {
   font-size: 0.62rem;
   font-weight: 700;
   padding: 0.15rem 0;
-  width: 30px;
-  border-bottom: 2px solid rgba(0,0,0,0.4) !important;
+  width: 1.875rem;
+  border-bottom: 0.125rem solid rgba(0,0,0,0.4) !important;
 }
 
 /* Age band colours — headers */
@@ -1049,8 +1281,8 @@ body {
 
 /* Cell tints for the body rows */
 .ab-cell {
-  width: 30px;
-  height: 24px;
+  width: 1.875rem;
+  height: 1.5rem;
   text-align: center;
   vertical-align: middle;
 }
@@ -1065,12 +1297,12 @@ body {
 
 /* Thick right border marks the end of each age band per empire row */
 .ab-age-end {
-  border-right: 2px solid rgba(255,255,255,0.22) !important;
+  border-right: 0.125rem solid rgba(255,255,255,0.22) !important;
 }
 
 /* Start column — level 0, where all empires sit at game start */
 .ab-start-col {
-  border-right: 2px solid rgba(255,255,255,0.22) !important;
+  border-right: 0.125rem solid rgba(255,255,255,0.22) !important;
   opacity: 0.6;
 }
 .ab-level-num.ab-start-col {
@@ -1081,11 +1313,11 @@ body {
 /* Magnet dot */
 .ab-magnet {
   display: inline-block;
-  width: 20px;
-  height: 20px;
+  width: 1.25rem;
+  height: 1.25rem;
   border-radius: 50%;
-  border: 1.5px solid rgba(0,0,0,0.4);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.25);
+  border: 0.0938rem solid rgba(0,0,0,0.4);
+  box-shadow: 0 0.0625rem 0.1875rem rgba(0,0,0,0.6), inset 0 0.0625rem 0.125rem rgba(255,255,255,0.25);
   vertical-align: middle;
 }
 
@@ -1105,9 +1337,9 @@ body {
 
 .ab-legend-dot {
   display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 0.125rem;
   flex-shrink: 0;
 }
 
@@ -1131,7 +1363,7 @@ body {
   font-size: 0.6rem;
   color: var(--mett-muted);
   padding: 0.12rem 0;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 0.0625rem solid rgba(255,255,255,0.08);
 }
 
 .ab-round-current {
@@ -1147,8 +1379,8 @@ body {
 .setup-section,
 .admin-section {
   background: var(--mett-surface);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   padding: 0.35rem 0.6rem;
   margin-bottom: 0.3rem;
 }
@@ -1185,8 +1417,8 @@ body {
 
 .player-count-select {
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   padding: 0.3rem 0.5rem;
   color: var(--mett-text);
   font-size: 1rem;
@@ -1209,7 +1441,7 @@ body {
   gap: 0.35rem 1.25rem;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 37.5em) {
   .name-inputs-grid2 { grid-template-columns: 1fr; }
 }
 
@@ -1224,7 +1456,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0 0.5rem;
-  border-radius: 2px;
+  border-radius: 0.125rem;
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
@@ -1237,8 +1469,8 @@ body {
   min-width: 0;
   margin: 0 !important;
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   padding: 0.3rem 0.5rem;
   color: var(--mett-text);
   font-size: 0.85rem;
@@ -1271,7 +1503,7 @@ body {
   flex-wrap: wrap;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--mett-border);
+  border-top: 0.0625rem solid var(--mett-border);
 }
 .round-hint {
   font-size: 0.8rem;
@@ -1281,7 +1513,7 @@ body {
 
 /* Login page */
 .login-page {
-  max-width: 320px;
+  max-width: 20rem;
   margin: 4rem auto;
   display: flex;
   flex-direction: column;
@@ -1297,7 +1529,7 @@ body {
   padding: 0.5rem 0.75rem;
   font-size: 1rem;
   background: var(--mett-bg-alt);
-  border: 1px solid var(--mett-border);
+  border: 0.0625rem solid var(--mett-border);
   border-radius: 0.35rem;
   color: var(--mett-text);
 }
@@ -1318,7 +1550,7 @@ body {
 }
 .change-pwd-form .login-input {
   width: auto;
-  flex: 1 1 160px;
+  flex: 1 1 10rem;
 }
 
 /* Submission progress counters */
@@ -1335,7 +1567,7 @@ body {
   padding: 0.3rem 0.6rem;
   border-radius: 0.35rem;
   background: var(--mett-bg-alt);
-  border: 1px solid var(--mett-border);
+  border: 0.0625rem solid var(--mett-border);
   font-size: 0.8rem;
 }
 .sub-prog-item.sub-prog-done {
@@ -1373,12 +1605,12 @@ body {
 
 .admin-table .player-name-input {
   background: transparent;
-  border: 1px solid transparent;
+  border: 0.0625rem solid transparent;
   color: var(--mett-text);
   font-size: 0.84rem;
   padding: 0.15rem 0.35rem;
-  border-radius: 3px;
-  width: 120px;
+  border-radius: 0.1875rem;
+  width: 7.5rem;
 }
 .admin-table .player-name-input:focus {
   border-color: var(--mett-accent);
@@ -1387,8 +1619,8 @@ body {
 }
 
 .mil-toggle {
-  border: 1px solid var(--mett-border);
-  border-radius: 3px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.1875rem;
   padding: 0.12rem 0.35rem;
   font-size: 0.76rem;
   cursor: pointer;
@@ -1405,13 +1637,13 @@ body {
 .ast-status-dots {
   display: flex;
   align-items: center;
-  gap: 3px;
-  width: 19px;
+  gap: 0.1875rem;
+  width: 1.1875rem;
   flex-shrink: 0;
 }
 .ast-status-dot {
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -1427,8 +1659,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--mett-border);
-  border-radius: 3px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.1875rem;
   background: var(--mett-surface2);
   color: var(--mett-text);
   cursor: pointer;
@@ -1439,19 +1671,19 @@ body {
 
 .ast-select {
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   color: var(--mett-text);
   padding: 0.1rem 0.25rem;
   font-size: 0.82rem;
-  width: 68px;
+  width: 4.25rem;
 }
 
 .admin-table .rank-input {
-  width: 44px;
+  width: 2.75rem;
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   padding: 0.15rem 0.3rem;
   color: var(--mett-muted);
   font-size: 0.78rem;
@@ -1460,10 +1692,10 @@ body {
 }
 
 .admin-table .adv-input {
-  width: 68px;
+  width: 4.25rem;
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   padding: 0.15rem 0.3rem;
   color: var(--mett-text);
   font-size: 0.82rem;
@@ -1473,23 +1705,23 @@ body {
 
 .city-admin-select {
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   color: var(--mett-text);
   padding: 0.1rem 0.25rem;
   font-size: 0.82rem;
-  width: 68px;
+  width: 4.25rem;
 }
 
-.census-admin-input { width: 94px !important; flex: none; }
+.census-admin-input { width: 5.875rem !important; flex: none; }
 .census-admin-input::-webkit-inner-spin-button,
 .census-admin-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; display: none; }
 .census-admin-input { -moz-appearance: textfield; }
 .census-admin-input,
 .city-admin-input {
   background: var(--mett-surface2);
-  border: 1px solid var(--mett-border);
-  border-radius: 3px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.1875rem;
   padding: 0.15rem 0.3rem;
   color: var(--mett-text);
   font-size: 0.82rem;
@@ -1507,10 +1739,10 @@ body {
 .danger-section { border-color: #442222; }
 .btn-outline-danger {
   background: transparent;
-  border: 1px solid var(--mett-danger);
+  border: 0.0625rem solid var(--mett-danger);
   color: var(--mett-danger);
   padding: 0.3rem 0.75rem;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   cursor: pointer;
   font-size: 0.8rem;
 }
@@ -1537,7 +1769,7 @@ body {
   background: var(--mett-accent);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   padding: 0.5rem 1.2rem;
   font-weight: 700;
   font-size: 0.9rem;
@@ -1550,7 +1782,7 @@ body {
   background: var(--mett-danger);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   padding: 0.45rem 1rem;
   font-weight: 700;
   cursor: pointer;
@@ -1559,8 +1791,8 @@ body {
 button.secondary {
   background: var(--mett-surface2);
   color: var(--mett-text);
-  border: 1px solid var(--mett-border);
-  border-radius: 4px;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: 0.25rem;
   padding: 0.45rem 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -1580,7 +1812,7 @@ button.secondary {
 }
 
 /* ── Trade page ────────────────────────────────────────────────────────────── */
-.trade-page { max-width: 900px; margin: 0 auto; }
+.trade-page { max-width: 56.25rem; margin: 0 auto; }
 .trade-hint { font-size: 0.78rem; color: var(--mett-muted); margin: 0 0 1rem; }
 .trade-no-game { color: var(--mett-muted); padding: 2rem 0; }
 
@@ -1592,16 +1824,16 @@ button.secondary {
 .trade-grid.trade-split {
   grid-template-columns: 1fr 1fr;
 }
-@media (max-width: 600px) {
+@media (max-width: 37.5em) {
   .trade-grid.trade-split { grid-template-columns: 1fr; }
 }
 
 .trade-table { width: 100%; }
 .trade-table .trade-card-col {
-  width: 160px;
+  width: 10rem;
   vertical-align: middle;
-  padding-top: 4px;
-  padding-bottom: 4px;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
 }
 .trade-table .trade-card-col.submitted-hidden { color: #4a8a5a; font-size: 1rem; font-weight: 700; }
 .trade-table .trade-card-col.not-submitted    { color: #8a3a3a; font-size: 1rem; font-weight: 700; }
@@ -1612,23 +1844,23 @@ button.secondary {
 .trade-chips {
   display: flex;
   flex-wrap: nowrap;
-  gap: 2px;
+  gap: 0.125rem;
 }
 .trade-chip {
-  width: 16px;
-  height: 24px;
+  width: 1rem;
+  height: 1.5rem;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 2px;
-  border: 1px solid var(--mett-border);
+  border-radius: 0.125rem;
+  border: 0.0625rem solid var(--mett-border);
   background: var(--mett-surface2);
   color: var(--mett-text);
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   line-height: 1;
 }
 .trade-table .trade-group-start td {
-  border-top: 2px solid var(--mett-accent);
+  border-top: 0.125rem solid var(--mett-accent);
 }
