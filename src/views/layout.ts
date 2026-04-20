@@ -13,16 +13,11 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <nav class="mett-nav container-fluid">
-    <ul>
-      <li><a href="/" class="mett-brand" ${activeSlug === 'main' ? 'aria-current="page"' : ''}>METT</a></li>
-    </ul>
-    <ul>
-      <li><a href="/ast" ${activeSlug === 'ast' ? 'aria-current="page"' : ''}>A.S.T.</a></li>
-      <li><a href="/trade" ${activeSlug === 'trade' ? 'aria-current="page"' : ''}>Trade</a></li>
-      <li><a href="/admin" ${activeSlug === 'admin' ? 'aria-current="page"' : ''}>⚙</a></li>
-    </ul>
-  </nav>
+  <header class="site-header container-fluid">
+    <a href="/" class="mett-wordmark">me<span class="mw-bracket">[</span>tt<span class="mw-bracket">]</span></a>
+    <span class="mett-tagline">MEGA EMPIRES TURN TRACKER</span>
+    <a href="/admin" class="admin-gear" title="Admin">⚙</a>
+  </header>
   <main class="container-fluid">
     ${body}
   </main>

@@ -214,7 +214,6 @@ export function renderMain(state: FullState): string {
 
   return /* html */`
 <div class="mett-header status-header">
-  <h2>Mega Empires Turn Tracker</h2>
   <div class="game-status">
     ${statusLabel}
     ${game.active ? `<span class="mode-badge">${expert ? 'Expert' : 'Basic'}</span>` : ''}
@@ -255,10 +254,12 @@ export function renderMain(state: FullState): string {
   <section class="table-section">
     <h3>Trade Cards</h3>
     <table class="mett-table trade-table">
+      <colgroup><col class="trade-empire-col"><col></colgroup>
       <thead><tr><th colspan="2">West</th></tr></thead>
       <tbody>${tradeRegionRows(westTrade) || '<tr><td colspan="2" style="opacity:0.4">—</td></tr>'}</tbody>
     </table>
     <table class="mett-table trade-table trade-east">
+      <colgroup><col class="trade-empire-col"><col></colgroup>
       <thead><tr><th colspan="2">East</th></tr></thead>
       <tbody>${tradeRegionRows(eastTrade) || '<tr><td colspan="2" style="opacity:0.4">—</td></tr>'}</tbody>
     </table>

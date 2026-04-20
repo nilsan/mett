@@ -3,8 +3,6 @@ import { getCookie, setCookie } from 'hono/cookie';
 import { layout } from '../views/layout.js';
 import { renderAdmin } from '../views/admin.js';
 import { renderCiv } from '../views/civ.js';
-import { renderAst } from '../views/ast.js';
-import { renderTrade } from '../views/trade.js';
 import { renderMain } from '../views/main.js';
 import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, getAdminPassword, setAdminPassword } from '../db.js';
 import { CIVS } from '../civs.js';
@@ -90,18 +88,6 @@ pages.get('/admin', (c) => {
   const allCivs = getAllCivs();
   const prevCensus = state.game.current_round > 1 ? getCensusForRound(state.game.current_round - 1) : [];
   const html = layout('Admin', renderAdmin(state, allCivs, c.req.url, prevCensus), 'admin');
-  return c.html(html);
-});
-
-pages.get('/ast', (c) => {
-  const state = getFullState();
-  const html = layout('A.S.T.', renderAst(state), 'ast');
-  return c.html(html);
-});
-
-pages.get('/trade', (c) => {
-  const state = getFullState();
-  const html = layout('Trade', renderTrade(state), 'trade');
   return c.html(html);
 });
 

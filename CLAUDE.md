@@ -44,3 +44,9 @@ driver.quit()
 ```
 
 Use `--disable-cache` when verifying CSS changes to ensure the browser picks up the latest stylesheet.
+
+## Task List & todo.md
+
+Always keep the task list (TaskCreate/TaskUpdate) and `todo.md` in sync. When a task is added, completed, or removed, update both.
+
+Task subjects must always include a sequence number prefix: `1. Subject`, `2. Subject`, etc. When tasks are added or removed, renumber all tasks to maintain a clean sequence.

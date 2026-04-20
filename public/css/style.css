@@ -10,6 +10,7 @@
   --mett-text: #e8e3d8;
   --mett-muted: #7a7568;
   --mett-accent: #c4933f;   /* antique gold */
+  --mett-logo-bracket: var(--mett-accent); /* gold bracket in wordmark */
   --mett-danger: #cc3333;
   --mett-success: #2ea84a;
   --mett-warning: #cc8800;
@@ -26,36 +27,46 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
-/* ─── Nav ─────────────────────────────────────────────────────────────────── */
+/* ─── Site header / logo ──────────────────────────────────────────────────── */
 
-.mett-nav {
-  background: var(--mett-surface);
-  border-bottom: 0.0625rem solid var(--mett-border);
-  padding: 0.15rem 0.75rem;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.75rem 0.3rem;
 }
 
-.mett-brand {
-  font-size: 0.95rem;
+.mett-wordmark {
+  font-size: 1.05rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   color: var(--mett-text);
   text-decoration: none;
+  flex-shrink: 0;
 }
 
-.mett-nav li a {
-  font-size: 0.85rem;
-  padding: 0.2rem 0.4rem;
-  color: var(--mett-text);
+.mw-bracket {
+  color: var(--mett-logo-bracket);
+}
+
+.mett-tagline {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--mett-muted);
+  white-space: nowrap;
+}
+
+.admin-gear {
+  margin-left: auto;
+  font-size: 1rem;
+  color: var(--mett-muted);
   text-decoration: none;
+  padding: 0.1rem 0.25rem;
+  flex-shrink: 0;
 }
 
-.mett-nav a[aria-current="page"] {
-  color: var(--mett-accent) !important;
-  font-weight: 600;
-}
+.admin-gear:hover { color: var(--mett-text); }
 
 /* ─── Header ──────────────────────────────────────────────────────────────── */
 
@@ -399,9 +410,8 @@ body {
 .status-grid > * { min-width: 0; }
 .status-grid .mett-table { width: 100%; }
 
-/* Compact page header on s3 */
-.status-header { margin: 0.1rem 0 0.3rem; }
-.status-header h2 { font-size: 0.9rem; }
+/* Compact game status bar on s3 */
+.status-header { margin: 0 0 0.3rem; }
 .status-header .game-status { font-size: 0.75rem; }
 
 /* Compact table density — everything scaled for 16:9 fit */
@@ -412,6 +422,8 @@ body {
 .status-grid .mett-table       { font-size: 0.72rem; border-collapse: separate; border-spacing: 0 4px; }
 .status-grid .mett-table th    { font-size: 0.58rem; padding: 0.12rem 0.3rem; }
 .status-grid .mett-table td    { height: 2.4rem; padding: 0.05rem 0.3rem; font-size: inherit; border-bottom: none; }
+.status-grid .trade-table      { table-layout: fixed; }
+.status-grid .trade-empire-col { width: 5.5rem; }
 .status-grid .trade-card-col   { width: auto; padding-bottom: 0.08rem; }
 .status-grid .trade-chips      { gap: 0.05rem; }
 .status-grid .trade-chip       { width: 0.8rem; height: 1.25rem; font-size: 0.5rem; }
@@ -525,7 +537,6 @@ body {
 
   /* Undo TV-compact sizing */
   .status-header { margin: 0.5rem 0 0.75rem; }
-  .status-header h2 { font-size: 1.2rem; }
   .status-header .game-status { font-size: 0.9rem; }
   .status-grid .table-section   { padding: 0.6rem 0.8rem; }
   .status-grid .table-section h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
@@ -581,6 +592,7 @@ body {
   .status-grid .total-vp   { width: 2.8rem; min-width: 2.8rem; }
 
   .empire-cell { font-size: 1.0rem !important; width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem; }
+  .status-grid .trade-empire-col { width: 7.5rem; }
   .civ-num { font-size: 0.7rem; min-width: 1.15rem; }
   .player-name-col { max-width: 9rem; }
 
@@ -608,7 +620,6 @@ body {
     gap: 0.75rem;
   }
 
-  .status-header h2 { font-size: 1.2rem; }
   .status-header .game-status { font-size: 1rem; }
 
   .status-grid .table-section   { padding: 0.55rem 0.65rem; }
@@ -633,6 +644,7 @@ body {
   .status-grid .total-vp   { width: 3.3rem; min-width: 3.3rem; }
 
   .empire-cell { font-size: 1.15rem !important; width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem; }
+  .status-grid .trade-empire-col { width: 7.5rem; }
   .civ-num { font-size: 0.75rem; min-width: 1.25rem; }
   .player-name-col { max-width: 10rem; }
 
