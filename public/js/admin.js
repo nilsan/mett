@@ -194,8 +194,8 @@
           });
           const data = await res.json();
           if (data.ok) { location.reload(); }
-          else { alert(data.error ?? 'Seed failed.'); seedBtn.disabled = false; }
-        } catch { alert('Network error.'); seedBtn.disabled = false; }
+          else { showToast(data.error ?? 'Seed failed.'); seedBtn.disabled = false; }
+        } catch { showToast('Network error.'); seedBtn.disabled = false; }
       });
     }
 
@@ -212,7 +212,7 @@
             body: JSON.stringify({ expert: 1, players: SEED_PLAYERS }),
           });
           const startData = await startRes.json();
-          if (!startData.ok) { alert(startData.error ?? 'Start failed.'); seedFullBtn.disabled = false; return; }
+          if (!startData.ok) { showToast(startData.error ?? 'Start failed.'); seedFullBtn.disabled = false; return; }
 
           const state = await fetch('/api/state').then(r => r.json());
           let liaPlayerId = null;
@@ -237,7 +237,7 @@
           }
           await post('/api/census/reveal', {});
           location.reload();
-        } catch (e) { alert('Error: ' + e.message); seedFullBtn.disabled = false; }
+        } catch (e) { showToast('Error: ' + e.message); seedFullBtn.disabled = false; }
       });
     }
 
@@ -441,10 +441,21 @@
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
   async function post(url, body) {
-    return fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        let msg = 'Request failed';
+        try { const d = await res.json(); if (d.error) msg = d.error; } catch {}
+        showToast(msg);
+      }
+      return res;
+    } catch {
+      showToast('Network error — check connection');
+      return { ok: false };
+    }
   }
 })();

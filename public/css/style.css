@@ -2034,3 +2034,23 @@ button.secondary {
 .trade-table .trade-group-start td {
   border-top: 0.125rem solid var(--mett-accent);
 }
+
+/* ── Error toast ─────────────────────────────────────────────────────────── */
+#mett-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #7a1a1a;
+  color: #fff;
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.35rem;
+  border: 1px solid #cc3333;
+  font-size: 0.875rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 9999;
+  white-space: nowrap;
+}
+#mett-toast.visible { opacity: 1; }

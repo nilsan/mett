@@ -22,14 +22,14 @@
         popInput.value = value;
         submitBtn.disabled = true;
         try {
-          await fetch(`/api/players/${playerId}/census`, {
+          const res = await fetch(`/api/players/${playerId}/census`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ population: value }),
           });
-        } finally {
-          submitBtn.disabled = false;
-        }
+          if (!res.ok) showToast('Failed to submit census — check connection');
+        } catch { showToast('Network error'); }
+        finally { submitBtn.disabled = false; }
       });
 
       popInput.addEventListener('keydown', (e) => {
@@ -61,14 +61,14 @@
         if (isNaN(value) || value < 0 || value > 9) return;
         cityBtn.disabled = true;
         try {
-          await fetch(`/api/players/${playerId}/city-count`, {
+          const res = await fetch(`/api/players/${playerId}/city-count`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ city_count: value }),
           });
-        } finally {
-          cityBtn.disabled = false;
-        }
+          if (!res.ok) showToast('Failed to save city count — check connection');
+        } catch { showToast('Network error'); }
+        finally { cityBtn.disabled = false; }
       });
     }
 
@@ -112,14 +112,14 @@
         const v6 = parseInt(adv6?.value ?? '0', 10) || 0;
         advBtn.disabled = true;
         try {
-          await fetch(`/api/players/${playerId}/adv`, {
+          const res = await fetch(`/api/players/${playerId}/adv`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 }),
           });
-        } finally {
-          advBtn.disabled = false;
-        }
+          if (!res.ok) showToast('Failed to save advances — check connection');
+        } catch { showToast('Network error'); }
+        finally { advBtn.disabled = false; }
       });
     }
 
@@ -128,11 +128,14 @@
     if (milBtn) {
       milBtn.addEventListener('click', async () => {
         milBtn.disabled = true;
-        await fetch(`/api/players/${playerId}/military`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
+        try {
+          const res = await fetch(`/api/players/${playerId}/military`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          });
+          if (!res.ok) { showToast('Failed — check connection'); milBtn.disabled = false; }
+        } catch { showToast('Network error'); milBtn.disabled = false; }
       });
     }
 
@@ -141,11 +144,14 @@
     if (wonBtn) {
       wonBtn.addEventListener('click', async () => {
         wonBtn.disabled = true;
-        await fetch(`/api/players/${playerId}/wonder`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
+        try {
+          const res = await fetch(`/api/players/${playerId}/wonder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          });
+          if (!res.ok) { showToast('Failed — check connection'); wonBtn.disabled = false; }
+        } catch { showToast('Network error'); wonBtn.disabled = false; }
       });
     }
   }
