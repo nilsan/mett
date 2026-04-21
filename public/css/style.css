@@ -599,8 +599,10 @@ body {
   .status-grid .trade-table      { table-layout: fixed; width: 100%; }
   .status-grid .trade-empire-col { width: 40%; }
   .status-grid .trade-chip-col   { width: auto; }
-  /* Chips in px so they don't scale with user font — 9 chips must fit in ~60% of table */
-  .status-grid .trade-chip { width: 20px; height: 26px; font-size: 11px; }
+  /* Chips and their container in px — must not scale with user font size */
+  .status-grid .trade-chip       { width: 20px; height: 26px; font-size: 11px; }
+  .status-grid .trade-chips      { gap: 2px; }
+  .status-grid .trade-table td   { padding-left: 5px; padding-right: 5px; }
   .trade-east { margin-top: 0.75rem; }
 }
 
