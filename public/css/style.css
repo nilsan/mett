@@ -595,11 +595,12 @@ body {
   .status-grid .total-vp { width: 3rem;   min-width: 3rem; }
   .player-name-col    { max-width: 6rem; }
 
-  /* Trade table: full-width, empire col fixed, chip col fills the rest */
+  /* Trade table: full-width, empire col % so it stays proportional at any font size */
   .status-grid .trade-table      { table-layout: fixed; width: 100%; }
-  .status-grid .trade-empire-col { width: 8rem; }
+  .status-grid .trade-empire-col { width: 40%; }
   .status-grid .trade-chip-col   { width: auto; }
-  .status-grid .trade-chip { width: 1.2rem; height: 1.4rem; font-size: 0.7rem; }
+  /* Chips in px so they don't scale with user font — 9 chips must fit in ~60% of table */
+  .status-grid .trade-chip { width: 20px; height: 26px; font-size: 11px; }
   .trade-east { margin-top: 0.75rem; }
 }
 
