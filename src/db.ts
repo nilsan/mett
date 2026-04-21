@@ -144,7 +144,7 @@ const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75
 
 // The requirement stored AT a level is the requirement to advance FROM that level.
 // e.g. to advance from 45 to 50, check level 45's requirement — not level 50's.
-function meetsAstRequirements(player: PlayerRow, currentLevel: AstLevelRow, cityCount: number, expert: boolean): boolean {
+export function meetsAstRequirements(player: PlayerRow, currentLevel: AstLevelRow, cityCount: number, expert: boolean): boolean {
   // Slow-start civs (stoneEnd=25): levels strictly inside Stone Age are free (including level 20)
   // Level stoneEnd itself requires the EBA entry requirement — handled by DB value
   const { stoneEnd, ebaEnd } = getCivAstProfile(player.civ_number, expert);
