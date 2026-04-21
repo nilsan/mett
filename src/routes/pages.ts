@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { layout } from '../views/layout.js';
 import { renderAdmin } from '../views/admin.js';
-import { renderCiv } from '../views/civ.js';
+import { renderCiv, renderCivFragment } from '../views/civ.js';
 import { renderMain } from '../views/main.js';
 import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, getAdminPassword, setAdminPassword } from '../db.js';
 import { CIVS } from '../civs.js';
@@ -26,7 +26,9 @@ pages.use('*', async (c, next) => {
 
 pages.get('/', (c) => {
   const state = getFullState();
-  const html = layout('Mega Empires Turn Tracker', renderMain(state), 'main');
+  const isFragment = !!c.req.header('HX-Request');
+  if (isFragment) return c.html(renderMain(state));
+  const html = layout('Mega Empires Turn Tracker', renderMain(state) + '\n<script src="/js/main.js"></script>', 'main');
   return c.html(html);
 });
 
@@ -104,6 +106,17 @@ pages.get('/:slug', (c) => {
   const prevCensus = (player && state.game.current_round > 1)
     ? getPlayerCensus(player.id, state.game.current_round - 1)
     : null;
+
+  const isFragment = !!c.req.header('HX-Request');
+  if (isFragment) {
+    const fragment = renderCivFragment(state, slug, prevCensus);
+    if (!fragment) {
+      // Game ended while player had the page open — return a minimal fragment
+      return c.html(`<div id="civ-content" hx-get="/${slug}" hx-trigger="mett:my-state from:window" hx-swap="outerHTML"><div class="not-in-game"><p>This empire is not part of the current game.</p><p><a href="/">Back to overview</a></p></div></div>`);
+    }
+    return c.html(fragment);
+  }
+
   const body = renderCiv(state, slug, prevCensus);
   if (!body) {
     // Civ exists but not in active game

@@ -75,6 +75,7 @@ export function advanceRound(): number | null {
     checkAndSetLateIronAgeBonus();
 
     if (!expert) {
+      // Basic: end immediately when any player reaches ≥75 this round
       const atLia = db.query<{ count: number }, []>(
         'SELECT COUNT(*) AS count FROM players WHERE ast_level >= 75'
       ).get();
@@ -82,7 +83,12 @@ export function advanceRound(): number | null {
         db.query('UPDATE game SET active=0, is_final_round=0 WHERE id=1').run();
         return;
       }
+    } else if (game.is_final_round) {
+      // Expert: this WAS the announced final round — end the game after AST runs
+      db.query('UPDATE game SET active=0, is_final_round=0 WHERE id=1').run();
+      return;
     } else {
+      // Expert: check if anyone just triggered the final round
       checkAndSetFinalRound();
     }
 

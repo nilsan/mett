@@ -26,7 +26,7 @@ export function broadcast(type: string, data?: unknown): void {
   }
 }
 
-export function broadcastState(): void {
+export function broadcastState(targetPlayerId?: number): void {
   const state = getFullState();
-  broadcast('state_update', state);
+  broadcast('state_update', { ...state, targetPlayerId: targetPlayerId ?? null });
 }

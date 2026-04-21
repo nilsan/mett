@@ -48,6 +48,25 @@ function empireCell(p: PlayerRow): string {
   return `<td class="empire-cell" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</td>`;
 }
 
+/**
+ * Sort order for the revealed census table and per-player move-order indicator.
+ * Non-military civs first (highest population first), military civs last (highest population first).
+ * Ties broken by civ number ascending.
+ */
+export function sortCensusOrder<T extends {
+  military: number;
+  civ_number: number;
+  census?: { population?: number | null } | null;
+}>(players: T[]): T[] {
+  return [...players].sort((a, b) => {
+    if (a.military !== b.military) return a.military - b.military;
+    const pa = a.census?.population ?? -Infinity;
+    const pb = b.census?.population ?? -Infinity;
+    if (pa !== pb) return pb - pa;
+    return a.civ_number - b.civ_number;
+  });
+}
+
 function cardChips(cityCount: number, wonder = false): string {
   const bonusChip = wonder && cityCount < 9;
   if (cityCount === 0 && !bonusChip) return '<span class="trade-no-cards">—</span>';
@@ -71,14 +90,9 @@ export function renderMain(state: FullState): string {
   const allCitiesSubmitted = players.length > 0 && pwc.every(p => p.city_count != null);
 
   // ── Census table ────────────────────────────────────────────────────────
-  const censusOrdered = [...pwc].sort((a, b) => {
-    if (!revealed) return a.civ_number - b.civ_number;
-    if (a.military !== b.military) return a.military - b.military;
-    const pa = a.census?.population ?? -Infinity;
-    const pb = b.census?.population ?? -Infinity;
-    if (pa !== pb) return pb - pa;
-    return a.civ_number - b.civ_number;
-  });
+  const censusOrdered = revealed
+    ? sortCensusOrder(pwc)
+    : [...pwc].sort((a, b) => a.civ_number - b.civ_number);
 
   const censusRows = censusOrdered.map(p => {
     const submitted = p.census?.population != null;
@@ -226,6 +240,7 @@ export function renderMain(state: FullState): string {
   const statusLabel = game.active ? `Round ${game.current_round}` : players.length > 0 ? 'Game over' : 'No active game';
 
   return /* html */`
+<div id="main-content" hx-get="/" hx-trigger="mett:state from:window" hx-swap="outerHTML">
 <div class="mett-header status-header">
   <div class="game-status">
     ${statusLabel}
@@ -316,6 +331,6 @@ export function renderMain(state: FullState): string {
     </table>
   </section>
 </div>
-<script src="/js/main.js"></script>
+</div><!-- #main-content -->
 `;
 }

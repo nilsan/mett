@@ -62,19 +62,12 @@ api.post('/game/reset', async (c) => {
 });
 
 api.post('/game/round/next', (c) => {
-  const game = db.getGame();
-  if (!db.allCitiesSubmitted(game.current_round)) {
+  if (!db.allCitiesSubmitted(db.getGame().current_round)) {
     return c.json({ error: 'All empires must have a city count before advancing the round' }, 400);
-  }
-  // Expert final round: is_final_round was set last advance — this advance ends the game.
-  if (game.is_final_round) {
-    db.endGame();
-    broadcastState();
-    return c.json({ ok: true, ended: true });
   }
   const round = db.advanceRound();
   broadcastState();
-  // round === null means basic game ended (player reached Late Iron Age this round)
+  // round === null means game ended (basic hit 75, or expert final round completed)
   return c.json(round === null ? { ok: true, ended: true } : { ok: true, round });
 });
 
@@ -109,9 +102,10 @@ api.post('/players/:id/census', async (c) => {
   // Auto-reveal if all submitted
   if (db.allPlayersSubmitted(game.current_round)) {
     db.revealCensus();
+    broadcastState(); // global — reveal affects all players' move-order display
+  } else {
+    broadcastState(playerId);
   }
-
-  broadcastState();
   return c.json({ ok: true });
 });
 
@@ -124,21 +118,21 @@ api.post('/players/:id/city-count', async (c) => {
   }
   const game = db.getGame();
   db.submitCityCount(playerId, game.current_round, count);
-  broadcastState();
+  broadcastState(playerId);
   return c.json({ ok: true });
 });
 
 api.post('/players/:id/military', (c) => {
   const playerId = Number(c.req.param('id'));
   const next = db.toggleMilitary(playerId);
-  broadcastState();
+  broadcastState(playerId);
   return c.json({ ok: true, military: next });
 });
 
 api.post('/players/:id/wonder', (c) => {
   const playerId = Number(c.req.param('id'));
   const next = db.toggleWonder(playerId);
-  broadcastState();
+  broadcastState(playerId);
   return c.json({ ok: true, wonder: next });
 });
 
@@ -166,7 +160,7 @@ api.post('/players/:id/adv', async (c) => {
   const v3 = Math.max(0, Math.floor(Number(body.adv_3vp ?? 0)));
   const v6 = Math.max(0, Math.floor(Number(body.adv_6vp ?? 0)));
   db.setAdvCards(playerId, v1, v3, v6);
-  broadcastState();
+  broadcastState(playerId);
   return c.json({ ok: true });
 });
 

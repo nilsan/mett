@@ -1,5 +1,6 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
+import { sortCensusOrder } from './main.js';
 
 interface ReqStatus {
   willRegress: boolean;          // city_count === 0 and not at floor
@@ -131,7 +132,7 @@ function astBar(levels: AstLevelRow[], currentLevel: number, expert: boolean, ci
   </div>`;
 }
 
-export function renderCiv(
+export function renderCivFragment(
   state: FullState,
   slug: string,
   prevCensus: CensusRow | null = null,
@@ -183,16 +184,12 @@ export function renderCiv(
   // Move order (only shown after reveal)
   let moveOrderHtml = '';
   if (game.census_revealed && submitted) {
-    const sorted = [...state.players]
-      .map(p => ({
+    const sorted = sortCensusOrder(
+      state.players.map(p => ({
         ...p,
-        pop: state.census.find(c => c.player_id === p.id)?.population ?? -Infinity,
-      }))
-      .sort((a, b) => {
-        if (a.military !== b.military) return a.military - b.military;
-        if (a.pop !== b.pop) return b.pop - a.pop;
-        return a.civ_number - b.civ_number;
-      });
+        census: state.census.find(c => c.player_id === p.id) ?? null,
+      })),
+    );
     const pos = sorted.findIndex(p => p.id === player.id) + 1;
     moveOrderHtml = `<p class="move-order">You move <strong>${pos}${ordinal(pos)}</strong> of ${sorted.length} this round.</p>`;
   }
@@ -201,6 +198,7 @@ export function renderCiv(
   const censusDefault = submitted ? String(census!.population) : '';
 
   return /* html */`
+<div id="civ-content" data-player-id="${player.id}" data-game-active="${game.active}" hx-get="/${slug}" hx-trigger="mett:my-state from:window" hx-swap="outerHTML">
 <div class="civ-page" style="--civ-color:${player.civ_color};--civ-text:${player.civ_text_color}">
   <div class="civ-hero">
     <div class="civ-hero-content">
@@ -356,14 +354,20 @@ export function renderCiv(
     </section>
 
   </div><!-- .civ-body -->
-</div>
+</div><!-- .civ-page -->
+</div><!-- #civ-content -->
+`;}
 
-<script>
-  window.PLAYER_ID = ${player.id};
-  window.GAME_ACTIVE = ${game.active};
-  window.MILITARY = ${player.military};
-  window.WONDER = ${player.wonder};
-</script>
+export function renderCiv(
+  state: FullState,
+  slug: string,
+  prevCensus: CensusRow | null = null,
+): string | null {
+  const fragment = renderCivFragment(state, slug, prevCensus);
+  if (!fragment) return null;
+  const player = state.players.find(p => p.civ_slug === slug)!;
+  return `<script>window.PLAYER_ID = ${player.id};</script>
+${fragment}
 <script src="/js/civ.js"></script>
 `;
 }

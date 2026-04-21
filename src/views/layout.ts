@@ -21,6 +21,7 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <main class="container-fluid">
     ${body}
   </main>
+  <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
   <script src="/js/ws-client.js"></script>
 </body>
 </html>`;

@@ -21,7 +21,13 @@
       let msg;
       try { msg = JSON.parse(event.data); } catch { return; }
       if (msg.type === 'state_update') {
+        const targetPlayerId = msg.data?.targetPlayerId ?? null;
         window.dispatchEvent(new CustomEvent('mett:state', { detail: msg.data }));
+        // mett:my-state: only fires when relevant to this player page (or for global events)
+        const myId = window.PLAYER_ID != null ? Number(window.PLAYER_ID) : null;
+        if (myId === null || targetPlayerId === null || targetPlayerId === myId) {
+          window.dispatchEvent(new CustomEvent('mett:my-state', { detail: msg.data }));
+        }
       }
     });
 

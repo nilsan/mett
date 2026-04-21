@@ -23,31 +23,38 @@ function p(overrides: Partial<PlayerRow> = {}): PlayerRow {
 //   civ 1  (Minoa)  — slow-start:  stoneEnd=25, ebaEnd=35 (expert) / ebaEnd=40 (basic)
 //   civ 5  (Celt)   — late-start:  stoneEnd=20, ebaEnd=40 (basic only)
 
-function lvl(level: number, req: string, mode: 'basic' | 'expert'): AstLevelRow {
+// Build an AstLevelRow stub using the JSON requirement columns — the production
+// code path.  basic_req / expert_req (legacy text) are set to null because
+// meetsAstRequirements only falls back to the regex parser when the JSON column
+// is `undefined`; setting null routes through checkRequirement as in production.
+function lvl(level: number, req: object | null, mode: 'basic' | 'expert'): AstLevelRow {
+  const jsonStr = req ? JSON.stringify(req) : null;
   return {
     level, era: 'Test',
-    basic_req:  mode === 'basic'  ? req : null,
-    expert_req: mode === 'expert' ? req : null,
+    basic_req:       null,
+    expert_req:      null,
+    basic_req_json:  mode === 'basic'  ? jsonStr : null,
+    expert_req_json: mode === 'expert' ? jsonStr : null,
   };
 }
 
-// Actual requirement strings from schema.sql (what the regex parses):
+// Structured requirements matching AST_REQ_SEED in src/services/db.ts:
 const REQ = {
-  none:     'None',
-  na:       'N/A',
-  c2:       '2 cities',
-  c3:       '3 cities',
-  c4:       '4 cities',
-  c5:       '5 cities',
-  c6:       '6 cities',
-  c3a3:     '3 cities + 3 advances',
-  c3a3x100: '3 cities + 3 advances (≥100 each)',
-  c4a2x200: '4 cities + 2 advances (≥200 each)',
-  c5a3x200: '5 cities + 3 advances (≥200 each)',
-  c3vp5:    '3 cities + 5 VP in advances',
-  c4a12:    '4 cities + 12 advances',
-  c5a10:    '5 cities + 10 advances (<100 each) + 38 VP',
-  c6a17:    '6 cities + all 17 advances (<100 each) + 56 VP',
+  none:     null,
+  na:       { impossible: true },
+  c2:       { cities: 2 },
+  c3:       { cities: 3 },
+  c4:       { cities: 4 },
+  c5:       { cities: 5 },
+  c6:       { cities: 6 },
+  c3a3:     { cities: 3, advCount: 3, advTier: 'any' },
+  c3a3x100: { cities: 3, advCount: 3, advTier: 'medium' },
+  c4a2x200: { cities: 4, advCount: 2, advTier: 'expensive' },
+  c5a3x200: { cities: 5, advCount: 3, advTier: 'expensive' },
+  c3vp5:    { cities: 3, advVpTotal: 5 },
+  c4a12:    { cities: 4, advCount: 12, advTier: 'any' },
+  c5a10:    { cities: 5, advCount: 10, advTier: 'cheap', totalVp: 38 },
+  c6a17:    { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 },
 } as const;
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -62,8 +69,10 @@ describe('meetsAstRequirements', () => {
     it('basic Stone Age (level 5)', () => {
       expect(meetsAstRequirements(p(), lvl(5, REQ.none, 'basic'), 0, false)).toBe(true);
     });
-    it('null req treated as free', () => {
-      const row: AstLevelRow = { level: 0, era: 'Test', basic_req: null, expert_req: null };
+    it('null JSON req treated as free (production: levels 0-15 have null req_json)', () => {
+      // In the DB, free levels have basic_req_json=NULL and expert_req_json=NULL.
+      // NULL is falsy → checkRequirement receives null → returns true.
+      const row: AstLevelRow = { level: 0, era: 'Test', basic_req: null, expert_req: null, basic_req_json: null, expert_req_json: null };
       expect(meetsAstRequirements(p(), row, 0, true)).toBe(true);
     });
   });

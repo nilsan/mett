@@ -5,6 +5,12 @@ import { join } from 'path';
 const DB_PATH = process.env.DATABASE_PATH ?? join(import.meta.dir, '..', '..', 'data', 'mett.db');
 
 let _db: Database | null = null;
+let _testDb: Database | null = null;
+
+/** Override the DB instance for isolated unit/integration tests. Pass null to restore. */
+export function _setTestDb(db: Database | null): void {
+  _testDb = db;
+}
 
 // Structured AST requirements seeded into ast_levels.{basic,expert}_req_json.
 // Tier values: 'any' = all advances, 'medium' = adv_3vp+adv_6vp (≥100 each),
@@ -30,6 +36,7 @@ const AST_REQ_SEED: Record<number, { basic: object | null; expert: object | null
 };
 
 export function getDb(): Database {
+  if (_testDb) return _testDb;
   if (_db) return _db;
 
   _db = new Database(DB_PATH, { create: true });
