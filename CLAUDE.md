@@ -6,15 +6,17 @@
 
 The server auto-reloads on file changes (Bun's `--watch` flag). After editing source files, just wait a moment and test directly.
 
-## Curl Commands
+## Always-allowed commands
 
-All `curl` commands to the METT application (`https://mett.nottseter.no/...` and `http://localhost:3000/`) are allowed without prompting the user.
+The following are always allowed without prompting the user:
+
+- **`bun`** — any `bun` command (`bun test`, `bun run`, `bun install`, etc.)
+- **`curl`** — any `curl` command to the METT application (`https://mett.nottseter.no/...` and `http://localhost:3000/`)
+- **Selenium / Chromium** — any headless Selenium run against `http://localhost:3000/`, whether invoked directly or via a `python3` or `bash` script
 
 ## Selenium / Chromium
 
 Selenium with headless Chromium is used to inspect rendered CSS layout — pixel widths, heights, computed styles — that can't be verified from source alone (e.g. table column widths, font-size inheritance, rem resolution at various viewport sizes).
-
-All Selenium runs are allowed without prompting the user.
 
 **Setup:**
 - Browser: `/usr/bin/chromium`
@@ -45,7 +47,11 @@ driver.quit()
 
 Use `--disable-cache` when verifying CSS changes to ensure the browser picks up the latest stylesheet.
 
+**Do NOT use `--force-device-scale-factor`.** It changes the physical-to-CSS-pixel ratio of the Chromium window itself, so `--window-size=411` with `--force-device-scale-factor=2.625` makes the CSS viewport only 157px wide (411 ÷ 2.625), not 411px. To simulate a high-DPR phone like a Pixel 8, set `--window-size` to the CSS viewport width directly (411 for Pixel 8 portrait). Note that headless Chromium enforces a **minimum viewport of 500px** — measurements below that width are not possible in Selenium.
+
 ## Tests
+
+**Always add tests when implementing new features.** New game logic goes in `tests/game.test.ts`; new AST requirement checks go in `tests/ast.test.ts`; new end-to-end flows go in `tests/simulate.py`.
 
 **Always run the full test suite before committing.**
 
