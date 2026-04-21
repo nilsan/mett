@@ -344,21 +344,33 @@
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
     });
 
-    // Military toggles
+    // Military toggles — update in place, no reload
     document.querySelectorAll('.mil-toggle').forEach(btn => {
       btn.addEventListener('click', async () => {
         btn.disabled = true;
-        await post(`/api/players/${btn.dataset.playerId}/military`, {});
-        location.reload();
+        const res = await post(`/api/players/${btn.dataset.playerId}/military`, {});
+        if (res.ok) {
+          const on = btn.classList.contains('mil-on');
+          btn.classList.toggle('mil-on', !on);
+          btn.classList.toggle('mil-off', on);
+          btn.title = !on ? 'Has Military — click to remove' : 'No Military — click to grant';
+        }
+        btn.disabled = false;
       });
     });
 
-    // Wonder toggles
+    // Wonder toggles — update in place, no reload
     document.querySelectorAll('.won-toggle').forEach(btn => {
       btn.addEventListener('click', async () => {
         btn.disabled = true;
-        await post(`/api/players/${btn.dataset.playerId}/wonder`, {});
-        location.reload();
+        const res = await post(`/api/players/${btn.dataset.playerId}/wonder`, {});
+        if (res.ok) {
+          const on = btn.classList.contains('won-on');
+          btn.classList.toggle('won-on', !on);
+          btn.classList.toggle('won-off', on);
+          btn.title = !on ? 'Has Wonder — click to remove' : 'No Wonder — click to grant';
+        }
+        btn.disabled = false;
       });
     });
 
@@ -431,11 +443,84 @@
       });
     });
 
-    // Reload on state update (from other admin actions or player census)
-    let reloadTimer = null;
-    window.addEventListener('mett:state', () => {
-      clearTimeout(reloadTimer);
-      reloadTimer = setTimeout(() => location.reload(), 600);
+    // React to state updates from WebSocket — update in place instead of reloading
+    window.addEventListener('mett:state', (e) => {
+      const data = e.detail;
+      if (!data?.game || !data?.census || !data?.players) return;
+
+      const n = data.players.length;
+      const censusCount = data.census.filter(c => c.population != null).length;
+      const citiesCount = data.census.filter(c => c.city_count != null).length;
+      const citiesPhase = data.game.cities_phase === 1;
+      const allCitiesReady = n > 0 && citiesCount === n;
+      const showPrepareAst = allCitiesReady && !citiesPhase;
+
+      // If the last city was just submitted (pre-trade phase), swap advance-round → prepare-ast in place
+      const hasPrepBtn = !!document.getElementById('prepare-ast');
+      if (showPrepareAst && !hasPrepBtn) {
+        const advBtn = document.getElementById('advance-round');
+        if (advBtn) {
+          const prepBtn = document.createElement('button');
+          prepBtn.id = 'prepare-ast';
+          prepBtn.className = 'btn-primary';
+          prepBtn.textContent = `Prepare for AST — Round ${data.game.current_round}`;
+          advBtn.replaceWith(prepBtn);
+          prepBtn.addEventListener('click', async () => {
+            prepBtn.disabled = true;
+            await post('/api/game/cities/clear', {});
+            location.reload();
+          });
+        }
+      }
+
+      // Update submission progress bar
+      const progItems = document.querySelectorAll('.sub-prog-item');
+      if (progItems[0]) {
+        const cnt = progItems[0].querySelector('.sub-prog-count');
+        if (cnt) cnt.textContent = `${censusCount}/${n}`;
+        progItems[0].classList.toggle('sub-prog-done', censusCount === n);
+      }
+      if (progItems[1]) {
+        const cnt = progItems[1].querySelector('.sub-prog-count');
+        const lbl = progItems[1].querySelector('.sub-prog-label');
+        if (cnt) cnt.textContent = `${citiesCount}/${n}`;
+        if (lbl) lbl.textContent = `Cities ${citiesPhase ? '(post-calamity)' : '(pre-trade)'}`;
+        progItems[1].classList.toggle('sub-prog-done', citiesCount === n);
+      }
+
+      // Enable/disable the advance button (when it exists and prepare-ast is not shown)
+      const advBtn = document.getElementById('advance-round');
+      if (advBtn) advBtn.disabled = !allCitiesReady;
+
+      // Update per-player census and city status icons
+      data.census.forEach(c => {
+        const row = document.querySelector(`tr[data-player-id="${c.player_id}"]`);
+        if (!row) return;
+
+        const censusInput = row.querySelector('.census-admin-input');
+        if (censusInput && document.activeElement !== censusInput) {
+          const pop = c.population;
+          censusInput.value = pop != null ? pop : '';
+          censusInput.dataset.serverValue = pop != null ? String(pop) : '';
+          const icon = censusInput.closest('.ast-ctrl')?.querySelector('.status-icon-fixed');
+          if (icon) {
+            icon.textContent = pop != null ? '✓' : '?';
+            icon.className = `${pop != null ? 'census-submitted' : 'census-pending'} status-icon-fixed`;
+          }
+        }
+
+        const citySelect = row.querySelector('.city-admin-select');
+        if (citySelect && document.activeElement !== citySelect) {
+          const count = c.city_count;
+          if (count != null) citySelect.value = String(count);
+          citySelect.dataset.serverValue = count != null ? String(count) : '';
+          const icon = citySelect.closest('.ast-ctrl')?.querySelector('.status-icon-fixed');
+          if (icon) {
+            icon.textContent = count != null ? '✓' : '?';
+            icon.className = `${count != null ? 'census-submitted' : 'census-pending'} status-icon-fixed`;
+          }
+        }
+      });
     });
   }
 
