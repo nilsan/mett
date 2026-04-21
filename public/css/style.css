@@ -741,7 +741,7 @@ body {
 @media (max-width: 43.75em) {
   .mett-table { font-size: 0.78rem; }
   main.container-fluid { padding-left: 0.3rem !important; padding-right: 0.3rem !important; }
-  .lb-player-col { display: none; }
+  .player-name-col { display: none; }
   .lb-badge-name { display: block; }
   .lb-table .adv-pts, .lb-table .ast-pts, .lb-table .total-vp, .lb-table .rank { padding-left: 0.2rem; padding-right: 0.2rem; }
 }
