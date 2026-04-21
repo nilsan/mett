@@ -511,7 +511,19 @@ body {
 .status-grid .ast-order-table { width: auto; }
 .ast-order-table td { width: 5.5rem; min-width: 5.5rem; }
 .ast-order-table .ast-order-group-start td {
-  border-top: 0.125rem solid var(--mett-accent);
+  border-top: none;
+  overflow: visible;
+  position: relative;
+}
+.ast-order-table .ast-order-group-start td::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--mett-accent);
+  pointer-events: none;
 }
 
 /* AST board compact sizing for s3 — !important beats the wide media-query rule */
@@ -1338,6 +1350,7 @@ body {
 }
 
 .ab-corner { background: var(--mett-bg) !important; z-index: 3; }
+.status-ast .ab-corner { background: transparent !important; border: none !important; }
 
 .ab-player-col {
   position: sticky;
