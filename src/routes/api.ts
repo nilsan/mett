@@ -271,6 +271,95 @@ api.post('/debug/cities', (c) => {
   return c.json({ ok: true });
 });
 
+api.post('/debug/simulate', async (c) => {
+  const body = await c.req.json<{ expert: number; player_count: number; rounds: number; scenario?: string }>();
+  const { expert, player_count, rounds } = body;
+
+  // Pick the correct scenario
+  const allCivs = db.getAllCivs();
+  const civMap = new Map(allCivs.map(c => [c.number, c]));
+  let rec = player_count >= 10
+    ? SETUP_RECOMMENDATIONS[player_count]
+    : body.scenario === 'east'
+      ? EAST_SCENARIOS[player_count]
+      : WEST_SCENARIOS[player_count];
+  if (!rec) return c.json({ error: `No scenario for ${player_count} players` }, 400);
+
+  db.resetGame();
+  db.startGame(expert);
+
+  for (const num of rec.civNumbers) {
+    const civ = civMap.get(num);
+    if (!civ) continue;
+    const region = (rec.regionOverrides[num] ?? civ.def_region) as string;
+    db.addPlayer(civ.id, civ.name, region);
+  }
+
+  // Assign each player a speed factor [0.5, 1.5] to produce variety
+  const players = db.getPlayers();
+  const speedFactors = players.map(() => 0.5 + Math.random());
+
+  // Randomly assign wonder to 1 player and military to ~1 in 5 players
+  const wonderIdx = Math.floor(Math.random() * players.length);
+  for (let i = 0; i < players.length; i++) {
+    if (i === wonderIdx) db.toggleWonder(players[i]!.id);
+    if (Math.random() < 0.2) db.toggleMilitary(players[i]!.id);
+  }
+
+  let roundsPlayed = 0;
+  for (let r = 0; r < rounds; r++) {
+    const game = db.getGame();
+    const roundNum = game.current_round;
+    const cur = db.getPlayers();
+
+    // Census — random populations
+    for (const p of cur) {
+      db.submitCensus(p.id, roundNum, weightedRandom(1, 55));
+    }
+    db.revealCensus();
+
+    // Cities + advance accumulation
+    for (let i = 0; i < cur.length; i++) {
+      const p = cur[i]!;
+      const sf = speedFactors[i] ?? 1;
+
+      // City count: scale expected value by speed factor, with calamity chance
+      const base = Math.min(9, Math.max(0, Math.round(p.ast_level / 10) + 1));
+      let count: number;
+      if (Math.random() < 0.12) {
+        count = weightedRandom(0, 3);
+      } else {
+        const scaled = Math.round(base * sf);
+        count = Math.min(9, Math.max(0, weightedRandom(Math.max(0, scaled - 2), Math.min(9, scaled + 2))));
+      }
+      db.submitCityCount(p.id, roundNum, count);
+
+      // Advance purchases — faster players accumulate more per round
+      const buyChance = Math.min(1, (r <= 3 ? 0.5 : r <= 8 ? 0.75 : 0.9) * sf);
+      if (Math.random() < buyChance) {
+        const purchases = Math.ceil(Math.random() * (r <= 5 ? 2 : 3));
+        let v1 = p.adv_1vp, v3 = p.adv_3vp, v6 = p.adv_6vp;
+        for (let j = 0; j < purchases; j++) {
+          const roll = Math.random();
+          if (r >= 9 && roll < 0.15) { if (v6 < 11) v6++; }
+          else if (roll < 0.5)        { if (v3 < 17) v3++; }
+          else {
+            v1 = Math.min(17, v1 + (r >= 8 && Math.random() < 0.3 ? 2 : 1));
+          }
+        }
+        db.setAdvCards(p.id, v1, v3, v6);
+      }
+    }
+
+    const result = db.advanceRound();
+    roundsPlayed++;
+    if (result === null) break; // game ended
+  }
+
+  broadcastState();
+  return c.json({ ok: true, rounds_played: roundsPlayed });
+});
+
 api.post('/debug/advances', (c) => {
   const players = db.getPlayers();
   const game = db.getGame();

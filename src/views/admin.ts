@@ -42,13 +42,16 @@ function renderSetup(allCivs: CivRefRow[], query = ''): string {
 <div class="admin-page">
   <h2>Game Setup</h2>
 
-  <section class="setup-section" style="border-color:#c0392b44;background:#c0392b11;display:flex;gap:0.75rem;flex-wrap:wrap">
-    <button id="seed-test-game" class="btn-danger" style="opacity:0.7;font-size:0.8rem">
-      [DEV] Seed 16-player game
-    </button>
-    <button id="seed-full-state" class="btn-danger" style="opacity:0.7;font-size:0.8rem">
-      [DEV] Seed full game state (census + AST + ADV)
-    </button>
+  <section class="setup-section" style="border-color:#c0392b44;background:#c0392b11;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
+    <button id="sim-game" class="btn-danger" style="opacity:0.7;font-size:0.8rem">[DEV] Simulate Game</button>
+    <label style="font-size:0.8rem;opacity:0.7;display:flex;align-items:center;gap:0.4rem">
+      Rounds:
+      <select id="sim-rounds" style="font-size:0.8rem;padding:0.2rem 0.4rem">
+        ${Array.from({ length: 16 }, (_, i) => i + 1).map(n =>
+          `<option value="${n}"${n === 8 ? ' selected' : ''}>${n}</option>`
+        ).join('')}
+      </select>
+    </label>
   </section>
 
   <section class="setup-section">

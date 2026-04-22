@@ -131,113 +131,22 @@
       startBtn.disabled = false;
     }
 
-    // DEV seed data
-    const SEED_PLAYERS = [
-      { civ_id: 1,  name: 'Alexander',  region: 'west' },
-      { civ_id: 2,  name: 'Emil',       region: 'east' },
-      { civ_id: 3,  name: 'Tarjei',     region: 'east' },
-      { civ_id: 5,  name: 'Katja',      region: 'west' },
-      { civ_id: 6,  name: 'Malin',      region: 'east' },
-      { civ_id: 7,  name: 'Roe',        region: 'west' },
-      { civ_id: 9,  name: 'Thomas',     region: 'west' },
-      { civ_id: 10, name: 'Dag',        region: 'east' },
-      { civ_id: 11, name: 'Fridtjof',   region: 'west' },
-      { civ_id: 12, name: 'Stefan',     region: 'east' },
-      { civ_id: 13, name: 'Trine',      region: 'west' },
-      { civ_id: 14, name: 'Ulf',        region: 'east' },
-      { civ_id: 15, name: 'Nils-Anders',region: 'west' },
-      { civ_id: 16, name: 'Eric',       region: 'east' },
-      { civ_id: 17, name: 'Magnus',     region: 'west' },
-      { civ_id: 18, name: 'Ael',        region: 'east' },
-    ];
-
-    // keyed by civ_id (= civ number, since civs seeded in order 1–18)
-    // ADV constraints (expert): AST≥70 → adv_1vp=17 (all 17 <100 each advances)
-    //                           AST≥65 → adv_1vp≥10 (cleared "10 <100 each" req at lvl 60)
-    //                           AST≥50 → total advances ≥ 12 (cleared "12 advances" req)
-    // Real game final scores (total = ast + adv + lia, city VP does NOT count):
-    //   Carthage 184 (incl. 5VP LIA), Celt 153, Saba+Hellas 145, Kushan+Nubia 126,
-    //   Hatti+Egypt 124, Persia 109, Indus 103, Minoa 100, Assyria 89,
-    //   Rome+Iberia 87, Babylon 76, Parthia 58
-    //   Saba vs Hellas resolved by adv_6vp: Hellas(4) > Saba(3)
-    // census values from actual last-round population tokens (old tool data)
-    // adv splits chosen so v1*1+v3*3+v6*6 = exact adv total; all v≤17 (max 17 low-VP cards)
-    const SEED_STATE = {
-      1:  { military: false, census: 36, ast: 65, adv_1vp: 11, adv_3vp:  2, adv_6vp:  3, city_count: 4 },  // Minoa    35VP  → 65+35=100
-      2:  { military: false, census: 39, ast: 75, adv_1vp: 16, adv_3vp: 12, adv_6vp:  3, city_count: 6 },  // Saba     70VP  → 75+70=145 (tied Hellas, loses adv_6vp 3 vs 4)
-      3:  { military: false, census: 27, ast: 55, adv_1vp:  7, adv_3vp:  1, adv_6vp:  4, city_count: 7 },  // Assyria  34VP  → 55+34=89
-      5:  { military: true,  census: 24, ast: 75, adv_1vp: 15, adv_3vp:  7, adv_6vp:  7, city_count: 7 },  // Celt     78VP  → 75+78=153
-      6:  { military: false, census: 45, ast: 55, adv_1vp: 12, adv_3vp:  3, adv_6vp:  0, city_count: 5 },  // Babylon  21VP  → 55+21=76
-      7:  { military: false, census: 30, ast: 80, adv_1vp: 15, adv_3vp:  6, adv_6vp: 11, city_count: 7, lia: true },  // Carthage 99VP+5LIA → 80+99+5=184
-      9:  { military: false, census: 26, ast: 70, adv_1vp: 15, adv_3vp:  5, adv_6vp:  4, city_count: 7 },  // Hatti    54VP  → 70+54=124 (tied Egypt)
-      10: { military: false, census: 31, ast: 70, adv_1vp: 17, adv_3vp:  3, adv_6vp:  5, city_count: 6 },  // Kushan   56VP  → 70+56=126 (tied Nubia)
-      11: { military: false, census: 31, ast: 60, adv_1vp:  9, adv_3vp:  2, adv_6vp:  2, city_count: 6 },  // Rome     27VP  → 60+27=87  (tied Iberia)
-      12: { military: true,  census: 34, ast: 65, adv_1vp: 11, adv_3vp:  3, adv_6vp:  4, city_count: 5 },  // Persia   44VP  → 65+44=109
-      13: { military: false, census: 44, ast: 60, adv_1vp:  9, adv_3vp:  2, adv_6vp:  2, city_count: 6 },  // Iberia   27VP  → 60+27=87  (tied Rome)
-      14: { military: false, census: 43, ast: 70, adv_1vp: 17, adv_3vp:  3, adv_6vp:  5, city_count: 6 },  // Nubia    56VP  → 70+56=126 (tied Kushan)
-      15: { military: false, census: 39, ast: 75, adv_1vp: 16, adv_3vp: 10, adv_6vp:  4, city_count: 6 },  // Hellas   70VP  → 75+70=145 (tied Saba, wins adv_6vp 4 vs 3)
-      16: { military: false, census: 39, ast: 65, adv_1vp: 11, adv_3vp:  3, adv_6vp:  3, city_count: 7 },  // Indus    38VP  → 65+38=103
-      17: { military: false, census: 36, ast: 70, adv_1vp: 15, adv_3vp:  5, adv_6vp:  4, city_count: 7 },  // Egypt    54VP  → 70+54=124 (tied Hatti)
-      18: { military: false, census: 26, ast: 45, adv_1vp:  4, adv_3vp:  1, adv_6vp:  1, city_count: 3 },  // Parthia  13VP  → 45+13=58
-    };
-
-    // DEV: seed game (players only)
-    const seedBtn = document.getElementById('seed-test-game');
-    if (seedBtn) {
-      seedBtn.addEventListener('click', async () => {
-        seedBtn.disabled = true;
+    // DEV: simulate game
+    const simBtn = document.getElementById('sim-game');
+    if (simBtn) {
+      simBtn.addEventListener('click', async () => {
+        simBtn.disabled = true;
+        const n = parseInt(playerCountSelect.value, 10);
+        const expert = parseInt(document.querySelector('input[name="game-mode"]:checked')?.value ?? '1', 10);
+        const rounds = parseInt(document.getElementById('sim-rounds')?.value ?? '8', 10);
+        const scenario = n <= 9
+          ? (document.querySelector('input[name="scenario"]:checked')?.value ?? 'west')
+          : 'combined';
         try {
-          const res = await fetch('/api/game/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ expert: 1, players: SEED_PLAYERS }),
-          });
-          const data = await res.json();
+          const data = await post('/api/debug/simulate', { expert, player_count: n, rounds, scenario });
           if (data.ok) { location.reload(); }
-          else { showToast(data.error ?? 'Seed failed.'); seedBtn.disabled = false; }
-        } catch { showToast('Network error.'); seedBtn.disabled = false; }
-      });
-    }
-
-    // DEV: seed full game state (reset → start → census + military + AST + ADV → reveal)
-    const seedFullBtn = document.getElementById('seed-full-state');
-    if (seedFullBtn) {
-      seedFullBtn.addEventListener('click', async () => {
-        seedFullBtn.disabled = true;
-        try {
-          await post('/api/game/reset', { confirm: true });
-          const startRes = await fetch('/api/game/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ expert: 1, players: SEED_PLAYERS }),
-          });
-          const startData = await startRes.json();
-          if (!startData.ok) { showToast(startData.error ?? 'Start failed.'); seedFullBtn.disabled = false; return; }
-
-          const state = await fetch('/api/state').then(r => r.json());
-          let liaPlayerId = null;
-          for (const player of state.players) {
-            const s = SEED_STATE[player.civ_id];
-            if (!s) continue;
-            await post(`/api/players/${player.id}/ast`, { level: s.ast });
-            await post(`/api/players/${player.id}/adv`, { adv_1vp: s.adv_1vp, adv_3vp: s.adv_3vp, adv_6vp: s.adv_6vp });
-            if (s.military) await post(`/api/players/${player.id}/military`, {});
-            if (s.lia) liaPlayerId = player.id;
-          }
-          // Apply LIA bonus explicitly last, overriding any auto-grant from the seed loop
-          if (liaPlayerId) await post(`/api/players/${liaPlayerId}/late-iron-age-bonus`, { grant: true });
-          // Set round BEFORE census so census rows land in the correct round
-          await post('/api/debug/set-round', { round: 16 });
-          const state2 = await fetch('/api/state').then(r => r.json());
-          for (const player of state2.players) {
-            const s = SEED_STATE[player.civ_id];
-            if (!s) continue;
-            await post(`/api/players/${player.id}/census`, { population: s.census });
-            await post(`/api/players/${player.id}/city-count`, { city_count: s.city_count });
-          }
-          await post('/api/census/reveal', {});
-          location.reload();
-        } catch (e) { showToast('Error: ' + e.message); seedFullBtn.disabled = false; }
+          else { showToast(data.error ?? 'Simulate failed.'); simBtn.disabled = false; }
+        } catch { showToast('Network error.'); simBtn.disabled = false; }
       });
     }
 
