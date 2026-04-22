@@ -272,8 +272,8 @@ api.post('/debug/cities', (c) => {
 });
 
 api.post('/debug/simulate', async (c) => {
-  const body = await c.req.json<{ expert: number; player_count: number; rounds: number; scenario?: string }>();
-  const { expert, player_count, rounds } = body;
+  const body = await c.req.json<{ expert: number; player_count: number; rounds: number; scenario?: string; delay_ms?: number }>();
+  const { expert, player_count, rounds, delay_ms = 0 } = body;
 
   // Pick the correct scenario
   const allCivs = db.getAllCivs();
@@ -351,12 +351,17 @@ api.post('/debug/simulate', async (c) => {
       }
     }
 
+    // Broadcast with city counts visible so trade cards can be seen
+    broadcastState();
+    if (delay_ms > 0) await Bun.sleep(delay_ms);
+
     const result = db.advanceRound();
     roundsPlayed++;
+    broadcastState();
+    if (delay_ms > 0) await Bun.sleep(delay_ms);
     if (result === null) break; // game ended
   }
 
-  broadcastState();
   return c.json({ ok: true, rounds_played: roundsPlayed });
 });
 

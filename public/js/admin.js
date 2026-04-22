@@ -131,11 +131,38 @@
       startBtn.disabled = false;
     }
 
+    // DEV: toggle sim section visibility
+    const setupSimToggle = document.getElementById('setup-sim-toggle');
+    const setupSimSection = document.getElementById('setup-sim-section');
+    if (setupSimToggle && setupSimSection) {
+      if (sessionStorage.getItem('setupSimVisible') === '1') {
+        setupSimSection.style.display = '';
+        setupSimToggle.textContent = 'Hide Dev Tools';
+      }
+      setupSimToggle.addEventListener('click', () => {
+        const visible = setupSimSection.style.display !== 'none';
+        setupSimSection.style.display = visible ? 'none' : '';
+        setupSimToggle.textContent = visible ? 'Show Dev Tools' : 'Hide Dev Tools';
+        sessionStorage.setItem('setupSimVisible', visible ? '0' : '1');
+      });
+    }
+
+    // DEV: rounds slider display
+    const simRoundsSlider = document.getElementById('sim-rounds');
+    const simRoundsDisplay = document.getElementById('sim-rounds-display');
+    if (simRoundsSlider && simRoundsDisplay) {
+      simRoundsSlider.addEventListener('input', () => {
+        simRoundsDisplay.textContent = simRoundsSlider.value;
+      });
+    }
+
     // DEV: simulate game
     const simBtn = document.getElementById('sim-game');
     if (simBtn) {
       simBtn.addEventListener('click', async () => {
+        const origText = simBtn.textContent;
         simBtn.disabled = true;
+        simBtn.textContent = 'Simulating…';
         const n = parseInt(playerCountSelect.value, 10);
         const expert = parseInt(document.querySelector('input[name="game-mode"]:checked')?.value ?? '1', 10);
         const rounds = parseInt(document.getElementById('sim-rounds')?.value ?? '8', 10);
@@ -143,10 +170,15 @@
           ? (document.querySelector('input[name="scenario"]:checked')?.value ?? 'west')
           : 'combined';
         try {
-          const data = await post('/api/debug/simulate', { expert, player_count: n, rounds, scenario });
+          const res = await fetch('/api/debug/simulate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expert, player_count: n, rounds, scenario, delay_ms: 300 }),
+          });
+          const data = await res.json();
           if (data.ok) { location.reload(); }
-          else { showToast(data.error ?? 'Simulate failed.'); simBtn.disabled = false; }
-        } catch { showToast('Network error.'); simBtn.disabled = false; }
+          else { showToast(data.error ?? 'Simulate failed.'); simBtn.textContent = origText; simBtn.disabled = false; }
+        } catch { showToast('Network error.'); simBtn.textContent = origText; simBtn.disabled = false; }
       });
     }
 

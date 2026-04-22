@@ -42,18 +42,6 @@ function renderSetup(allCivs: CivRefRow[], query = ''): string {
 <div class="admin-page">
   <h2>Game Setup</h2>
 
-  <section class="setup-section" style="border-color:#c0392b44;background:#c0392b11;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
-    <button id="sim-game" class="btn-danger" style="opacity:0.7;font-size:0.8rem">[DEV] Simulate Game</button>
-    <label style="font-size:0.8rem;opacity:0.7;display:flex;align-items:center;gap:0.4rem">
-      Rounds:
-      <select id="sim-rounds" style="font-size:0.8rem;padding:0.2rem 0.4rem">
-        ${Array.from({ length: 16 }, (_, i) => i + 1).map(n =>
-          `<option value="${n}"${n === 8 ? ' selected' : ''}>${n}</option>`
-        ).join('')}
-      </select>
-    </label>
-  </section>
-
   <section class="setup-section">
     <h3>1. Game Mode</h3>
     <div class="mode-toggle-row">
@@ -104,9 +92,21 @@ function renderSetup(allCivs: CivRefRow[], query = ''): string {
     <p id="start-error" class="error-msg"></p>
   </section>
 
+  <section class="setup-section" id="setup-sim-section" style="display:none;border-color:#c0392b44;background:#c0392b11">
+    <h4 style="margin:0 0 0.75rem;font-size:0.85rem;opacity:0.8">[DEV] Simulate Game</h4>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <div style="font-size:0.8rem;opacity:0.7;margin-bottom:0.4rem">Rounds to simulate: <strong id="sim-rounds-display">8</strong></div>
+        <input type="range" id="sim-rounds" min="1" max="16" value="8" style="width:10rem;accent-color:#c0392b">
+      </div>
+      <button id="sim-game" class="btn-danger" style="opacity:0.8">Simulate</button>
+    </div>
+  </section>
+
   <section class="setup-section danger-section">
     <h3>Danger Zone</h3>
     <div class="danger-row">
+      <button id="setup-sim-toggle" class="btn-danger">Show Dev Tools</button>
       <button id="pwd-toggle" class="btn-danger">Change Password</button>
     </div>
     ${pwdFormHtml(query)}
