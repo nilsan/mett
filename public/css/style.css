@@ -1930,6 +1930,18 @@ th.ab-player-col {
 .danger-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
 #sim-controls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
 
+/* Informational nag shown below the Danger Zone when the admin password is still the seeded default. */
+.default-pwd-nag {
+  margin: 1.25rem 0 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--mett-muted);
+  border-left: 0.125rem solid #6a5a22;
+  background: rgba(106, 90, 34, 0.08);
+  border-radius: 0 0.25rem 0.25rem 0;
+}
+.default-pwd-nag strong { color: var(--mett-fg); }
+
 .ast-req-table { font-size: 0.8rem; }
 .ast-req-table .ast-req-vp { font-weight: 700; width: 2.5rem; color: var(--mett-accent); }
 .ast-req-table .ast-req-era { color: var(--mett-muted); white-space: nowrap; width: 8rem; }

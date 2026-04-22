@@ -4,7 +4,7 @@ import { layout } from '../views/layout.js';
 import { renderAdmin } from '../views/admin.js';
 import { renderCiv, renderCivFragment } from '../views/civ.js';
 import { renderMain } from '../views/main.js';
-import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, setAdminPassword, verifyAdminPassword } from '../db.js';
+import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, setAdminPassword, verifyAdminPassword, isUsingDefaultPassword } from '../db.js';
 import { CIVS } from '../civs.js';
 
 const COOKIE_NAME = 'mett_admin';
@@ -89,7 +89,8 @@ pages.get('/admin', (c) => {
   const state = getFullState();
   const allCivs = getAllCivs();
   const prevCensus = state.game.current_round > 1 ? getCensusForRound(state.game.current_round - 1) : [];
-  const html = layout('Admin', renderAdmin(state, allCivs, c.req.url, prevCensus), 'admin');
+  const defaultPwd = isUsingDefaultPassword();
+  const html = layout('Admin', renderAdmin(state, allCivs, c.req.url, prevCensus, defaultPwd), 'admin');
   return c.html(html);
 });
 

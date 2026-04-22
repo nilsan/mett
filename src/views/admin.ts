@@ -21,17 +21,26 @@ function pwdFormHtml(query: string): string {
   </div>`;
 }
 
-export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = []): string {
+export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false): string {
   const { game, players } = state;
 
   if (!game.active) {
-    if (players.length > 0) return renderGameOver(state, allCivs, query);
-    return renderSetup(allCivs, query);
+    if (players.length > 0) return renderGameOver(state, allCivs, query, defaultPassword);
+    return renderSetup(allCivs, query, defaultPassword);
   }
-  return renderActiveAdmin(state, allCivs, query, prevCensus);
+  return renderActiveAdmin(state, allCivs, query, prevCensus, defaultPassword);
 }
 
-function renderSetup(allCivs: CivRefRow[], query = ''): string {
+/** Small informational strip shown when the admin password is still the default 'PASSWORD'. */
+function defaultPasswordNag(show: boolean): string {
+  if (!show) return '';
+  return /* html */`
+  <p class="default-pwd-nag">
+    Using the default admin password. Rotate it in <strong>Change Password</strong> above.
+  </p>`;
+}
+
+function renderSetup(allCivs: CivRefRow[], query = '', defaultPassword = false): string {
   // Embed all civ data as JSON for JS to use — no visible grid needed
   const civData = JSON.stringify(allCivs.map(c => ({
     id: c.id, number: c.number, name: c.name,
@@ -111,13 +120,14 @@ function renderSetup(allCivs: CivRefRow[], query = ''): string {
     </div>
     ${pwdFormHtml(query)}
   </section>
+  ${defaultPasswordNag(defaultPassword)}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
 <script src="/js/admin.js"></script>
 `;
 }
 
-function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): string {
+function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defaultPassword = false): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
 
@@ -266,13 +276,14 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
     </div>
     ${pwdFormHtml(query)}
   </section>
+  ${defaultPasswordNag(defaultPassword)}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
 <script src="/js/admin.js"></script>
 `;
 }
 
-function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = []): string {
+function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
   const AST_LEVELS = state.astLevels.map(l => l.level);
@@ -422,6 +433,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
     </div>
     ${pwdFormHtml(query)}
   </section>
+  ${defaultPasswordNag(defaultPassword)}
 </div>
 <script>
   window.CURRENT_ROUND = ${game.current_round};
