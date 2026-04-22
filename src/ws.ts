@@ -27,7 +27,8 @@ export function broadcast(type: string, data?: unknown): void {
   }
 }
 
-export function broadcastState(targetPlayerId?: number): void {
+/** Build a state_update payload — shared by broadcastState and per-client pushes. */
+function buildStatePayload(targetPlayerId: number | null = null) {
   const state = getFullState();
   const expert = state.game.expert === 1;
   const astStatus: Record<number, string> = {};
@@ -35,5 +36,19 @@ export function broadcastState(targetPlayerId?: number): void {
     const c = state.census.find(r => r.player_id === player.id);
     astStatus[player.id] = nextAstStatus(player, c?.city_count, state.astLevels, expert);
   }
-  broadcast('state_update', { ...state, astStatus, targetPlayerId: targetPlayerId ?? null });
+  return { ...state, astStatus, targetPlayerId };
+}
+
+export function broadcastState(targetPlayerId?: number): void {
+  broadcast('state_update', buildStatePayload(targetPlayerId ?? null));
+}
+
+/** Push the current state to a single socket — used on WS open so reconnecting
+ *  clients refresh immediately instead of waiting for the next server event. */
+export function sendInitialState(ws: ServerWebSocket<WsData>): void {
+  try {
+    ws.send(JSON.stringify({ type: 'state_update', data: buildStatePayload() }));
+  } catch {
+    clients.delete(ws);
+  }
 }

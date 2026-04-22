@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
 import api from './routes/api.js';
 import pages from './routes/pages.js';
-import { addClient, removeClient, broadcastState, type WsData } from './ws.js';
+import { addClient, removeClient, broadcastState, sendInitialState, type WsData } from './ws.js';
 import { getDb } from './db.js';
 
 // Ensure data directory exists
@@ -66,6 +66,7 @@ const server = Bun.serve({
   websocket: {
     open(ws) {
       addClient(ws as any);
+      sendInitialState(ws as any);
     },
     message(_ws, _msg) {
       // Clients are receive-only for now
