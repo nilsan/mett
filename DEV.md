@@ -26,29 +26,28 @@ For the user-facing guide see [README.md](README.md). For which game rules are i
 mett/
 ├── src/
 │   ├── index.ts            Entry point: Hono app + Bun server
-│   ├── db.ts               Top-level DB helpers (schema init, seed)
+│   ├── db.ts               Re-export barrel + CRUD for players/census/civs
 │   ├── civs.ts             Static civ data + official scenario tables
 │   ├── types.ts            Shared TypeScript types
 │   ├── ws.ts               WebSocket connection manager + broadcast
 │   ├── models/
 │   │   ├── ast.ts          AST requirement parsing and advancement logic
-│   │   └── game.ts         Game-state queries (full state, round transitions)
+│   │   └── game.ts         Game-state queries + scoring/tie-break
 │   ├── services/
-│   │   └── db.ts           Domain-specific DB write operations
+│   │   └── db.ts           Raw SQLite connection, schema + migrations
 │   ├── routes/
 │   │   ├── api.ts          REST API routes
 │   │   └── pages.ts        Server-rendered HTML page routes
 │   └── views/
 │       ├── layout.ts       Base HTML shell (Pico CSS, nav, WS script)
-│       ├── main.ts         Main page (3-column status grid)
+│       ├── main.ts         Main page (5-section status grid)
 │       ├── admin.ts        Admin page (setup wizard + game controls)
-│       ├── civ.ts          Individual empire page
-│       ├── ast.ts          Full A.S.T. table page
-│       └── trade.ts        Trade card helper fragments
+│       └── civ.ts          Individual empire page
 ├── public/
 │   ├── css/style.css       Civ colour variables, Pico overrides, layout
 │   └── js/
 │       ├── ws-client.js    Shared WebSocket client (auto-reconnect)
+│       ├── toast.js        Error toast helper
 │       ├── main.js         Main page JS
 │       ├── admin.js        Admin page JS
 │       └── civ.js          Empire page JS
@@ -56,8 +55,7 @@ mett/
 │   └── schema.sql          Schema + seed data (civs and A.S.T. levels)
 ├── docker/
 │   ├── Dockerfile
-│   ├── docker-compose.yml          Simple setup (no TLS)
-│   ├── docker-compose.caddy.yml    HTTPS setup with Caddy
+│   ├── docker-compose.yml  Multi-instance setup with bundled Caddy (HTTPS)
 │   └── Caddyfile
 └── tests/
     ├── ast.test.ts         Unit tests for A.S.T. requirement logic
@@ -78,21 +76,28 @@ CREATE TABLE civs (
   slug TEXT NOT NULL UNIQUE,        -- URL path segment
   color TEXT NOT NULL,
   text_color TEXT NOT NULL,
-  default_region TEXT NOT NULL      -- "west" or "east"
+  def_region TEXT NOT NULL          -- "west" or "east"
 );
 
 CREATE TABLE ast_levels (
   level INTEGER PRIMARY KEY,        -- 0, 5, 10 … 80
+  era TEXT NOT NULL,
   basic_req TEXT,
-  expert_req TEXT
+  expert_req TEXT,
+  basic_req_json TEXT,              -- structured AstRequirement
+  expert_req_json TEXT
 );
 
 -- One row; reset on new game
 CREATE TABLE game (
   id INTEGER PRIMARY KEY DEFAULT 1,
-  expert INTEGER NOT NULL DEFAULT 0,
+  expert INTEGER NOT NULL DEFAULT 1,
   current_round INTEGER NOT NULL DEFAULT 1,
   active INTEGER NOT NULL DEFAULT 0,
+  census_revealed INTEGER NOT NULL DEFAULT 0,
+  is_final_round INTEGER NOT NULL DEFAULT 0,
+  cities_phase INTEGER NOT NULL DEFAULT 0,
+  admin_password TEXT,
   started_at TEXT
 );
 
@@ -102,19 +107,24 @@ CREATE TABLE players (
   civ_id INTEGER NOT NULL REFERENCES civs(id),
   name TEXT NOT NULL,
   military INTEGER NOT NULL DEFAULT 0,
+  wonder INTEGER NOT NULL DEFAULT 0,
   ast_level INTEGER NOT NULL DEFAULT 0,
   adv_points INTEGER NOT NULL DEFAULT 0,
-  city_count INTEGER NOT NULL DEFAULT 0,
-  wonder INTEGER NOT NULL DEFAULT 0,
-  region TEXT NOT NULL
+  adv_1vp INTEGER NOT NULL DEFAULT 0,
+  adv_3vp INTEGER NOT NULL DEFAULT 0,
+  adv_6vp INTEGER NOT NULL DEFAULT 0,
+  region TEXT NOT NULL,
+  rank_order INTEGER NOT NULL DEFAULT 0,
+  late_iron_age_bonus INTEGER NOT NULL DEFAULT 0
 );
 
 -- One row per player per round
 CREATE TABLE census (
   id INTEGER PRIMARY KEY,
-  player_id INTEGER NOT NULL REFERENCES players(id),
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
   round INTEGER NOT NULL,
   population INTEGER,               -- NULL until submitted
+  city_count INTEGER,               -- NULL until submitted; re-entered post-calamity
   submitted_at TEXT,
   UNIQUE(player_id, round)
 );
@@ -127,20 +137,31 @@ CREATE TABLE census (
 All mutating endpoints require the `mett_admin` session cookie. Player census and city-count submissions are public (players act on their own pages without admin access).
 
 ```
-GET  /api/state                Full game state
-GET  /api/civs                 All 18 empires (for admin setup)
-POST /api/game/start           Start game {expert, players:[{civ_id,name,region}]}
-POST /api/game/round/next      Advance to next round
-POST /api/game/reset           Reset game
-POST /api/census/reveal        Force census reveal
-POST /api/players/:id/census   Submit census {population}
-POST /api/players/:id/city-count  Update city count {city_count}
-POST /api/players/:id/military Toggle Military advance
-POST /api/players/:id/wonder   Toggle Wonder of the World
-POST /api/players/:id/ast      Set A.S.T. level {level}
-POST /api/players/:id/adv      Set Advance VP {adv_points}
-POST /api/players/:id/name     Rename player {name}
+GET  /api/state                    Full game state
+GET  /api/civs                     All 18 empires (for admin setup)
+GET  /api/setup-recommendations    West/East/Combined scenarios by player count
+POST /api/game/start               Start game {expert, players:[{civ_id,name,region}]}
+POST /api/game/round/next          Advance to next round
+POST /api/game/reset               Reset game {confirm}
+POST /api/game/cities/clear        Clear city counts, enter post-calamity phase
+POST /api/census/reveal            Force census reveal
+POST /api/players/:id/census       Submit census {population}   (public)
+POST /api/players/:id/city-count   Update city count {city_count}  (public)
+POST /api/players/:id/military     Toggle Military advance       (public)
+POST /api/players/:id/wonder       Toggle Wonder of the World    (public)
+POST /api/players/:id/adv          Set Advance cards {adv_1vp, adv_3vp, adv_6vp}  (public)
+POST /api/players/:id/ast          Set A.S.T. level {level}
+POST /api/players/:id/name         Rename player {name}
+POST /api/players/:id/rank         Set tie-break rank {rank_order, …}
+POST /api/players/:id/late-iron-age-bonus  Grant/revoke 5 VP LIA bonus
+POST /api/debug/simulate           [DEV] Simulate N rounds
+POST /api/debug/census             [DEV] Randomise current-round census
+POST /api/debug/cities             [DEV] Randomise current-round cities
+POST /api/debug/advances           [DEV] Simulate advance purchases
+POST /api/debug/set-round          [DEV] Jump to round N
 ```
+
+Endpoints marked (public) are callable without the admin cookie so players can submit from their own page. All others require the `mett_admin` session cookie.
 
 Every mutating endpoint broadcasts a `state_update` WebSocket event after writing to the database.
 
@@ -195,15 +216,18 @@ Environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_PATH` | `./db/mett.db` | Path to the SQLite database file |
+| `DATABASE_PATH` | `./data/mett.db` | Path to the SQLite database file |
 | `PORT` | `3000` | Port the HTTP server listens on |
+| `ADMIN_PASSWORD` | `PASSWORD` | Seeded on first boot; persisted in DB and changeable from the admin UI |
 
 ---
 
 ## Running with Docker
 
+The production compose file runs four named service instances (katja, arne, dag, me) behind a bundled Caddy reverse proxy that obtains Let's Encrypt certificates automatically. Each instance has an isolated SQLite database mounted at `~/docker/mett/{instance}/`.
+
 ```bash
-# Build and start
+# Build and start all instances + Caddy
 docker compose -f docker/docker-compose.yml up -d
 
 # View logs
@@ -213,14 +237,7 @@ docker compose -f docker/docker-compose.yml logs -f
 docker compose -f docker/docker-compose.yml down
 ```
 
-The database is stored in `./data/mett.db` on the host via a volume mount.
-
-For HTTPS with Caddy:
-
-```bash
-# Edit docker/Caddyfile first — replace mett.yourdomain.com with your domain
-docker compose -f docker/docker-compose.caddy.yml up -d
-```
+To point the instances at your own domains, edit `docker/Caddyfile` and the service names/volume paths in `docker/docker-compose.yml`.
 
 ---
 
@@ -247,7 +264,7 @@ python3 tests/simulate.py
 
 The script runs several complete games against the live server over the HTTP API, verifying census flow, move order, A.S.T. progression, Wonder logic, LIA bonuses and final scoring. It takes roughly 30 seconds. Run it when changing game logic.
 
-The admin password used by the simulation defaults to `password` and can be overridden:
+The admin password used by the simulation defaults to `PASSWORD` and can be overridden:
 
 ```bash
 METT_ADMIN_PASSWORD=secret python3 tests/simulate.py
