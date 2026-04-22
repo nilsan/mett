@@ -59,4 +59,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`METT running on http://localhost:${PORT}`);
+console.log(`me[tt] running on http://localhost:${PORT}`);

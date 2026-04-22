@@ -1,4 +1,4 @@
--- METT: Mega Empires Turn Tracker
+-- me[tt]: Mega Empires Turn Tracker
 -- Database schema
 
 -- Static civilization reference data (seeded at startup, never changes at runtime)

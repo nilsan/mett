@@ -1,4 +1,4 @@
-# METT — Claude Code Notes
+# me[tt] — Claude Code Notes
 
 ## Dev Server
 
@@ -11,7 +11,7 @@ The server auto-reloads on file changes (Bun's `--watch` flag). After editing so
 The following are always allowed without prompting the user:
 
 - **`bun`** — any `bun` command (`bun test`, `bun run`, `bun install`, etc.)
-- **`curl`** — any `curl` command to the METT application (`https://mett.nottseter.no/...` and `http://localhost:3000/`)
+- **`curl`** — any `curl` command to the me[tt] application (`https://mett.nottseter.no/...` and `http://localhost:3000/`)
 - **Selenium / Chromium** — any headless Selenium run against `http://localhost:3000/`, whether invoked directly or via a `python3` or `bash` script
 - **`python3`** — any `python3` script that uses `json` (e.g. parsing API responses, inline Selenium scripts with JSON data)
 

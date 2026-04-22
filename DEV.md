@@ -1,4 +1,4 @@
-# METT — Developer Documentation
+# me[tt] — Developer Documentation
 
 This document covers the architecture, technology choices, and how to build, run and test the application.
 

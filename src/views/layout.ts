@@ -8,7 +8,7 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <meta name="description" content="Real-time census, leaderboard and A.S.T. tracker for Mega Empires board game sessions.">
   <meta property="og:title" content="${title === 'Mega Empires Turn Tracker' ? title : `${title} — Mega Empires Turn Tracker`}">
   <meta property="og:description" content="Real-time census, leaderboard and A.S.T. tracker for Mega Empires board game sessions.">
-  <meta property="og:site_name" content="Mega Empires Turn Tracker">
+  <meta property="og:site_name" content="me[tt]">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <link rel="stylesheet" href="/css/style.css">
 </head>

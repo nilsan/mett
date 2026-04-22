@@ -1,5 +1,5 @@
 /**
- * METT WebSocket client — shared by all pages.
+ * me[tt] WebSocket client — shared by all pages.
  * Connects to the server, auto-reconnects on disconnect,
  * and dispatches a CustomEvent('mett:state') on every update.
  */
@@ -14,7 +14,7 @@
 
     ws.addEventListener('open', () => {
       reconnectDelay = 1000;
-      console.debug('[METT] WebSocket connected');
+      console.debug('[me[tt]] WebSocket connected');
     });
 
     ws.addEventListener('message', (event) => {
@@ -32,7 +32,7 @@
     });
 
     ws.addEventListener('close', () => {
-      console.debug(`[METT] WebSocket closed — reconnecting in ${reconnectDelay}ms`);
+      console.debug(`[me[tt]] WebSocket closed — reconnecting in ${reconnectDelay}ms`);
       setTimeout(connect, reconnectDelay);
       reconnectDelay = Math.min(reconnectDelay * 2, MAX_DELAY);
     });

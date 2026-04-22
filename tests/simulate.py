@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-METT end-to-end game simulations via API.
+me[tt] end-to-end game simulations via API.
 
   SIM 1 — 6-player Basic: late-start civs (Celt/Iberia) at MBA levels 35/40,
            LIA bonus when all hit 70 simultaneously, game end at 75.
@@ -892,7 +892,7 @@ def run_sim(fn):
 
 
 if __name__ == '__main__':
-    print("METT Simulation Suite")
+    print("me[tt] Simulation Suite")
     print("=" * 50)
     try:
         requests.get(f"{BASE}/api/state", timeout=2)

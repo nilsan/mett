@@ -1,13 +1,13 @@
-# METT — Mega Empires Turn Tracker
+# me[tt] — Mega Empires Turn Tracker
 
-METT is a real-time web app for playing **Mega Empires: The West & The East** — the civilisation-building board game for 3–18 players that typically runs over two full days. It replaces the manual bookkeeping of population census, move order, Advance VP and A.S.T. progress with a shared live display that everyone can see and interact with from their own device.
+**me[tt]** is a real-time web app for playing **Mega Empires: The West & The East** — the civilisation-building board game for 3–18 players that typically runs over two full days. It replaces the manual bookkeeping of population census, move order, Advance VP and A.S.T. progress with a shared live display that everyone can see and interact with from their own device.
 
-> **Before you start — use this alongside METT:**
+> **Before you start — use this alongside me[tt]:**
 > Matt Crawford's **[Mega Empires Calculator](https://calculator.mega-empires.com/)** is the best tool available for planning Civilization Advance purchases. Keep it open on a tablet or laptop throughout your session — it makes buying decisions dramatically easier.
 
 ---
 
-## What METT tracks
+## What me[tt] tracks
 
 - **Census** — each player submits their own population count each round from their phone; the shared display stays hidden until everyone has reported, then reveals automatically
 - **Move order** — players are sorted by population (lowest moves first), with Military advance holders always moving last
@@ -56,7 +56,7 @@ Game data is saved in the `data/` folder and survives restarts.
 Open **http://localhost:3000/admin** on the device that will act as the game master (typically a laptop).
 
 1. Choose **Expert** or **Basic** mode
-2. Enter the number of players and click **Apply recommended civs** — METT pre-selects the correct civilisations from the official scenario table
+2. Enter the number of players and click **Apply recommended civs** — me[tt] pre-selects the correct civilisations from the official scenario table
 3. Adjust the selection manually if you want
 4. Assign a player name to each civilisation
 5. Click **Start Game**
@@ -115,7 +115,7 @@ Find your IP in your system's network settings. On Mac: System Settings → Wi-F
 
 ### HTTPS setup
 
-If you want to run METT on a public server with a real domain name:
+If you want to run me[tt] on a public server with a real domain name:
 
 1. Point your domain's DNS to the server
 2. Edit `docker/Caddyfile` and replace `mett.yourdomain.com` with your domain
