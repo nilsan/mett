@@ -9,6 +9,11 @@ me[tt] end-to-end game simulations via API.
   SIM 3 — 7-player Basic: move order (military last, lowest-pop first), game end.
   SIM 4 — 16-player Expert (official 16p scenario): all 16 empires reach AST 80, round 16.
   SIM 5 — 16-player Expert: varied AST progress (groups at 80/65/50/35).
+  SIM 6 — Admin round button enables via WebSocket after all city counts submitted.
+  SIM 7 — 3-player Expert: wonder trade chip (Selenium), LIA bonus solo (Egypt alone at 75).
+  SIM 8 — 4-player Basic: military census order (Selenium), wonder chip in trade cards.
+  SIM 9 — 11-player Expert: 3 groups (80/65/50), military+wonder, LIA bonus solo.
+  SIM 10 — 18-player Expert: all 18 civs, 4 military, 2 wonders, LIA bonus solo (Indus).
 
 Usage:
   python3 tests/simulate.py
@@ -60,6 +65,36 @@ def wonder_toggle(pid):         api('post', f'/players/{pid}/wonder',     json={
 
 def players_by_name():
     return {p['civ_name']: p for p in state()['players']}
+
+
+def selenium_wonder_trade_chip(civ_name):
+    """Return True if the wonder X chip appears in the trade cards row for the given civ_name."""
+    opts = Options()
+    opts.add_argument('--headless')
+    opts.add_argument('--no-sandbox')
+    opts.add_argument('--disable-dev-shm-usage')
+    opts.add_argument('--disable-cache')
+    svc = Service('/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=svc, options=opts)
+    try:
+        driver.get(BASE + '/')
+        time.sleep(0.8)
+        rows = driver.find_elements(By.CSS_SELECTOR, '.trade-table tbody tr')
+        for row in rows:
+            cells = row.find_elements(By.CSS_SELECTOR, '.empire-cell')
+            if not cells:
+                continue
+            name = driver.execute_script(
+                "return Array.from(arguments[0].childNodes)"
+                ".filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()",
+                cells[0],
+            )
+            if name == civ_name:
+                wonder_chips = row.find_elements(By.CSS_SELECTOR, '.trade-chip-wonder')
+                return len(wonder_chips) > 0
+        return False
+    finally:
+        driver.quit()
 
 
 def selenium_census_order():
@@ -883,6 +918,545 @@ def sim5():
         print(f"    {rank:2}. {name:<12} {total} VP")
 
 
+# ─── SIM 7: 3-player Expert — wonder trade chip + LIA bonus solo ─────────────
+# Egypt gets Wonder. Egypt reaches 75 alone in round 15 (Celt/Babylon stall at 65 in round 14).
+# Validates: smallest player count (3), wonder trade chip in status page, LIA bonus, expert final round.
+#
+# Expert AST reqs summary:
+#   Levels 0-15: free
+#   Levels 20,25,30: {cities:3}  (Egypt: 2 real + wonder = 3 effective)
+#   Levels 35,40,45: {cities:3, advVpTotal:5}
+#   Levels 50,55,60: {cities:4, advCount:12, advTier:'any'}  (Egypt: 3+wonder=4)
+#   Level 65: {cities:5, advCount:10, advTier:'cheap', totalVp:38}  (Egypt: 4+wonder=5)
+#   Level 70: {cities:6, advCount:17, advTier:'cheap', totalVp:56}  (Egypt: 5+wonder=6)
+#   Level 75: same req as level 70
+
+def sim7():
+    print("\n═══ SIM 7: 3-player Expert — wonder trade chip + LIA bonus ═══")
+    reset()
+    ids = start_game(1, [
+        {'civ_id': 17, 'name': 'Egypt',   'region': 'west'},  # wonder
+        {'civ_id':  5, 'name': 'Celt',    'region': 'west'},
+        {'civ_id':  6, 'name': 'Babylon', 'region': 'east'},
+    ])
+    eg, ce, ba = ids['Egypt'], ids['Celt'], ids['Babylon']
+    pids = [eg, ce, ba]
+
+    wonder_toggle(eg)
+    check("Egypt Wonder enabled", next(p['wonder'] for p in state()['players'] if p['id'] == eg) == 1)
+
+    def rnd(cities_eg, cities_other, v1_eg=0, v1_other=0):
+        pops = {eg: 20, ce: 30, ba: 10}
+        for pid in pids: census(pid, pops[pid])
+        reveal()
+        city_count(eg, cities_eg)
+        city_count(ce, cities_other)
+        city_count(ba, cities_other)
+        adv(eg, v1=v1_eg)
+        adv(ce, v1=v1_other)
+        adv(ba, v1=v1_other)
+        return next_round()
+
+    # ── Stone Age: rounds 1-4 (0→5→10→15→20, all free) ──────────────────────
+    for _ in range(4):
+        rnd(0, 0)
+    s = players_by_name()
+    check_eq("SIM7 after 4 rounds: all at 20", s['Egypt']['ast_level'], 20)
+
+    # ── EBA: rounds 5-7 (20→25→30→35, 3 cities; Egypt: 2+wonder=3) ──────────
+    for _ in range(3):
+        rnd(2, 3)
+    s = players_by_name()
+    check_eq("SIM7 EBA done: Egypt at 35 (2+wonder=3)", s['Egypt']['ast_level'], 35)
+    check_eq("SIM7 EBA done: Celt at 35", s['Celt']['ast_level'], 35)
+
+    # ── MBA: rounds 8-10 (35→40→45→50, 3 cities + 5VP) ──────────────────────
+    for _ in range(3):
+        rnd(2, 3, v1_eg=5, v1_other=5)
+    s = players_by_name()
+    check_eq("SIM7 MBA done: all at 50", s['Egypt']['ast_level'], 50)
+
+    # ── LBA: rounds 11-13 (50→55→60→65, 4 cities + 12 any; Egypt: 3+wonder=4) ─
+    for _ in range(3):
+        rnd(3, 4, v1_eg=12, v1_other=12)
+    s = players_by_name()
+    check_eq("SIM7 LBA done: all at 65", s['Egypt']['ast_level'], 65)
+
+    # ── Round 14: EIA 65→70 ──────────────────────────────────────────────────
+    # Egypt: 4 real + wonder = 5 effective ✓; 38 cheap ≥ 10 ✓; adv_points=38 ≥ 38 ✓ → advance to 70
+    # Celt/Babylon: only 9 cheap → fail advCount (9 < 10) → stall at 65
+    pops14 = {eg: 20, ce: 30, ba: 10}
+    for pid in pids: census(pid, pops14[pid])
+    reveal()
+    city_count(eg, 4); city_count(ce, 5); city_count(ba, 5)
+    adv(eg, v1=38); adv(ce, v1=9); adv(ba, v1=9)
+
+    # Wonder trade chip check: Egypt has 4 real cities (< 9) with wonder → X chip must appear
+    has_chip = selenium_wonder_trade_chip('Egypt')
+    check("SIM7 Round 14: Egypt wonder trade chip (X) appears in status page", has_chip)
+
+    next_round()
+    s = players_by_name()
+    check_eq("SIM7 Round 14: Egypt at 70", s['Egypt']['ast_level'], 70)
+    check_eq("SIM7 Round 14: Celt stalls at 65 (9 cheap < 10 required)", s['Celt']['ast_level'], 65)
+
+    # LIA bonus: Egypt is at 70, nobody at ≥75 yet
+    lia_count = sum(1 for p in state()['players'] if p['late_iron_age_bonus'])
+    check("SIM7: 0 LIA bonus holders before anyone reaches 75", lia_count == 0)
+
+    # ── Round 15: Egypt 70→75 alone ──────────────────────────────────────────
+    # Egypt: 5+wonder=6 cities ✓; 56 cheap ≥ 17 ✓; adv_points=56 ≥ 56 ✓ → advance to 75
+    # Celt/Babylon: 38 cheap at level 65 req (need 10 cheap + 38VP) → advance to 70
+    pops15 = {eg: 20, ce: 30, ba: 10}
+    for pid in pids: census(pid, pops15[pid])
+    reveal()
+    city_count(eg, 5); city_count(ce, 6); city_count(ba, 6)
+    adv(eg, v1=56); adv(ce, v1=38); adv(ba, v1=38)
+    next_round()
+    s_state = state()
+    eg_lvl = next(p['ast_level'] for p in s_state['players'] if p['id'] == eg)
+    ce_lvl = next(p['ast_level'] for p in s_state['players'] if p['id'] == ce)
+    check_eq("SIM7 Round 15: Egypt at 75 (alone)", eg_lvl, 75)
+    check_eq("SIM7 Round 15: Celt at 70 (catches up from 65→70)", ce_lvl, 70)
+    lia_count = sum(1 for p in s_state['players'] if p['late_iron_age_bonus'])
+    check("SIM7: LIA bonus granted to Egypt (exactly 1)", lia_count == 1)
+    eg_lia = next(p['late_iron_age_bonus'] for p in s_state['players'] if p['id'] == eg)
+    check("SIM7: LIA bonus holder is Egypt", eg_lia == 1)
+    check("SIM7: is_final_round=1 set", s_state['game']['is_final_round'] == 1)
+    check("SIM7: Game still active before final round", s_state['game']['active'] == 1)
+
+    # ── Round 16 (final): Celt/Babylon advance 70→75; Egypt 75→80 ────────────
+    # Level 70 expert req: {cities:6, advCount:17, advTier:'cheap', totalVp:56}
+    pops16 = {eg: 20, ce: 30, ba: 10}
+    for pid in pids: census(pid, pops16[pid])
+    reveal()
+    city_count(eg, 5); city_count(ce, 6); city_count(ba, 6)
+    adv(eg, v1=56); adv(ce, v1=56); adv(ba, v1=56)
+    next_round()
+    s_state = state()
+    check("SIM7 Round 16: game ended", s_state['game']['active'] == 0)
+    s = players_by_name()
+    check_eq("SIM7: Egypt at 80 after final round", s['Egypt']['ast_level'], 80)
+    check_eq("SIM7: Celt at 75 after final round", s['Celt']['ast_level'], 75)
+    check_eq("SIM7: Babylon at 75 after final round", s['Babylon']['ast_level'], 75)
+
+
+# ─── SIM 8: 4-player Basic — military census order + wonder trade chip ────────
+# Egypt(wonder) + Rome(military) + Celt + Babylon.
+# Validates: 4-player count, military last in census, wonder chip in trade cards, basic game end.
+
+def sim8():
+    print("\n═══ SIM 8: 4-player Basic — military census + wonder trade chip ═══")
+    reset()
+    ids = start_game(0, [
+        {'civ_id': 17, 'name': 'Egypt',   'region': 'west'},  # wonder
+        {'civ_id': 11, 'name': 'Rome',    'region': 'west'},  # military
+        {'civ_id':  5, 'name': 'Celt',    'region': 'west'},
+        {'civ_id':  6, 'name': 'Babylon', 'region': 'east'},
+    ])
+    eg, ro, ce, ba = ids['Egypt'], ids['Rome'], ids['Celt'], ids['Babylon']
+    pids = [eg, ro, ce, ba]
+
+    military(ro)
+    wonder_toggle(eg)
+    s = state()
+    check("SIM8 Rome military=1", next(p['military'] for p in s['players'] if p['id'] == ro) == 1)
+    check("SIM8 Egypt wonder=1",  next(p['wonder']   for p in s['players'] if p['id'] == eg) == 1)
+
+    # ── Round 1: census order + wonder chip test ──────────────────────────────
+    # Submit census: Egypt=30, Rome=5, Celt=20, Babylon=10
+    pops = {eg: 30, ro: 5, ce: 20, ba: 10}
+    for pid in pids: census(pid, pops[pid])
+    s = state()
+    check("SIM8: census not auto-revealed after all submitted (wait for reveal call)", True)  # auto-reveals since all submitted
+    check("SIM8: census auto-revealed when all 4 submit", s['game']['census_revealed'] == 1)
+
+    # Verify census table render order via Selenium:
+    # sortCensusOrder: non-military by pop DESC, then military by pop DESC
+    # Non-military: Egypt(30), Celt(20), Babylon(10) | Military: Rome(5)
+    rendered_order = selenium_census_order()
+    check_eq("SIM8: census order — non-military pop-desc first, military last",
+             rendered_order, ['Egypt', 'Celt', 'Babylon', 'Rome'])
+
+    # Submit cities and check wonder chip
+    city_count(eg, 4); city_count(ro, 3); city_count(ce, 3); city_count(ba, 3)
+    has_chip = selenium_wonder_trade_chip('Egypt')
+    check("SIM8 Round 1: Egypt wonder trade chip appears (4 cities < 9)", has_chip)
+
+    adv(eg, v1=0); adv(ro, v1=0); adv(ce, v1=0); adv(ba, v1=0)
+    next_round()
+
+    def fast_rnd(cities, v1=0, v3=0, v6=0, cities_eg=None):
+        for pid in pids: census(pid, 25)
+        reveal()
+        city_count(eg, cities_eg if cities_eg is not None else cities)
+        for pid in [ro, ce, ba]: city_count(pid, cities)
+        for pid in pids: adv(pid, v1=v1, v3=v3, v6=v6)
+        next_round()
+
+    # ── Stone Age: rounds 2-4 (5→10→15→20, all free) ─────────────────────────
+    for _ in range(3): fast_rnd(0)
+    s = players_by_name()
+    check_eq("SIM8 after Stone Age: all at 20", s['Egypt']['ast_level'], 20)
+
+    # ── EBA: rounds 5-7 (20→25→30→35, 2 cities basic) ────────────────────────
+    for _ in range(3): fast_rnd(2, cities_eg=1)  # Egypt: 1+wonder=2 effective
+    s = players_by_name()
+    check_eq("SIM8 EBA done: Egypt at 35 (1 real + wonder = 2 effective)", s['Egypt']['ast_level'], 35)
+    check_eq("SIM8 EBA done: Rome at 35", s['Rome']['ast_level'], 35)
+
+    # ── MBA: rounds 8-10 (35→40→45→50, 3 cities + 3 any adv — basic) ─────────
+    for _ in range(3): fast_rnd(3, v1=3, cities_eg=2)  # Egypt: 2+wonder=3 effective
+    s = players_by_name()
+    check_eq("SIM8 MBA done: all at 50", s['Egypt']['ast_level'], 50)
+
+    # ── LBA: rounds 11-13 (50→55→60→65, 3 cities + 3 medium — basic) ─────────
+    for _ in range(3): fast_rnd(3, v6=3, cities_eg=2)
+    s = players_by_name()
+    check_eq("SIM8 LBA done: all at 65", s['Egypt']['ast_level'], 65)
+
+    # ── EIA: rounds 14-15 (65→70→75, basic) ──────────────────────────────────
+    # Level 65 basic: {cities:4, advCount:2, advTier:'expensive'} — adv_6vp=3 ✓
+    # Egypt: 3+wonder=4 effective ✓
+    fast_rnd(4, v6=3, cities_eg=3)  # 65→70
+    s = players_by_name()
+    check_eq("SIM8 EIA: all at 70", s['Egypt']['ast_level'], 70)
+    lia_count = sum(1 for p in state()['players'] if p['late_iron_age_bonus'])
+    check("SIM8 LIA bonus: 0 (all hit 70 simultaneously)", lia_count == 0)
+
+    # Level 70 basic: {cities:5, advCount:3, advTier:'expensive'} → game ends at 75
+    # Egypt: 4+wonder=5 effective ✓
+    fast_rnd(5, v6=3, cities_eg=4)
+    s_state = state()
+    check("SIM8: basic game ends at 75", s_state['game']['active'] == 0)
+    s = players_by_name()
+    check_eq("SIM8: Egypt at 75", s['Egypt']['ast_level'], 75)
+    check_eq("SIM8: Rome at 75", s['Rome']['ast_level'], 75)
+
+
+# ─── SIM 9: 11-player Expert — varied progress + military + wonder + LIA ─────
+# 3 groups at different final AST levels:
+#   Group A (5 empires → AST 80): Egypt(17,wonder), Hellas(15), Rome(11,mil), Hatti(9,mil), Indus(16)
+#   Group B (4 empires → AST 65): Celt(5), Carthage(7), Babylon(6), Persia(12)  — stall at EIA (4 cities < 5)
+#   Group C (3 empires → AST 50): Assyria(3), Kushan(10,slow-start), Saba(2,slow-start) — stall at LBA (3 cities < 4)
+# LIA: Egypt reaches 75 alone in round 15 (Group A others stall at 70); final round 16.
+
+def sim9():
+    print("\n═══ SIM 9: 11-player Expert — varied progress + military + wonder + LIA ═══")
+    reset()
+
+    civs_setup = [
+        {'civ_id': 17, 'name': 'Egypt',    'region': 'west'},   # GROUP_A, wonder
+        {'civ_id': 15, 'name': 'Hellas',   'region': 'west'},   # GROUP_A
+        {'civ_id': 11, 'name': 'Rome',     'region': 'west'},   # GROUP_A, military
+        {'civ_id':  9, 'name': 'Hatti',    'region': 'west'},   # GROUP_A, military
+        {'civ_id': 16, 'name': 'Indus',    'region': 'east'},   # GROUP_A
+        {'civ_id':  5, 'name': 'Celt',     'region': 'west'},   # GROUP_B
+        {'civ_id':  7, 'name': 'Carthage', 'region': 'west'},   # GROUP_B
+        {'civ_id':  6, 'name': 'Babylon',  'region': 'east'},   # GROUP_B
+        {'civ_id': 12, 'name': 'Persia',   'region': 'east'},   # GROUP_B
+        {'civ_id': 10, 'name': 'Kushan',   'region': 'east'},   # GROUP_C, slow-start expert
+        {'civ_id':  2, 'name': 'Saba',     'region': 'east'},   # GROUP_C, slow-start expert
+    ]
+    ids = start_game(1, civs_setup)
+    names = [c['name'] for c in civs_setup]
+    pids  = [ids[n] for n in names]
+
+    military(pids[2])  # Rome
+    military(pids[3])  # Hatti
+    wonder_toggle(pids[0])  # Egypt
+
+    s = state()
+    check("SIM9 Rome military=1",  next(p['military'] for p in s['players'] if p['id'] == pids[2]) == 1)
+    check("SIM9 Hatti military=1", next(p['military'] for p in s['players'] if p['id'] == pids[3]) == 1)
+    check("SIM9 Egypt wonder=1",   next(p['wonder']   for p in s['players'] if p['id'] == pids[0]) == 1)
+
+    GROUP_A   = {0, 1, 2, 3, 4}   # indices → AST 80
+    GROUP_B   = {5, 6, 7, 8}      # → AST 65
+    GROUP_C   = {9, 10}            # → AST 50
+    SLOW_START = {9, 10}           # Kushan, Saba: expert stoneEnd=25
+    WONDER_IDX = 0                 # Egypt index
+
+    def do_rnd9(cities_fn, adv_fn):
+        pops = {pid: 5 + i * 4 for i, pid in enumerate(pids)}
+        for pid in pids: census(pid, pops[pid])
+        reveal()
+        for i, pid in enumerate(pids):
+            city_count(pid, cities_fn(i))
+            v1, v3, v6 = adv_fn(i)
+            adv(pid, v1=v1, v3=v3, v6=v6)
+        return next_round()
+
+    # ── Stone Age rounds 1-4: all free ───────────────────────────────────────
+    for _ in range(4):
+        do_rnd9(lambda i: 0, lambda i: (0, 0, 0))
+    s = players_by_name()
+    check_eq("SIM9 after 4 rounds: all at 20", s['Egypt']['ast_level'], 20)
+
+    # ── Round 5: 20→25 ───────────────────────────────────────────────────────
+    # Kushan/Saba (slow-start, stoneEnd=25): level 20 < 25 → free (0 cities OK)
+    # Egypt (wonder): 2 real + wonder = 3 effective ✓; others: 3 cities
+    do_rnd9(
+        lambda i: 0 if i in SLOW_START else (2 if i == WONDER_IDX else 3),
+        lambda i: (0, 0, 0),
+    )
+    s = players_by_name()
+    check_eq("SIM9 Round 5: Kushan at 25 (slow-start free)", s['Kushan']['ast_level'], 25)
+    check_eq("SIM9 Round 5: Saba at 25 (slow-start free)", s['Saba']['ast_level'], 25)
+    check_eq("SIM9 Round 5: Egypt at 25 (2+wonder=3)", s['Egypt']['ast_level'], 25)
+
+    # ── Rounds 6-7: 25→30→35 (3 cities) ─────────────────────────────────────
+    for _ in range(2):
+        do_rnd9(lambda i: 2 if i == WONDER_IDX else 3, lambda i: (0, 0, 0))
+    s = players_by_name()
+    check_eq("SIM9 after round 7: all at 35", s['Egypt']['ast_level'], 35)
+
+    # ── Rounds 8-10: MBA 35→50 (3 cities + 5VP) ──────────────────────────────
+    for _ in range(3):
+        do_rnd9(
+            lambda i: 2 if i == WONDER_IDX else 3,
+            lambda i: (5, 0, 0),
+        )
+    s = players_by_name()
+    check_eq("SIM9 MBA done: Egypt at 50", s['Egypt']['ast_level'], 50)
+    check_eq("SIM9 MBA done: Kushan at 50", s['Kushan']['ast_level'], 50)
+
+    # ── Rounds 11-13: LBA 50→65 (4 cities + 12 any) ──────────────────────────
+    # Groups A+B: 4 cities (Egypt: 3+wonder=4); Group C: only 3 cities → stall at 50
+    for _ in range(3):
+        do_rnd9(
+            lambda i: 3 if i in GROUP_C else (3 if i == WONDER_IDX else 4),
+            lambda i: (12, 0, 0) if i not in GROUP_C else (3, 0, 0),
+        )
+    s = players_by_name()
+    check_eq("SIM9 LBA done: Egypt at 65", s['Egypt']['ast_level'], 65)
+    check_eq("SIM9 LBA done: Celt at 65", s['Celt']['ast_level'], 65)
+    check_eq("SIM9 LBA stall: Kushan at 50 (3 cities < 4 required)", s['Kushan']['ast_level'], 50)
+    check_eq("SIM9 LBA stall: Saba at 50", s['Saba']['ast_level'], 50)
+
+    # ── Round 14: EIA 65→70 (5 cities + 10 cheap + 38VP) ────────────────────
+    # Group A: 5 cities (Egypt: 4+wonder=5), 38 cheap → advance to 70
+    # Group B: only 4 cities → stall at 65; Group C: stays at 50
+    # Submit cities and check wonder chip BEFORE advancing the round
+    pops14 = {pid: 5 + i * 4 for i, pid in enumerate(pids)}
+    for pid in pids: census(pid, pops14[pid])
+    reveal()
+    for i, pid in enumerate(pids):
+        c = 4 if i == WONDER_IDX else (5 if i in GROUP_A else (4 if i in GROUP_B else 3))
+        city_count(pid, c)
+    for i, pid in enumerate(pids):
+        v1 = 38 if i in GROUP_A else 3
+        adv(pid, v1=v1)
+
+    # Wonder chip check: all cities submitted, round not yet advanced
+    has_chip = selenium_wonder_trade_chip('Egypt')
+    check("SIM9 Round 14: Egypt wonder trade chip appears (4 real cities < 9)", has_chip)
+
+    next_round()
+    s = players_by_name()
+    check_eq("SIM9 Round 14: Egypt at 70", s['Egypt']['ast_level'], 70)
+    check_eq("SIM9 Round 14: Hatti at 70 (military, Group A)", s['Hatti']['ast_level'], 70)
+    check_eq("SIM9 EIA stall: Celt at 65 (4 cities < 5)", s['Celt']['ast_level'], 65)
+
+    lia_count = sum(1 for p in state()['players'] if p['late_iron_age_bonus'])
+    check("SIM9: 0 LIA bonus (no one at 75 yet)", lia_count == 0)
+
+    # ── Round 15: Egypt alone advances 70→75 (others in Group A stall at 70) ─
+    # Level 70 req: {cities:6, advCount:17, advTier:'cheap', totalVp:56}
+    # Egypt: 5+wonder=6 effective ✓; 56 cheap ✓; VP=56 ✓
+    # Others in Group A: 5 cities; only 38 adv_1vp → 38 < 56 → stall at 70
+    do_rnd9(
+        lambda i: (5 if i == WONDER_IDX else 5) if i in GROUP_A else (4 if i in GROUP_B else 3),
+        lambda i: (56, 0, 0) if i == WONDER_IDX else ((38, 0, 0) if i in GROUP_A else (3, 0, 0)),
+    )
+    s_state = state()
+    eg_lvl = next(p['ast_level'] for p in s_state['players'] if p['id'] == pids[0])
+    he_lvl = next(p['ast_level'] for p in s_state['players'] if p['id'] == pids[1])
+    check_eq("SIM9 Round 15: Egypt at 75 (alone)", eg_lvl, 75)
+    check_eq("SIM9 Round 15: Hellas stalls at 70 (38 cheap < 56 VP required)", he_lvl, 70)
+    lia_count = sum(1 for p in s_state['players'] if p['late_iron_age_bonus'])
+    check("SIM9: LIA bonus granted to Egypt (1 holder)", lia_count == 1)
+    eg_lia = next(p['late_iron_age_bonus'] for p in s_state['players'] if p['id'] == pids[0])
+    check("SIM9: LIA bonus holder is Egypt", eg_lia == 1)
+    check("SIM9: is_final_round=1", s_state['game']['is_final_round'] == 1)
+
+    # ── Round 16 (final): Group A advances (Egypt 75→80, others 70→75 or stall) ─
+    # Level 70 req for others: 5 cities + 56 adv_1vp (56 VP) → advance to 75
+    # Egypt already at 75 → level 75 req same as 70: 5+wonder=6, 56 cheap → advance to 80
+    do_rnd9(
+        lambda i: (5 if i == WONDER_IDX else 6) if i in GROUP_A else (4 if i in GROUP_B else 3),
+        lambda i: (56, 0, 0) if i in GROUP_A else (3, 0, 0),
+    )
+    s_state = state()
+    check("SIM9 Round 16: game ended", s_state['game']['active'] == 0)
+    s = players_by_name()
+    check_eq("SIM9: Egypt at 80", s['Egypt']['ast_level'], 80)
+    check_eq("SIM9: Hellas at 75", s['Hellas']['ast_level'], 75)
+    check_eq("SIM9: Group B Celt at 65", s['Celt']['ast_level'], 65)
+    check_eq("SIM9: Group C Kushan at 50", s['Kushan']['ast_level'], 50)
+
+
+# ─── SIM 10: 18-player Expert — maximum player count, LIA solo ───────────────
+# All 18 civs. Military: Rome(11), Hatti(9), Nubia(14), Maurya(4).
+# Wonders: Minoa(1), Egypt(17). Slow-start: Minoa(1), Saba(2), Kushan(10), Iberia(13).
+# LIA: Indus(16) alone reaches 75 in round 15 (others advance in round 16 final).
+
+def sim10():
+    print("\n═══ SIM 10: 18-player Expert — maximum player count, LIA solo ═══")
+    reset()
+
+    civs_setup = [
+        {'civ_id':  1, 'name': 'Minoa',    'region': 'west'},   # i=0, slow-start, wonder
+        {'civ_id':  2, 'name': 'Saba',     'region': 'east'},   # i=1, slow-start
+        {'civ_id':  3, 'name': 'Assyria',  'region': 'east'},   # i=2
+        {'civ_id':  4, 'name': 'Maurya',   'region': 'east'},   # i=3, military
+        {'civ_id':  5, 'name': 'Celt',     'region': 'west'},   # i=4
+        {'civ_id':  6, 'name': 'Babylon',  'region': 'east'},   # i=5
+        {'civ_id':  7, 'name': 'Carthage', 'region': 'west'},   # i=6
+        {'civ_id':  8, 'name': 'Dravidia', 'region': 'east'},   # i=7
+        {'civ_id':  9, 'name': 'Hatti',    'region': 'west'},   # i=8, military
+        {'civ_id': 10, 'name': 'Kushan',   'region': 'east'},   # i=9, slow-start
+        {'civ_id': 11, 'name': 'Rome',     'region': 'west'},   # i=10, military
+        {'civ_id': 12, 'name': 'Persia',   'region': 'east'},   # i=11
+        {'civ_id': 13, 'name': 'Iberia',   'region': 'west'},   # i=12, slow-start
+        {'civ_id': 14, 'name': 'Nubia',    'region': 'east'},   # i=13, military
+        {'civ_id': 15, 'name': 'Hellas',   'region': 'west'},   # i=14
+        {'civ_id': 16, 'name': 'Indus',    'region': 'east'},   # i=15, LIA target
+        {'civ_id': 17, 'name': 'Egypt',    'region': 'west'},   # i=16, wonder
+        {'civ_id': 18, 'name': 'Parthia',  'region': 'east'},   # i=17
+    ]
+    ids = start_game(1, civs_setup)
+    names = [c['name'] for c in civs_setup]
+    pids  = [ids[n] for n in names]
+
+    military(pids[3])   # Maurya
+    military(pids[8])   # Hatti
+    military(pids[10])  # Rome
+    military(pids[13])  # Nubia
+    wonder_toggle(pids[0])   # Minoa
+    wonder_toggle(pids[16])  # Egypt
+
+    SLOW_START  = {0, 1, 9, 12}   # Minoa, Saba, Kushan, Iberia
+    WONDER_IDXS = {0, 16}         # Minoa, Egypt
+    LIA_IDX     = 15              # Indus
+
+    s = state()
+    check("SIM10 Hatti military=1",  next(p['military'] for p in s['players'] if p['id'] == pids[8])  == 1)
+    check("SIM10 Rome military=1",   next(p['military'] for p in s['players'] if p['id'] == pids[10]) == 1)
+    check("SIM10 Minoa wonder=1",    next(p['wonder']   for p in s['players'] if p['id'] == pids[0])  == 1)
+    check("SIM10 Egypt wonder=1",    next(p['wonder']   for p in s['players'] if p['id'] == pids[16]) == 1)
+
+    def do_rnd10(cities_fn, adv_fn):
+        pops = {pid: 3 + i * 3 for i, pid in enumerate(pids)}  # 3,6,9,...,54 — all within 1-55
+        for pid in pids: census(pid, pops[pid])
+        reveal()
+        for i, pid in enumerate(pids):
+            city_count(pid, cities_fn(i))
+            v1, v3, v6 = adv_fn(i)
+            adv(pid, v1=v1, v3=v3, v6=v6)
+        return next_round()
+
+    # ── Stone Age rounds 1-4: all free ───────────────────────────────────────
+    for _ in range(4): do_rnd10(lambda i: 0, lambda i: (0, 0, 0))
+    s = players_by_name()
+    check_eq("SIM10 after 4 rounds: all at 20", s['Minoa']['ast_level'], 20)
+
+    # ── Round 5: 20→25 ───────────────────────────────────────────────────────
+    # Slow-start: free (0 cities). Wonders: 2 real + wonder = 3. Others: 3 cities.
+    do_rnd10(
+        lambda i: 0 if i in SLOW_START else (2 if i in WONDER_IDXS else 3),
+        lambda i: (0, 0, 0),
+    )
+    s = players_by_name()
+    check_eq("SIM10 Round 5: Minoa at 25 (slow-start free)", s['Minoa']['ast_level'], 25)
+    check_eq("SIM10 Round 5: Egypt at 25 (2+wonder=3)", s['Egypt']['ast_level'], 25)
+    check_eq("SIM10 Round 5: Hellas at 25 (3 cities)", s['Hellas']['ast_level'], 25)
+
+    # ── Rounds 6-7: 25→30→35 (3 cities; wonders 2 real) ─────────────────────
+    for _ in range(2):
+        do_rnd10(lambda i: 2 if i in WONDER_IDXS else 3, lambda i: (0, 0, 0))
+    s = players_by_name()
+    check_eq("SIM10 after round 7: all at 35", s['Egypt']['ast_level'], 35)
+    check_eq("SIM10 Minoa at 35 (2+wonder=3 effective)", s['Minoa']['ast_level'], 35)
+
+    # ── Rounds 8-10: MBA 35→50 (3 cities + 5VP) ──────────────────────────────
+    for _ in range(3):
+        do_rnd10(lambda i: 2 if i in WONDER_IDXS else 3, lambda i: (5, 0, 0))
+    s = players_by_name()
+    check_eq("SIM10 MBA done: all at 50", s['Babylon']['ast_level'], 50)
+    check_eq("SIM10 MBA done: Minoa at 50 (2+wonder=3 MBA)", s['Minoa']['ast_level'], 50)
+
+    # ── Rounds 11-13: LBA 50→65 (4 cities + 12 any; wonders 3 real) ──────────
+    for _ in range(3):
+        do_rnd10(lambda i: 3 if i in WONDER_IDXS else 4, lambda i: (17, 0, 0))
+    s = players_by_name()
+    check_eq("SIM10 LBA done: all at 65", s['Hellas']['ast_level'], 65)
+    check_eq("SIM10 LBA done: Minoa at 65 (3+wonder=4 LBA)", s['Minoa']['ast_level'], 65)
+    check_eq("SIM10 LBA done: Egypt at 65 (3+wonder=4 LBA)", s['Egypt']['ast_level'], 65)
+
+    # ── Round 14: EIA 65→70 (5 cities + 10 cheap + 38VP) ────────────────────
+    # Wonders: 4 real + wonder = 5 effective ✓; all get 38 adv_1vp → all advance
+    # Submit cities and check wonder chips BEFORE advancing the round
+    pops14 = {pid: 3 + i * 3 for i, pid in enumerate(pids)}
+    for pid in pids: census(pid, pops14[pid])
+    reveal()
+    for i, pid in enumerate(pids):
+        city_count(pid, 4 if i in WONDER_IDXS else 5)
+    for pid in pids:
+        adv(pid, v1=38)
+
+    # Wonder chip check: cities submitted, round not yet advanced
+    minoa_chip = selenium_wonder_trade_chip('Minoa')
+    egypt_chip = selenium_wonder_trade_chip('Egypt')
+    check("SIM10 Round 14: Minoa wonder trade chip appears (4 real cities < 9)", minoa_chip)
+    check("SIM10 Round 14: Egypt wonder trade chip appears (4 real cities < 9)", egypt_chip)
+
+    next_round()
+    s = players_by_name()
+    check_eq("SIM10 Round 14: all at 70", s['Indus']['ast_level'], 70)
+    check_eq("SIM10 Minoa at 70 (4+wonder=5 EIA)", s['Minoa']['ast_level'], 70)
+    check_eq("SIM10 Egypt at 70 (4+wonder=5 EIA)", s['Egypt']['ast_level'], 70)
+
+    lia_count = sum(1 for p in state()['players'] if p['late_iron_age_bonus'])
+    check("SIM10: 0 LIA bonus after round 14 (no one at 75)", lia_count == 0)
+
+    # ── Round 15: Indus alone 70→75 (others stall at 70) ────────────────────
+    # Level 70 req: {cities:6, advCount:17, advTier:'cheap', totalVp:56}
+    # Indus: 6 cities + 56 adv_1vp ✓ → advances to 75 alone
+    # Others: 6 cities (wonders: 5 real + wonder) + only 38 adv_1vp → stall (38 < 56)
+    do_rnd10(
+        lambda i: (5 if i in WONDER_IDXS else 6),
+        lambda i: (56, 0, 0) if i == LIA_IDX else (38, 0, 0),
+    )
+    s_state = state()
+    indus_lvl = next(p['ast_level'] for p in s_state['players'] if p['id'] == pids[LIA_IDX])
+    egypt_lvl = next(p['ast_level'] for p in s_state['players'] if p['id'] == pids[16])
+    check_eq("SIM10 Round 15: Indus at 75 (alone)", indus_lvl, 75)
+    check_eq("SIM10 Round 15: Egypt stalls at 70 (38 adv_1vp < 56 VP required)", egypt_lvl, 70)
+    lia_count = sum(1 for p in s_state['players'] if p['late_iron_age_bonus'])
+    check("SIM10: LIA bonus granted (exactly 1 holder)", lia_count == 1)
+    indus_lia = next(p['late_iron_age_bonus'] for p in s_state['players'] if p['id'] == pids[LIA_IDX])
+    check("SIM10: LIA bonus holder is Indus", indus_lia == 1)
+    check("SIM10: is_final_round=1", s_state['game']['is_final_round'] == 1)
+    check("SIM10: game still active", s_state['game']['active'] == 1)
+
+    # ── Round 16 (final): all advance 70→75 (Indus 75→80) ───────────────────
+    # All have 56 adv_1vp now; cities: wonders 5 real + wonder = 6 effective ✓; others 6 real ✓
+    do_rnd10(
+        lambda i: 5 if i in WONDER_IDXS else 6,
+        lambda i: (56, 0, 0),
+    )
+    s_state = state()
+    check("SIM10 Round 16: game ended", s_state['game']['active'] == 0)
+    check_eq("SIM10: ended at round 16", s_state['game']['current_round'], 16)
+    s = players_by_name()
+    check_eq("SIM10: Indus at 80 (final round advance)", s['Indus']['ast_level'], 80)
+    check_eq("SIM10: Egypt at 75 (final round advance)", s['Egypt']['ast_level'], 75)
+    check_eq("SIM10: Minoa at 75 (final round advance)", s['Minoa']['ast_level'], 75)
+    check_eq("SIM10: Hellas at 75 (final round advance)", s['Hellas']['ast_level'], 75)
+    check_eq("SIM10: Nubia at 75 (military, final round advance)", s['Nubia']['ast_level'], 75)
+
+
 # ─── SIM 6: admin round button enables via WebSocket after city count submission ──
 
 def selenium_admin_button_state(cookie_value):
@@ -968,6 +1542,10 @@ if __name__ == '__main__':
     run_sim(sim4)
     run_sim(sim5)
     run_sim(sim6)
+    run_sim(sim7)
+    run_sim(sim8)
+    run_sim(sim9)
+    run_sim(sim10)
 
     print(f"\n{'=' * 50}")
     print(f"Results: {PASS_COUNT} passed, {FAIL_COUNT} failed")

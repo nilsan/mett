@@ -84,9 +84,11 @@ export function renderCivFragment(
   const playerScore = makeScoreEntry(leaderboardSorted[playerIdx]!, censusMap.get(leaderboardSorted[playerIdx]!.id) ?? 0);
   let groupStart = playerIdx;
   while (groupStart > 0 && sameScoreGroup(makeScoreEntry(leaderboardSorted[groupStart - 1]!, censusMap.get(leaderboardSorted[groupStart - 1]!.id) ?? 0), playerScore)) groupStart--;
-  const lbTied = playerIdx > groupStart ||
-    (playerIdx + 1 < leaderboardSorted.length && sameScoreGroup(playerScore, makeScoreEntry(leaderboardSorted[playerIdx + 1]!, censusMap.get(leaderboardSorted[playerIdx + 1]!.id) ?? 0)));
-  const lbPos = groupStart + 1;
+  let groupEnd = playerIdx;
+  while (groupEnd + 1 < leaderboardSorted.length && sameScoreGroup(playerScore, makeScoreEntry(leaderboardSorted[groupEnd + 1]!, censusMap.get(leaderboardSorted[groupEnd + 1]!.id) ?? 0))) groupEnd++;
+  const lbTied = groupEnd > playerIdx || playerIdx > groupStart;
+  const lbResolved = lbTied && leaderboardSorted.slice(groupStart, groupEnd + 1).every(p => p.rank_order !== 0);
+  const lbPos = lbResolved ? playerIdx + 1 : groupStart + 1;
 
   // Final rank (game-over only): tie-group start position, matching status/admin pages
   const finalRank = (game.active !== 0 || !game.started_at) ? null : lbPos;
@@ -206,7 +208,7 @@ export function renderCivFragment(
       <h3>A.S.T. Progress</h3>
       <div class="ast-current">
         <span class="ast-level-label">Leaderboard position:</span>
-        <span class="ast-level-value">${lbTied ? '=' : ''}${lbPos}${ordinal(lbPos)}</span>
+        <span class="ast-level-value">${lbTied && !lbResolved ? '=' : ''}${lbPos}${ordinal(lbPos)}</span>
         <span class="ast-era">of ${state.players.length}</span>
       </div>
       <div class="ast-current">

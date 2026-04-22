@@ -111,8 +111,8 @@ export function renderMain(state: FullState): string {
   const lbRows = leaderboard.map((p, i) => {
     const { displayRank, tied, groupStart, resolved } = lbMeta[i]!;
     const unresolved = tied && !resolved;
-    const rankCell = tied
-      ? `<td class="rank rank-tie" title="${unresolved ? 'Manual resolution needed' : ''}">${unresolved ? `=${displayRank}` : displayRank}</td>`
+    const rankCell = unresolved
+      ? `<td class="rank rank-tie" title="Manual resolution needed">=${displayRank}</td>`
       : `<td class="rank">${displayRank}</td>`;
     const rowClass = [unresolved ? 'lb-tied' : '', groupStart && i > 0 ? 'lb-group-start' : ''].filter(Boolean).join(' ');
     return `<tr${rowClass ? ` class="${rowClass}"` : ''}>

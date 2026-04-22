@@ -73,7 +73,7 @@ export function computeTieGroupMeta(entries: Array<ScoreEntry & { rank_order: nu
     const tied = groupSize > 1;
     const resolved = tied && entries.slice(gi, gj + 1).every(e => e.rank_order !== 0);
     for (let k = gi; k <= gj; k++) {
-      meta[k] = { displayRank: pos, tied, groupStart: k === gi, resolved };
+      meta[k] = { displayRank: resolved ? pos + (k - gi) : pos, tied, groupStart: k === gi, resolved };
     }
     pos += groupSize;
     gi = gj + 1;
