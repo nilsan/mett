@@ -14,34 +14,43 @@ CREATE TABLE IF NOT EXISTS civs (
 
 -- AST level definitions (seeded at startup)
 CREATE TABLE IF NOT EXISTS ast_levels (
-  level       INTEGER PRIMARY KEY,   -- 0, 5, 10, … 80
-  era         TEXT    NOT NULL,       -- "Stone Age", "Early Bronze Age", etc.
-  basic_req   TEXT,
-  expert_req  TEXT
+  level            INTEGER PRIMARY KEY,   -- 0, 5, 10, … 80
+  era              TEXT    NOT NULL,       -- "Stone Age", "Early Bronze Age", etc.
+  basic_req        TEXT,                   -- human-readable description
+  expert_req       TEXT,
+  basic_req_json   TEXT,                   -- structured AstRequirement (see services/db.ts)
+  expert_req_json  TEXT
 );
 
 -- One active game (id always 1, reset on new game start)
 CREATE TABLE IF NOT EXISTS game (
-  id            INTEGER PRIMARY KEY DEFAULT 1,
-  expert        INTEGER NOT NULL DEFAULT 1,  -- 1=expert (default), 0=basic
-  current_round INTEGER NOT NULL DEFAULT 1,
-  active        INTEGER NOT NULL DEFAULT 0,  -- 0=setup, 1=active
-  census_revealed INTEGER NOT NULL DEFAULT 0, -- 0=hidden, 1=revealed for current round
-  cities_phase  INTEGER NOT NULL DEFAULT 0,   -- 0=pre-trade, 1=post-calamity
-  started_at    TEXT
+  id              INTEGER PRIMARY KEY DEFAULT 1,
+  expert          INTEGER NOT NULL DEFAULT 1,  -- 1=expert (default), 0=basic
+  current_round   INTEGER NOT NULL DEFAULT 1,
+  active          INTEGER NOT NULL DEFAULT 0,  -- 0=setup, 1=active
+  census_revealed INTEGER NOT NULL DEFAULT 0,  -- 0=hidden, 1=revealed for current round
+  is_final_round  INTEGER NOT NULL DEFAULT 0,  -- expert only: LIA reached, one more round
+  cities_phase    INTEGER NOT NULL DEFAULT 0,  -- 0=pre-trade, 1=post-calamity
+  admin_password  TEXT,                        -- seeded from ADMIN_PASSWORD env on first boot
+  started_at      TEXT
 );
 INSERT OR IGNORE INTO game (id, expert, current_round, active) VALUES (1, 1, 1, 0);
 
 -- Active players in current game
 CREATE TABLE IF NOT EXISTS players (
-  id          INTEGER PRIMARY KEY,
-  civ_id      INTEGER NOT NULL REFERENCES civs(id),
-  name        TEXT    NOT NULL,
-  military    INTEGER NOT NULL DEFAULT 0,
-  wonder      INTEGER NOT NULL DEFAULT 0,
-  ast_level   INTEGER NOT NULL DEFAULT 0,  -- current AST points (0,5,10...80)
-  adv_points  INTEGER NOT NULL DEFAULT 0,  -- total civilization advance VP
-  region      TEXT    NOT NULL             -- "west" or "east" for this game (may differ from default)
+  id                   INTEGER PRIMARY KEY,
+  civ_id               INTEGER NOT NULL REFERENCES civs(id),
+  name                 TEXT    NOT NULL,
+  military             INTEGER NOT NULL DEFAULT 0,
+  wonder               INTEGER NOT NULL DEFAULT 0,
+  ast_level            INTEGER NOT NULL DEFAULT 0,  -- current AST points (0,5,10...80)
+  adv_points           INTEGER NOT NULL DEFAULT 0,  -- total civilization advance VP
+  adv_1vp              INTEGER NOT NULL DEFAULT 0,  -- count of <100 VP advances
+  adv_3vp              INTEGER NOT NULL DEFAULT 0,  -- count of ≥100 VP advances
+  adv_6vp              INTEGER NOT NULL DEFAULT 0,  -- count of ≥200 VP advances
+  region               TEXT    NOT NULL,            -- "west" or "east" for this game
+  rank_order           INTEGER NOT NULL DEFAULT 0,  -- 0=unresolved; nonzero=admin tie-break rank
+  late_iron_age_bonus  INTEGER NOT NULL DEFAULT 0   -- 5 VP bonus for simultaneous LIA finish
 );
 
 -- Census entries per player per round

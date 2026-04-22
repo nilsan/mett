@@ -45,6 +45,10 @@ export function getDb(): Database {
   const schema = readFileSync(join(import.meta.dir, '..', '..', 'db', 'schema.sql'), 'utf8');
   _db.exec(schema);
 
+  // Backward-compat column additions for databases created before the column
+  // was added to schema.sql. Every column below is part of the canonical
+  // schema now; these ALTERs no-op on fresh installs (duplicate column name
+  // is swallowed) but upgrade older DBs in place.
   function migrate(sql: string) {
     try { _db!.exec(sql); } catch (e: any) {
       if (!String(e?.message).includes('duplicate column name')) throw e;
