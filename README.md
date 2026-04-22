@@ -1,36 +1,35 @@
 # METT — Mega Empires Turn Tracker
 
-A real-time web app for tracking census, leaderboard and A.S.T. progress during a game of **Mega Empires: The West & The East** (3–18 players).
+METT is a real-time web app for playing **Mega Empires: The West & The East** — the civilisation-building board game for 3–18 players that typically runs over two full days. It replaces the manual bookkeeping of population census, move order, Advance VP and A.S.T. progress with a shared live display that everyone can see and interact with from their own device.
 
-> **Before you start — you really should use this:**
-> Matt Crawford's **[Mega Empires Calculator](https://calculator.mega-empires.com/)** is an excellent tool for calculating Civilization Advance purchases. We strongly recommend having it open alongside METT throughout your game. It makes advance buying so much easier.
+> **Before you start — use this alongside METT:**
+> Matt Crawford's **[Mega Empires Calculator](https://calculator.mega-empires.com/)** is the best tool available for planning Civilization Advance purchases. Keep it open on a tablet or laptop throughout your session — it makes buying decisions dramatically easier.
 
 ---
 
-## What does METT do?
+## What METT tracks
 
-- **Census tracking** — each player submits their own population count on their personal page; the main display stays hidden until everyone has reported
-- **Move order** — automatically sorts players by population (lowest first), with Military advance holders moving last
-- **Leaderboard** — ranked by Advance VP
-- **A.S.T. tracking** — tracks each player's position on the Archaeological Succession Table, shows what they need to advance
-- **Live updates** — all screens update automatically via WebSocket; no manual refreshing needed
-- **Admin controls** — start games, advance rounds, toggle Military, adjust A.S.T. positions
+- **Census** — each player submits their own population count each round from their phone; the shared display stays hidden until everyone has reported, then reveals automatically
+- **Move order** — players are sorted by population (lowest moves first), with Military advance holders always moving last
+- **Leaderboard** — live ranking by Advance VP
+- **A.S.T. progress** — each player's position on the Archaeological Succession Table, with their requirements for the next level shown on their personal page
+- **Live updates** — every screen updates automatically; no manual refreshing
 
 ---
 
 ## What you need
 
-You need **Docker Desktop** installed on your computer. It is free for personal use.
+**Docker Desktop** — free for personal use.
 
 → [Download Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-That's it. No other software needed.
+That's it. No other software required.
 
 ---
 
-## Quick Start
+## Quick start
 
-Open a terminal (on Mac: Terminal app; on Windows: PowerShell or Command Prompt) and run these three commands:
+Open a terminal and run:
 
 ```bash
 git clone https://github.com/nilsan/mett.git
@@ -38,82 +37,88 @@ cd mett
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-Then open your browser and go to:
+Then open **http://localhost:3000** in your browser.
 
-```
-http://localhost:3000
-```
-
-To stop METT:
+To stop:
 
 ```bash
 docker compose -f docker/docker-compose.yml down
 ```
 
-Your game data is saved in the `data/` folder and will still be there next time you start.
+Game data is saved in the `data/` folder and survives restarts.
 
 ---
 
-## How to use
+## User guide
 
-### Setting up a game (Admin)
+### Admin setup
 
-1. Open `http://localhost:3000/admin` on the admin device (typically a laptop)
-2. Choose **Expert** or **Basic** mode (Expert is the default and recommended for experienced players)
-3. Enter the number of players and click **Apply recommended civs** — METT pre-selects the right civilizations based on the official scenarios
-4. You can change the selection manually if needed
-5. Enter each player's name next to their civilization
-6. Click **Start Game**
+Open **http://localhost:3000/admin** on the device that will act as the game master (typically a laptop).
+
+1. Choose **Expert** or **Basic** mode
+2. Enter the number of players and click **Apply recommended civs** — METT pre-selects the correct civilisations from the official scenario table
+3. Adjust the selection manually if you want
+4. Assign a player name to each civilisation
+5. Click **Start Game**
+
+The admin panel is also where you will manage the game round-by-round.
+
+### The main display
+
+Put **http://localhost:3000** on a shared screen or TV. It shows:
+
+| Column | What it shows |
+|---|---|
+| **Census** | Who has submitted (✓) and who hasn't (⏳). Population counts stay hidden until everyone has reported. After reveal, players are listed in move order. |
+| **Leaderboard** | Ranked by Advance VP. |
+| **A.S.T. ranking** | Ranked by A.S.T. level, with VP as the tiebreak. |
+
+All three columns update live as players submit.
 
 ### Player pages
 
-Each player bookmarks their own civilization's page, for example:
-- `http://localhost:3000/egypt`
-- `http://localhost:3000/rome`
-- `http://localhost:3000/hellas`
+Every player bookmarks their own civilisation's page, for example:
 
-On their page they can:
-- Submit their census (population count) each round
+```
+http://localhost:3000/egypt
+http://localhost:3000/rome
+http://localhost:3000/hellas
+```
+
+From their page a player can:
+- Submit their census count each round
 - Update their Advance VP total
-- See their current A.S.T. position and exactly what they need to advance
+- See their current A.S.T. position and exactly what they need to reach the next level
 
-### Main display
+### Running a round
 
-The main page at `http://localhost:3000` is typically shown on a shared screen or TV. It shows three tables:
-- **Census** — who has submitted (✓) and who hasn't (⏳); population counts hidden until all submitted
-- **Leaderboard** — ranked by Advance VP
-- **A.S.T. Ranking** — ranked by A.S.T. position
+1. Players submit census from their own pages
+2. The main display shows a tick as each one comes in
+3. Once all are submitted, move order is revealed automatically
+4. Play the round — players update their Advance VP after purchasing
+5. Admin clicks **Advance to Round N+1** when the round ends
 
-### Round flow (Admin)
+The admin can also:
+- Toggle the **Military** advance per player (⚔)
+- Adjust **A.S.T. positions** with +/− buttons
+- **Force reveal** census early if a player is unavailable
 
-1. Players submit their census on their own pages
-2. Once all have submitted, the census reveals and move order is shown
-3. When the round is done, the admin clicks **Advance to Round N+1**
-4. The admin can also:
-   - Toggle the **Military** advance on/off per player (⚔ icon)
-   - Adjust **A.S.T. positions** with the +/− buttons
-   - **Force reveal** census early if needed
+### Using phones and tablets
 
----
-
-## Running on your local network
-
-If players want to use their phones or tablets, make sure all devices are on the same Wi-Fi network and use your computer's local IP address instead of `localhost`. For example:
+All devices must be on the same Wi-Fi network. Use your computer's local IP address instead of `localhost`, for example:
 
 ```
 http://192.168.1.42:3000/egypt
 ```
 
-You can find your computer's local IP in your network settings.
+Find your IP in your system's network settings. On Mac: System Settings → Wi-Fi → Details. On Windows: `ipconfig` in PowerShell.
 
----
+### HTTPS setup
 
-## HTTPS setup (advanced)
+If you want to run METT on a public server with a real domain name:
 
-For running METT over the internet with a real domain name and automatic HTTPS:
-
-1. Make sure your domain DNS points to your server
-2. Edit `docker/Caddyfile` and replace `mett.yourdomain.com` with your actual domain
+1. Point your domain's DNS to the server
+2. Edit `docker/Caddyfile` and replace `mett.yourdomain.com` with your domain
 3. Run:
 
 ```bash
@@ -128,6 +133,9 @@ Caddy handles TLS certificates automatically via Let's Encrypt.
 
 MIT — Copyright © 2025 [Nils-Anders Nøttseter](https://github.com/nilsan) & [Roe Nøttseter](https://github.com/roenoe)
 
-This project is inspired by the original [METool](https://github.com/roenoe/METool) by Roe Nøttseter.
-
+Inspired by the original [METool](https://github.com/roenoe/METool) by Roe Nøttseter.
 Mega Empires is a game by Flo de Haan and Gerart de Haan.
+
+---
+
+[Developer documentation →](DEV.md)
