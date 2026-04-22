@@ -31,6 +31,23 @@ app.route('/api', api);
 // Page routes
 app.route('/', pages);
 
+// 404 handler — JSON for API paths, minimal HTML otherwise
+app.notFound((c) => {
+  if (c.req.path.startsWith('/api/')) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+  return c.html('<!doctype html><meta charset="utf-8"><title>Not found</title><p>Not found. <a href="/">Back to overview</a>.</p>', 404);
+});
+
+// Top-level error handler — never leak stack traces to clients
+app.onError((err, c) => {
+  console.error(`[me[tt]] ${c.req.method} ${c.req.path} →`, err);
+  if (c.req.path.startsWith('/api/')) {
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+  return c.html('<!doctype html><meta charset="utf-8"><title>Error</title><p>Something went wrong. <a href="/">Back to overview</a>.</p>', 500);
+});
+
 const PORT = Number(process.env.PORT ?? 3000);
 
 const server = Bun.serve({
