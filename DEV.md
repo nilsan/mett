@@ -2,7 +2,7 @@
 
 This document covers the architecture, technology choices, and how to build, run and test the application.
 
-For the user-facing guide see [README.md](README.md).
+For the user-facing guide see [README.md](README.md). For which game rules are implemented see [RULES.md](RULES.md).
 
 ---
 
@@ -162,8 +162,8 @@ Every mutating endpoint broadcasts a `state_update` WebSocket event after writin
 
 ```
 sort players by:
-  1. military ASC   (non-military moves first)
-  2. population ASC (lowest population moves first within each group)
+  1. military ASC    (non-military moves first)
+  2. population DESC (highest population moves first within each group)
 ```
 
 Census is hidden from all clients until every player in the game has submitted, at which point the server reveals it and the sort order updates live.
@@ -172,9 +172,11 @@ Census is hidden from all clients until every player in the game has submitted, 
 
 ## A.S.T. advancement
 
-A.S.T. level requirements are stored as structured data in `src/models/ast.ts` (not freeform text). Each level specifies minimum cities, minimum Advance VP, and minimum count of ≥100 VP and ≥200 VP advances. Auto-advancement runs server-side after each VP or city-count update: if a player meets the next level's requirements they are automatically bumped up.
+A.S.T. level requirements are stored as structured data in `src/models/ast.ts` (not freeform text). Each level specifies minimum cities, minimum Advance VP, and minimum count of ≥100 VP and ≥200 VP advances. Auto-advancement runs server-side after each VP or city-count update: if a player meets the next level's requirements they are automatically bumped up. In Expert mode, a player with 0 effective cities outside the Stone Age automatically regresses one level.
 
-The Wonder of the World grants +1 city VP toward A.S.T. requirements.
+Each round has a two-phase city count: players submit a pre-trade count, then re-submit a post-calamity count after calamities resolve. The post-calamity count is what drives A.S.T. checks. The admin uses "Prepare for A.S.T." to transition between phases.
+
+The Wonder of the World grants +1 effective city toward all A.S.T. requirements (advancement and regression checks), but does not count as a city for final VP scoring.
 
 ---
 
