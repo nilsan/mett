@@ -323,8 +323,6 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
   const censusCount = census.filter(c => c.population != null).length;
   const citiesCount = census.filter(c => c.city_count != null).length;
   const allCitiesReady = n > 0 && citiesCount === n;
-  // Pre-trade phase complete = all cities in AND not yet cleared for post-calamity
-  const showPrepareAst = allCitiesReady && !citiesPhase;
 
   const playerRows = players.map(p => {
     const c = census.find(x => x.player_id === p.id);
@@ -409,16 +407,16 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
       </div>
     </div>
     <div class="round-controls">
-      ${showPrepareAst
-        ? `<button id="prepare-ast" class="btn-primary">Prepare for AST — Round ${game.current_round}</button>`
-        : `<button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled'}>
-        ${isFinalRound ? 'End Game' : `Advance to Round ${game.current_round + 1}`}
-      </button>`
+      ${citiesPhase
+        ? `<button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled'}>
+          ${isFinalRound ? 'End Game' : `Advance to Round ${game.current_round + 1}`}
+        </button>`
+        : `<button id="prepare-ast" class="btn-primary"${allCitiesReady ? '' : ' disabled'}>Trading &amp; calamities done →</button>`
       }
       <span class="round-hint">
         ${citiesPhase
-          ? 'All empires must submit post-calamity city count before advancing'
-          : 'Submit city count before trading, then use Prepare for AST to collect post-calamity counts'
+          ? 'Each empire re-enters city count after calamities. Click Advance when all are submitted.'
+          : 'Each empire submits pre-trade city count. Click the button above after trading and calamities are done.'
         }
       </span>
     </div>

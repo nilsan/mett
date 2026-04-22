@@ -6,19 +6,19 @@ For the user guide see [README.md](README.md). For architecture and development 
 
 ---
 
-## Civilisations
+## Empires
 
 ### Selection by player count
 
-The official scenario table defines which civilisations participate for each player count (3–18). me[tt] uses the exact recommended set and pre-selects them in the admin setup wizard. The admin can override the selection manually.
+The official scenario table defines which empires participate for each player count (3–18). me[tt] uses the exact recommended set and pre-selects them in the admin setup wizard. The admin can override the selection manually.
 
 ### West and East
 
-Each civilisation belongs to a region — West or East. Border civilisations near the centre of the map may be assigned to either region depending on how many players are in the game; the admin sets this during setup.
+Each empire belongs to a region — West or East. Border empires near the centre of the map may be assigned to either region depending on how many players are in the game; the admin sets this during setup.
 
-### Slow-start civilisations
+### Slow-start empires
 
-Some civilisations (Minoa, Saba, Kushan, Iberia) start outside the A.S.T. Stone Age zone used by other civilisations. me[tt] tracks each civilisation's individual Stone Age endpoint and applies free advancement correctly: a slow-start civilisation advances freely through its extended Stone Age without needing to meet the stated requirements.
+Some empires (Minoa, Saba, Kushan, Iberia) start outside the A.S.T. Stone Age zone used by other empires. me[tt] tracks each empire's individual Stone Age endpoint and applies free advancement correctly: a slow-start empire advances freely through its extended Stone Age without needing to meet the stated requirements.
 
 ---
 
@@ -29,7 +29,7 @@ Each round, every player submits their current population count. The counts are 
 **Move order** after reveal:
 1. Non-Military players move first, Military players move last.
 2. Within each group, players with the **highest population move first**.
-3. Ties within a group are broken by civilisation number (ascending).
+3. Ties within a group are broken by empire number (ascending).
 
 The Military Advance is toggled per player by the admin (or by the player from their own page). me[tt] shows the resulting move order on the main display immediately after all census entries are in.
 
@@ -42,7 +42,7 @@ City count is collected twice each round:
 1. **Pre-trade** — players enter their city count after building but before buying trade cards. This is used on the main display (A.S.T. progress board).
 2. **Post-calamity** — after calamities are resolved, players re-enter their city count. This is the count used to check A.S.T. advancement and regression requirements.
 
-The admin uses the **Prepare for A.S.T.** button to transition from the pre-trade phase to the post-calamity phase.
+The admin uses the \*\*Trading & calamities done →\*\* button to transition from the pre-trade phase to the post-calamity phase.
 
 ---
 
@@ -78,7 +78,7 @@ After each city count or Advance VP update, me[tt] checks whether the player now
 
 ### Slow-start free advancement
 
-Civilisations with a later Stone Age end (Minoa, Saba, Kushan, Iberia) advance freely through all Stone Age levels without meeting any stated requirement. me[tt] knows each civilisation's Stone Age endpoint and applies this correctly.
+Empires with a later Stone Age end (Minoa, Saba, Kushan, Iberia) advance freely through all Stone Age levels without meeting any stated requirement. me[tt] knows each empire's Stone Age endpoint and applies this correctly.
 
 ### Regression (Expert mode only)
 
@@ -134,5 +134,4 @@ The following aspects of Mega Empires are handled by the players at the table an
 - **Trade card hand management** — which specific cards a player holds (me[tt] only tracks the count by VP tier)
 - **Calamity resolution** — which calamities fire, who they affect, and their effects (city loss, population loss, etc.)
 - **Advance purchasing logic** — which advances a player can buy given their hand (use the [Mega Empires Calculator](https://calculator.mega-empires.com/) for this)
-- **Succession kingdoms** — any special rules for successor states
 - **Map state** — token placement, territory, conflicts on the board

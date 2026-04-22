@@ -2015,6 +2015,8 @@ button.secondary {
 .trade-table .trade-card-col.not-submitted    { color: #8a3a3a; font-size: 1rem; font-weight: 700; }
 .trade-no-cities { color: var(--mett-muted); font-weight: 400; }
 .trade-no-cards { color: var(--mett-muted); }
+.trade-locked-msg { color: var(--mett-muted); font-size: 0.75rem; padding: 0.5rem 0; margin: 0; }
+.phase-hint { color: var(--mett-muted); font-size: 0.78rem; margin: 0 0 0.4rem; }
 
 /* Trade card chips */
 .trade-chips {

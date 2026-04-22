@@ -1,6 +1,6 @@
 # me[tt] — Mega Empires Turn Tracker
 
-**me[tt]** is a real-time web app for playing **Mega Empires: The West & The East** — the civilisation-building board game for 3–18 players that typically runs over two full days. It replaces the manual bookkeeping of population census, move order, city count, Advance VP and A.S.T. progress with a shared live display that everyone can see and interact with from their own device.
+**me[tt]** is a real-time web app for playing **Mega Empires: The West & The East** — the empire-building board game for 3–18 players that typically runs over two full days. It replaces the manual bookkeeping of population census, move order, city count, Advance VP and A.S.T. progress with a shared live display that everyone can see and interact with from their own device.
 
 > **Before you start — use this alongside me[tt]:**
 > Matt Crawford's **[Mega Empires Calculator](https://calculator.mega-empires.com/)** is the best tool available for planning Civilization Advance purchases. Keep it open on a tablet or laptop throughout your session — it makes buying decisions dramatically easier.
@@ -61,10 +61,12 @@ Game data is saved in the `data/` folder and survives restarts.
 
 Open **http://localhost:3000/admin** on the device that will act as the game master (typically a laptop).
 
+The default admin password is **`password`**. You can change it from the admin page once logged in.
+
 1. Choose **Expert** or **Basic** mode
-2. Enter the number of players and click **Apply recommended civs** — me[tt] pre-selects the correct civilisations from the official scenario table
+2. Enter the number of players and click **Apply recommended civs** — me[tt] pre-selects the correct empires from the official scenario table
 3. Adjust the selection manually if you want
-4. Assign a player name to each civilisation
+4. Assign a player name to each empire
 5. Click **Start Game**
 
 ### The main display
@@ -83,7 +85,7 @@ All panels update live as players submit.
 
 ### Player pages
 
-Every player bookmarks their own civilisation's page, for example:
+Every player bookmarks their own empire's page, for example:
 
 ```
 http://localhost:3000/egypt
@@ -107,7 +109,7 @@ In Expert mode, a player with 0 cities (and no Wonder) outside the Stone Age wil
 2. **Move order reveals** automatically once all are submitted — highest population moves first within each group, Military holders move last
 3. **Pre-trade city count** — players enter their current city count before buying trade cards
 4. **Trade and calamities** take place as normal
-5. **Post-calamity city count** — players re-enter their city count after calamities are resolved; when all are in, the admin clicks **Prepare for A.S.T.**
+5. **Post-calamity city count** — players re-enter their city count after calamities are resolved; when all are in, the admin clicks \*\*Trading & calamities done →\*\*
 6. **A.S.T. advancement** — me[tt] automatically advances (or regresses in Expert) each player based on their post-calamity cities and advances; the admin can override with the A.S.T. dropdown
 7. **Advance VP** — players update their card totals after purchasing
 8. **Admin advances the round** — click **Advance to Round N+1** (or **End Game** in the final round)

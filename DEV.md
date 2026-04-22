@@ -42,7 +42,7 @@ mett/
 │       ├── layout.ts       Base HTML shell (Pico CSS, nav, WS script)
 │       ├── main.ts         Main page (3-column status grid)
 │       ├── admin.ts        Admin page (setup wizard + game controls)
-│       ├── civ.ts          Individual civilisation page
+│       ├── civ.ts          Individual empire page
 │       ├── ast.ts          Full A.S.T. table page
 │       └── trade.ts        Trade card helper fragments
 ├── public/
@@ -51,7 +51,7 @@ mett/
 │       ├── ws-client.js    Shared WebSocket client (auto-reconnect)
 │       ├── main.js         Main page JS
 │       ├── admin.js        Admin page JS
-│       └── civ.js          Civilisation page JS
+│       └── civ.js          Empire page JS
 ├── db/
 │   └── schema.sql          Schema + seed data (civs and A.S.T. levels)
 ├── docker/
@@ -128,7 +128,7 @@ All mutating endpoints require the `mett_admin` session cookie. Player census an
 
 ```
 GET  /api/state                Full game state
-GET  /api/civs                 All 18 civilisations (for admin setup)
+GET  /api/civs                 All 18 empires (for admin setup)
 POST /api/game/start           Start game {expert, players:[{civ_id,name,region}]}
 POST /api/game/round/next      Advance to next round
 POST /api/game/reset           Reset game

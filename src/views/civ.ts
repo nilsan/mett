@@ -242,6 +242,7 @@ export function renderCivFragment(
 
     <section class="civ-section">
       <h3>Cities</h3>
+      <p class="phase-hint">${game.cities_phase === 1 ? 'Post-calamity — enter city count after calamities resolve' : 'Pre-trade — enter city count before buying trade cards'}</p>
       <div class="census-form">
         ${cityCountSubmitted
           ? `<p class="census-submitted">✓ Cities: <strong>${census!.city_count}</strong></p>`

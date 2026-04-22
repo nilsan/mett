@@ -86,6 +86,7 @@ export function renderMain(state: FullState): string {
   }));
 
   const revealed = game.census_revealed === 1;
+  const citiesPhase = game.cities_phase === 1;
   const allCensusSubmitted = players.length > 0 && pwc.every(p => p.census?.population != null);
   const allCitiesSubmitted = players.length > 0 && pwc.every(p => p.city_count != null);
 
@@ -282,17 +283,20 @@ export function renderMain(state: FullState): string {
 
   <section class="table-section">
     <h3>Trade Cards</h3>
-    <table class="mett-table trade-table">
+    ${citiesPhase
+      ? `<p class="trade-locked-msg">Trading complete</p>`
+      : `${westTrade.length > 0 ? `<table class="mett-table trade-table">
       <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
-      <thead><tr><th colspan="2">West</th></tr></thead>
-      <tbody>${tradeRegionRows(westTrade) || '<tr><td colspan="2" style="opacity:0.4">—</td></tr>'}</tbody>
-    </table>
-    <table class="mett-table trade-table trade-east">
+      ${westTrade.length > 0 && eastTrade.length > 0 ? `<thead><tr><th colspan="2">West</th></tr></thead>` : ''}
+      <tbody>${tradeRegionRows(westTrade)}</tbody>
+    </table>` : ''}
+    ${eastTrade.length > 0 ? `<table class="mett-table trade-table${westTrade.length > 0 ? ' trade-east' : ''}">
       <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
-      <thead><tr><th colspan="2">East</th></tr></thead>
-      <tbody>${tradeRegionRows(eastTrade) || '<tr><td colspan="2" style="opacity:0.4">—</td></tr>'}</tbody>
-    </table>
-    <p class="table-hint">${allCitiesSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted`}</p>
+      ${westTrade.length > 0 && eastTrade.length > 0 ? `<thead><tr><th colspan="2">East</th></tr></thead>` : ''}
+      <tbody>${tradeRegionRows(eastTrade)}</tbody>
+    </table>` : ''}
+    <p class="table-hint">${allCitiesSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted`}</p>`
+    }
   </section>
 
   <section class="table-section ast-section">
