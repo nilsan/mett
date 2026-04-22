@@ -13,6 +13,7 @@ The following are always allowed without prompting the user:
 - **`bun`** — any `bun` command (`bun test`, `bun run`, `bun install`, etc.)
 - **`curl`** — any `curl` command to the METT application (`https://mett.nottseter.no/...` and `http://localhost:3000/`)
 - **Selenium / Chromium** — any headless Selenium run against `http://localhost:3000/`, whether invoked directly or via a `python3` or `bash` script
+- **`python3`** — any `python3` script that uses `json` (e.g. parsing API responses, inline Selenium scripts with JSON data)
 
 ## Selenium / Chromium
 

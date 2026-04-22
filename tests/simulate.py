@@ -7,6 +7,8 @@ METT end-to-end game simulations via API.
   SIM 2 — 5-player Expert: slow-start civs (Minoa/Kushan) free through level 20,
            Wonder +1 city, expert MBA stall, LIA bonus to exactly-1, final round.
   SIM 3 — 7-player Basic: move order (military last, lowest-pop first), game end.
+  SIM 4 — 16-player Expert (official 16p scenario): all 16 empires reach AST 80, round 16.
+  SIM 5 — 16-player Expert: varied AST progress (groups at 80/65/50/35).
 
 Usage:
   python3 tests/simulate.py
@@ -511,6 +513,374 @@ def sim3():
     check("Basic game ends when players reach 75", s['game']['active'] == 0)
 
 
+# ─── SIM 4: 16-player Expert, round-16 finish ────────────────────────────────
+# Official 16-player scenario (SETUP_RECOMMENDATIONS[16] in civs.ts):
+#   West: Egypt(17), Hellas(15), Iberia(13), Rome(11), Hatti(9), Carthage(7), Celt(5), Minoa(1)
+#   East: Assyria(3→east override), Kushan(10), Indus(16), Babylon(6), Persia(12), Saba(2), Nubia(14), Parthia(18)
+# Military: Rome(i=3), Hatti(i=4), Nubia(i=14). Wonder: Minoa(i=7).
+# Slow-start (expert stoneEnd=25): Iberia(i=2), Minoa(i=7), Kushan(i=9), Saba(i=13).
+# All 16 empires advance to AST 80 in round 16. LIA bonus: 0 (all hit 70 simultaneously).
+
+def sim4():
+    print("\n═══ SIM 4: 16-player Expert, round-16 finish ═══")
+    reset()
+
+    civs_setup = [
+        {'civ_id': 17, 'name': 'Egypt',    'region': 'west'},   # i=0
+        {'civ_id': 15, 'name': 'Hellas',   'region': 'west'},   # i=1
+        {'civ_id': 13, 'name': 'Iberia',   'region': 'west'},   # i=2, slow-start
+        {'civ_id': 11, 'name': 'Rome',     'region': 'west'},   # i=3, military
+        {'civ_id':  9, 'name': 'Hatti',    'region': 'west'},   # i=4, military
+        {'civ_id':  7, 'name': 'Carthage', 'region': 'west'},   # i=5
+        {'civ_id':  5, 'name': 'Celt',     'region': 'west'},   # i=6
+        {'civ_id':  1, 'name': 'Minoa',    'region': 'west'},   # i=7, slow-start + wonder
+        {'civ_id':  3, 'name': 'Assyria',  'region': 'east'},   # i=8, east override
+        {'civ_id': 10, 'name': 'Kushan',   'region': 'east'},   # i=9, slow-start
+        {'civ_id': 16, 'name': 'Indus',    'region': 'east'},   # i=10
+        {'civ_id':  6, 'name': 'Babylon',  'region': 'east'},   # i=11
+        {'civ_id': 12, 'name': 'Persia',   'region': 'east'},   # i=12
+        {'civ_id':  2, 'name': 'Saba',     'region': 'east'},   # i=13, slow-start
+        {'civ_id': 14, 'name': 'Nubia',    'region': 'east'},   # i=14, military
+        {'civ_id': 18, 'name': 'Parthia',  'region': 'east'},   # i=15
+    ]
+    ids = start_game(1, civs_setup)
+    names = [c['name'] for c in civs_setup]
+    pids  = [ids[n] for n in names]
+
+    military(pids[3])   # Rome
+    military(pids[4])   # Hatti
+    military(pids[14])  # Nubia
+    wonder_toggle(pids[7])  # Minoa
+
+    s = state()
+    check("Rome military=1",   next(p['military'] for p in s['players'] if p['id']==pids[3])  == 1)
+    check("Hatti military=1",  next(p['military'] for p in s['players'] if p['id']==pids[4])  == 1)
+    check("Nubia military=1",  next(p['military'] for p in s['players'] if p['id']==pids[14]) == 1)
+    check("Minoa wonder=1",    next(p['wonder']   for p in s['players'] if p['id']==pids[7])  == 1)
+
+    WONDER_PID   = pids[7]   # Minoa: +1 effective city (not counted in city VP scoring)
+    SLOW_START   = {pids[2], pids[7], pids[9], pids[13]}  # Iberia, Minoa, Kushan, Saba
+
+    def do_rnd(std_cities, v1=0, v3_map=None, city_override=None):
+        pops = {pid: 5 + i*3 for i, pid in enumerate(pids)}  # 5..50, within 1-55 limit
+        for pid in pids: census(pid, pops[pid])
+        reveal()
+        cities = city_override if city_override is not None else {
+            pid: (std_cities - 1 if pid == WONDER_PID and std_cities > 0 else std_cities)
+            for pid in pids
+        }
+        for i, pid in enumerate(pids):
+            city_count(pid, cities[pid])
+            v3 = v3_map[pid] if v3_map else 0
+            adv(pid, v1=v1, v3=v3)
+        return next_round()
+
+    # ── Stone Age rounds 1-4: all null req ───────────────────────────────────
+    for _ in range(4): do_rnd(0)
+    s = players_by_name()
+    check_eq("After 4 rounds: all at 20", s['Minoa']['ast_level'], 20)
+
+    # ── Round 5: 20→25 ───────────────────────────────────────────────────────
+    # Slow-start (stoneEnd=25): level 20 < 25 → free; others need 3 cities
+    city_r5 = {pid: (0 if pid in SLOW_START else
+                     2 if pid == WONDER_PID else 3)
+               for pid in pids}
+    do_rnd(0, city_override=city_r5)
+    s = players_by_name()
+    check_eq("Round 5: Iberia at 25 (slow-start free at level 20)", s['Iberia']['ast_level'], 25)
+    check_eq("Round 5: Minoa at 25 (slow-start free)", s['Minoa']['ast_level'], 25)
+    check_eq("Round 5: Kushan at 25 (slow-start free)", s['Kushan']['ast_level'], 25)
+    check_eq("Round 5: Saba at 25 (slow-start free)", s['Saba']['ast_level'], 25)
+    check_eq("Round 5: Celt at 25 (3 cities, no late-start in expert)", s['Celt']['ast_level'], 25)
+
+    # ── Rounds 6-7: 25→30→35 (3 cities, no advances) ────────────────────────
+    for _ in range(2): do_rnd(3)
+    s = players_by_name()
+    check_eq("After round 7: all at 35", s['Iberia']['ast_level'], 35)
+    check_eq("Minoa at 35 (2 real + 1 wonder = 3 effective)", s['Minoa']['ast_level'], 35)
+
+    # ── Rounds 8-10: 35→40→45→50 (MBA: 3 cities + 5 VP) ────────────────────
+    for _ in range(3): do_rnd(3, v1=5)
+    s = players_by_name()
+    check_eq("After MBA (round 10): all at 50", s['Babylon']['ast_level'], 50)
+    check_eq("Minoa at 50 (wonder: 2 real = 3 effective)", s['Minoa']['ast_level'], 50)
+
+    # ── Rounds 11-13: 50→55→60→65 (LBA: 4 cities + 12 any advances) ─────────
+    # 17 cheap satisfies "12 any" (17 ≥ 12). Minoa: 3 real + 1 wonder = 4 effective.
+    for _ in range(3): do_rnd(4, v1=17)
+    s = players_by_name()
+    check_eq("After LBA (round 13): all at 65", s['Hellas']['ast_level'], 65)
+    check_eq("Minoa at 65 (3 real + 1 wonder = 4 effective LBA)", s['Minoa']['ast_level'], 65)
+
+    # ── Round 14: 65→70 (EIA: 5 cities + 10 cheap + 38 VP total) ────────────
+    # 38 cheap: adv_1vp=38 ≥ 10 ✓, adv_points=38 ≥ 38 ✓
+    # Minoa: 4 real + 1 wonder = 5 effective ✓
+    do_rnd(5, v1=38)
+    s = players_by_name()
+    check_eq("Round 14: all at 70", s['Hatti']['ast_level'], 70)
+    check_eq("Minoa at 70 (4 real + wonder)", s['Minoa']['ast_level'], 70)
+    lia_count = sum(1 for p in state()['players'] if p['late_iron_age_bonus'])
+    check("LIA bonus: 0 granted (all 16 hit 70 simultaneously)", lia_count == 0, f"got {lia_count}")
+
+    # ── Round 15: 70→75 (LIA: 6 cities + 17 cheap + 56 VP total) ────────────
+    # Player i: adv_3vp = 13+2*i → adv_points = 17 + (13+2*i)*3 = 56 + 6*i ≥ 56 ✓
+    v3_each = {pid: 13 + 2*i for i, pid in enumerate(pids)}
+    city_r15 = {pid: (5 if pid == WONDER_PID else 6) for pid in pids}
+    do_rnd(0, v1=17, v3_map=v3_each, city_override=city_r15)
+    s = players_by_name()
+    check_eq("Round 15: all at 75", s['Indus']['ast_level'], 75)
+    check_eq("Minoa at 75 (5 real + wonder = 6 effective)", s['Minoa']['ast_level'], 75)
+    sg = state()
+    check("is_final_round=1 after all reach 75", sg['game']['is_final_round'] == 1)
+    check("Game still active before final round", sg['game']['active'] == 1)
+
+    # ── Round 16 (final): 75→80 (same req as level 70) ───────────────────────
+    # City counts vary per player (for city VP scoring); all ≥ 6 effective:
+    #   Minoa (i=0): 5 real cities (5+1 wonder=6 effective), city VP = 5
+    #   Others (i): 6 + (i % 4)  →  7, 8, 9, 6, 7, 8, 9, 6, 7, 8, 9, 6, 7, 8, (i=15)=9
+    # Total VP = 80 + (56+6*i) + city_i — all unique (step ≥ 6 per player, city range ±3).
+    city_r16 = {pid: (5 if pid == WONDER_PID else 6 + (i % 4))
+                for i, pid in enumerate(pids)}
+    do_rnd(0, v1=17, v3_map=v3_each, city_override=city_r16)
+
+    sg = state()
+    check("Round 16: game ended",         sg['game']['active'] == 0)
+    check("is_final_round cleared",       sg['game']['is_final_round'] == 0)
+    check_eq("Ended at round 16",         sg['game']['current_round'], 16)
+
+    s = players_by_name()
+    check_eq("All reach AST 80",          s['Minoa']['ast_level'], 80)
+    check_eq("Indus (max ADV) at 80",     s['Indus']['ast_level'], 80)
+    check_eq("Rome (military) at 80",     s['Rome']['ast_level'], 80)
+
+    # ── Verify final VP components ────────────────────────────────────────────
+    census_map = {c['player_id']: c['city_count'] for c in sg['census']}
+    totals = []
+    for i, pid in enumerate(pids):
+        p = next(pl for pl in sg['players'] if pl['id'] == pid)
+        exp_adv  = 56 + 6*i
+        exp_city = 5 if pid == WONDER_PID else 6 + (i % 4)
+        got_city = census_map.get(pid, 0)
+        check_eq(f"{names[i]}: ADV VP = {exp_adv}",  p['adv_points'], exp_adv)
+        check_eq(f"{names[i]}: city VP = {exp_city}", got_city,        exp_city)
+        totals.append(80 + exp_adv + exp_city)
+
+    # All 16 totals must be unique (no ties on leaderboard)
+    check("All 16 final scores are unique (no ties)", len(set(totals)) == 16, f"got {sorted(set(totals))}")
+
+    # Wonder city VP: Minoa scored 5 (real cities), not 6 (wonder excluded from scoring)
+    check_eq("Minoa city VP = 5 (wonder bonus excluded from scoring)",
+             census_map.get(pids[7], -1), 5)
+
+    print("  Final leaderboard preview:")
+    ranked = sorted(zip(names, totals), key=lambda x: -x[1])
+    for rank, (name, total) in enumerate(ranked, 1):
+        print(f"    {rank:2}. {name:<12} {total} VP")
+
+
+# ─── SIM 5: 16-player Expert, varied AST progress ────────────────────────────
+# Same 16-player scenario as SIM 4. Four groups reach different final AST levels:
+#   Group A (5 empires → AST 80): Egypt(0), Hellas(1), Hatti(4), Kushan(9), Indus(10)
+#   Group B (4 empires → AST 65): Celt(6), Assyria(8), Babylon(11), Persia(12) — stall: 4 cities < 5 for EIA
+#   Group C (4 empires → AST 50): Rome(3), Carthage(5), Nubia(14), Parthia(15) — stall: 3 cities < 4 for LBA
+#   Group D (3 empires → AST 35): Iberia(2), Minoa(7), Saba(13) — stall: 4 VP < 5 for MBA
+
+def sim5():
+    print("\n═══ SIM 5: 16-player Expert, varied AST progress ═══")
+    reset()
+
+    civs_setup = [
+        {'civ_id': 17, 'name': 'Egypt',    'region': 'west'},   # i=0, GROUP_A
+        {'civ_id': 15, 'name': 'Hellas',   'region': 'west'},   # i=1, GROUP_A
+        {'civ_id': 13, 'name': 'Iberia',   'region': 'west'},   # i=2, GROUP_D, slow-start
+        {'civ_id': 11, 'name': 'Rome',     'region': 'west'},   # i=3, GROUP_C, military
+        {'civ_id':  9, 'name': 'Hatti',    'region': 'west'},   # i=4, GROUP_A, military
+        {'civ_id':  7, 'name': 'Carthage', 'region': 'west'},   # i=5, GROUP_C
+        {'civ_id':  5, 'name': 'Celt',     'region': 'west'},   # i=6, GROUP_B
+        {'civ_id':  1, 'name': 'Minoa',    'region': 'west'},   # i=7, GROUP_D, slow-start
+        {'civ_id':  3, 'name': 'Assyria',  'region': 'east'},   # i=8, GROUP_B, east override
+        {'civ_id': 10, 'name': 'Kushan',   'region': 'east'},   # i=9, GROUP_A, slow-start
+        {'civ_id': 16, 'name': 'Indus',    'region': 'east'},   # i=10, GROUP_A
+        {'civ_id':  6, 'name': 'Babylon',  'region': 'east'},   # i=11, GROUP_B
+        {'civ_id': 12, 'name': 'Persia',   'region': 'east'},   # i=12, GROUP_B
+        {'civ_id':  2, 'name': 'Saba',     'region': 'east'},   # i=13, GROUP_D, slow-start
+        {'civ_id': 14, 'name': 'Nubia',    'region': 'east'},   # i=14, GROUP_C, military
+        {'civ_id': 18, 'name': 'Parthia',  'region': 'east'},   # i=15, GROUP_C
+    ]
+    ids = start_game(1, civs_setup)
+    names = [c['name'] for c in civs_setup]
+    pids  = [ids[n] for n in names]
+
+    military(pids[3])   # Rome
+    military(pids[4])   # Hatti
+    military(pids[14])  # Nubia
+
+    GROUP_A    = {0, 1, 4, 9, 10}   # → AST 80
+    GROUP_B    = {6, 8, 11, 12}     # → AST 65
+    GROUP_C    = {3, 5, 14, 15}     # → AST 50
+    GROUP_D    = {2, 7, 13}         # → AST 35
+    SLOW_START = {2, 7, 9, 13}      # expert stoneEnd=25: Iberia, Minoa, Kushan, Saba
+
+    def do_rnd5(cities_fn, adv_fn):
+        pops = {pid: 5 + i*3 for i, pid in enumerate(pids)}
+        for pid in pids: census(pid, pops[pid])
+        reveal()
+        for i, pid in enumerate(pids):
+            city_count(pid, cities_fn(i))
+            v1, v3, v6 = adv_fn(i)
+            adv(pid, v1=v1, v3=v3, v6=v6)
+        return next_round()
+
+    # ── Stone Age rounds 1-4: all null req ───────────────────────────────────
+    for _ in range(4):
+        do_rnd5(lambda i: 0, lambda i: (0, 0, 0))
+    s = players_by_name()
+    check_eq("After 4 rounds: all at 20", s['Egypt']['ast_level'], 20)
+
+    # ── Round 5: 20→25 (slow-start groups free; others 3 cities) ─────────────
+    do_rnd5(lambda i: 0 if i in SLOW_START else 3, lambda i: (0, 0, 0))
+    s = players_by_name()
+    check_eq("Round 5: Iberia at 25 (slow-start free)", s['Iberia']['ast_level'], 25)
+    check_eq("Round 5: Kushan at 25 (slow-start free)", s['Kushan']['ast_level'], 25)
+    check_eq("Round 5: Egypt at 25 (3 cities)", s['Egypt']['ast_level'], 25)
+
+    # ── Rounds 6-7: 25→30→35 (3 cities) ─────────────────────────────────────
+    for _ in range(2):
+        do_rnd5(lambda i: 3, lambda i: (0, 0, 0))
+    s = players_by_name()
+    check_eq("After round 7: all at 35", s['Egypt']['ast_level'], 35)
+    check_eq("Iberia at 35", s['Iberia']['ast_level'], 35)
+
+    # ── Rounds 8-10: MBA (35→50), 3 cities + 5 VP in advances ────────────────
+    # Group D: only 4 VP → stall at 35; others advance
+    for _ in range(3):
+        do_rnd5(lambda i: 3, lambda i: (5, 0, 0) if i not in GROUP_D else (4, 0, 0))
+    s = players_by_name()
+    check_eq("After MBA (round 10): Egypt at 50", s['Egypt']['ast_level'], 50)
+    check_eq("After MBA (round 10): Celt at 50", s['Celt']['ast_level'], 50)
+    check_eq("MBA stall: Iberia at 35 (4 VP < 5 required)", s['Iberia']['ast_level'], 35)
+    check_eq("MBA stall: Minoa at 35 (4 VP < 5 required)", s['Minoa']['ast_level'], 35)
+    check_eq("MBA stall: Saba at 35 (4 VP < 5 required)", s['Saba']['ast_level'], 35)
+
+    # ── Rounds 11-13: LBA (50→65), 4 cities + 12 any advances ───────────────
+    # Group C: only 3 cities → stall at 50; Group D: still at 35
+    for _ in range(3):
+        do_rnd5(
+            lambda i: 4 if i in GROUP_A | GROUP_B else 3,
+            lambda i: (12, 0, 0) if i in GROUP_A | GROUP_B else (4, 0, 0),
+        )
+    s = players_by_name()
+    check_eq("After LBA (round 13): Egypt at 65", s['Egypt']['ast_level'], 65)
+    check_eq("After LBA (round 13): Celt at 65", s['Celt']['ast_level'], 65)
+    check_eq("LBA stall: Rome at 50 (3 cities < 4 required)", s['Rome']['ast_level'], 50)
+    check_eq("LBA stall: Carthage at 50", s['Carthage']['ast_level'], 50)
+    check_eq("MBA stall persists: Iberia still at 35", s['Iberia']['ast_level'], 35)
+
+    # ── Round 14: EIA 65→70 (5 cities + 10 cheap + 38 VP) ───────────────────
+    # Group B: only 4 cities → stall at 65; Group D: keeps 4 VP → stays stalled at 35
+    do_rnd5(
+        lambda i: 5 if i in GROUP_A else (4 if i in GROUP_B else 3),
+        lambda i: (38, 0, 0) if i in GROUP_A else ((4, 0, 0) if i in GROUP_D else (12, 0, 0)),
+    )
+    s = players_by_name()
+    check_eq("Round 14: Egypt at 70", s['Egypt']['ast_level'], 70)
+    check_eq("Round 14: Hatti at 70 (military, Group A)", s['Hatti']['ast_level'], 70)
+    check_eq("EIA stall: Celt at 65 (4 cities < 5 required)", s['Celt']['ast_level'], 65)
+    check_eq("EIA stall: Babylon at 65", s['Babylon']['ast_level'], 65)
+    lia_count = sum(1 for p in state()['players'] if p['late_iron_age_bonus'])
+    check("LIA bonus: 0 (all Group A hit 70 simultaneously)", lia_count == 0, f"got {lia_count}")
+
+    # ── Round 15: LIA 70→75 (6 cities + 17 cheap + 56 VP) ───────────────────
+    # Group A advances to 75 → triggers is_final_round; Group D: keeps 4 VP → stays at 35
+    do_rnd5(
+        lambda i: 6 if i in GROUP_A else (4 if i in GROUP_B else 3),
+        lambda i: (17, 13, 0) if i in GROUP_A else ((4, 0, 0) if i in GROUP_D else (12, 0, 0)),
+    )
+    s = players_by_name()
+    check_eq("Round 15: Egypt at 75", s['Egypt']['ast_level'], 75)
+    check_eq("Round 15: Kushan at 75", s['Kushan']['ast_level'], 75)
+    sg = state()
+    check("is_final_round=1 after Group A reaches 75", sg['game']['is_final_round'] == 1)
+    check("Game still active", sg['game']['active'] == 1)
+
+    # ── Round 16 (final): 75→80 + set final VP values ────────────────────────
+    # Group A: 6 cities + 17 cheap + ≥56 VP → advance to 80; game ends
+    # Final ADV VP per player (all unique totals when combined with AST + city VP):
+    final_adv = {
+        0:  (17, 21, 0),  # Egypt:    80VP ADV (17+63)
+        1:  (17, 18, 0),  # Hellas:   71VP ADV (17+54)
+        2:  ( 4,  0, 0),  # Iberia:    4VP ADV  (stalled at 35)
+        3:  (25,  0, 0),  # Rome:     25VP ADV
+        4:  (17, 16, 0),  # Hatti:    65VP ADV (17+48)
+        5:  (18,  0, 0),  # Carthage: 18VP ADV
+        6:  ( 0, 15, 0),  # Celt:     45VP ADV
+        7:  ( 3,  0, 0),  # Minoa:     3VP ADV  (stalled at 35)
+        8:  ( 0, 12, 0),  # Assyria:  36VP ADV
+        9:  (17, 13, 0),  # Kushan:   56VP ADV (17+39)
+        10: (17, 24, 0),  # Indus:    89VP ADV (17+72)
+        11: ( 0, 10, 0),  # Babylon:  30VP ADV
+        12: ( 0, 18, 0),  # Persia:   54VP ADV
+        13: ( 2,  0, 0),  # Saba:      2VP ADV  (stalled at 35)
+        14: (35,  0, 0),  # Nubia:    35VP ADV
+        15: (12,  0, 0),  # Parthia:  12VP ADV
+    }
+    final_cities = {
+        0: 6, 1: 6, 2: 3, 3: 3, 4: 6, 5: 3,
+        6: 4, 7: 3, 8: 4, 9: 6, 10: 6, 11: 4,
+        12: 4, 13: 3, 14: 3, 15: 3,
+    }
+
+    pops = {pid: 5 + i*3 for i, pid in enumerate(pids)}
+    for pid in pids: census(pid, pops[pid])
+    reveal()
+    for i, pid in enumerate(pids):
+        city_count(pid, final_cities[i])
+        v1, v3, v6 = final_adv[i]
+        adv(pid, v1=v1, v3=v3, v6=v6)
+    next_round()
+
+    sg = state()
+    check("Round 16: game ended",   sg['game']['active'] == 0)
+    check("is_final_round cleared", sg['game']['is_final_round'] == 0)
+    check_eq("Ended at round 16",   sg['game']['current_round'], 16)
+
+    s = players_by_name()
+    check_eq("Group A: Egypt at 80",    s['Egypt']['ast_level'],    80)
+    check_eq("Group A: Hellas at 80",   s['Hellas']['ast_level'],   80)
+    check_eq("Group A: Hatti at 80",    s['Hatti']['ast_level'],    80)
+    check_eq("Group A: Kushan at 80",   s['Kushan']['ast_level'],   80)
+    check_eq("Group A: Indus at 80",    s['Indus']['ast_level'],    80)
+    check_eq("Group B: Celt at 65",     s['Celt']['ast_level'],     65)
+    check_eq("Group B: Assyria at 65",  s['Assyria']['ast_level'],  65)
+    check_eq("Group B: Babylon at 65",  s['Babylon']['ast_level'],  65)
+    check_eq("Group B: Persia at 65",   s['Persia']['ast_level'],   65)
+    check_eq("Group C: Rome at 50",     s['Rome']['ast_level'],     50)
+    check_eq("Group C: Carthage at 50", s['Carthage']['ast_level'], 50)
+    check_eq("Group C: Nubia at 50",    s['Nubia']['ast_level'],    50)
+    check_eq("Group C: Parthia at 50",  s['Parthia']['ast_level'],  50)
+    check_eq("Group D: Iberia at 35",   s['Iberia']['ast_level'],   35)
+    check_eq("Group D: Minoa at 35",    s['Minoa']['ast_level'],    35)
+    check_eq("Group D: Saba at 35",     s['Saba']['ast_level'],     35)
+
+    # ── Verify final VP totals are all unique ─────────────────────────────────
+    # Expected: AST 80+ADV 80+city 6=166, ..., AST 35+ADV 2+city 3=40  (all 16 unique)
+    census_map = {c['player_id']: c['city_count'] for c in sg['census']}
+    exp_adv_pts = {0:80, 1:71, 2:4, 3:25, 4:65, 5:18, 6:45, 7:3, 8:36,
+                   9:56, 10:89, 11:30, 12:54, 13:2, 14:35, 15:12}
+    totals = []
+    for i, pid in enumerate(pids):
+        p = next(pl for pl in sg['players'] if pl['id'] == pid)
+        check_eq(f"{names[i]}: ADV VP = {exp_adv_pts[i]}", p['adv_points'], exp_adv_pts[i])
+        totals.append(p['ast_level'] + p['adv_points'] + (census_map.get(pid, 0)))
+
+    check("All 16 final scores are unique (no ties)", len(set(totals)) == 16, f"got {sorted(set(totals))}")
+
+    print("  Final leaderboard preview:")
+    ranked = sorted(zip(names, totals), key=lambda x: -x[1])
+    for rank, (name, total) in enumerate(ranked, 1):
+        print(f"    {rank:2}. {name:<12} {total} VP")
+
+
 # ─── Runner ───────────────────────────────────────────────────────────────────
 
 def run_sim(fn):
@@ -533,6 +903,8 @@ if __name__ == '__main__':
     run_sim(sim1)
     run_sim(sim2)
     run_sim(sim3)
+    run_sim(sim4)
+    run_sim(sim5)
 
     print(f"\n{'=' * 50}")
     print(f"Results: {PASS_COUNT} passed, {FAIL_COUNT} failed")

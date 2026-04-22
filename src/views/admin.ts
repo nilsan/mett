@@ -1,6 +1,7 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import type { CivRefRow } from '../db.js';
-import { LATE_BRONZE_BASIC, LATE_BRONZE_EXPERT, getCivAstProfile } from '../civs.js';
+import { getCivAstProfile } from '../civs.js';
+import { meetsAstRequirements } from '../models/ast.js';
 
 type AstStatus = 'advance' | 'stay' | 'regress' | 'unknown';
 
@@ -12,58 +13,13 @@ function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, level
   if (curIdx === -1) return 'unknown';
 
   const { stoneEnd } = getCivAstProfile(p.civ_number, expert);
-  // stoneEnd level itself is still safe from regression; regression only outside Stone Age
   const inStoneAge = p.ast_level <= stoneEnd;
+  const effectiveCityCount = cityCount + (p.wonder ? 1 : 0);
 
-  if (expert && cityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
-  if (curIdx >= AST_LEVELS.length - 1) return 'stay'; // already at max
+  if (expert && effectiveCityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
+  if (curIdx >= AST_LEVELS.length - 1) return 'stay';
 
-  // Check the requirement stored AT THE CURRENT level — that's what you need to advance from it
-  const currentLevel = levels[curIdx];
-  // Slow-start civs (stoneEnd=25): level 20 is mid-Stone-Age for them — advance freely
-  // Level 25 (stoneEnd) uses the DB value ("2 cities") — EBA entry requirement applies there
-  if (stoneEnd > 20 && currentLevel.level < stoneEnd) return 'advance';
-
-  // In basic mode, override stored MBA req with EBA city-only req for slow/late-start civs
-  if (!expert && (currentLevel.level === 35 || currentLevel.level === 40)) {
-    const { ebaEnd } = getCivAstProfile(p.civ_number, false);
-    if (currentLevel.level < ebaEnd) {
-      return cityCount >= 2 ? 'advance' : 'stay';
-    }
-  }
-
-  const req = expert ? currentLevel.expert_req : currentLevel.basic_req;
-  if (!req || req === 'None') return 'advance';
-  if (req === 'N/A') return 'stay';
-
-  const cityMatch = req.match(/(\d+) cities/);
-  if (cityMatch && cityCount < parseInt(cityMatch[1], 10)) return 'stay';
-
-  if (req.includes('VP in advances')) {
-    const vpM = req.match(/(\d+) VP in advances/);
-    if (vpM && p.adv_points < parseInt(vpM[1], 10)) return 'stay';
-    return 'advance';
-  }
-  if (req.includes('all 17 advances')) {
-    if (p.adv_1vp < 17) return 'stay';
-    const vpM = req.match(/\+ (\d+) VP/);
-    if (vpM && p.adv_points < parseInt(vpM[1], 10)) return 'stay';
-    return 'advance';
-  }
-  const advM = req.match(/(\d+) advances/);
-  if (advM) {
-    const n = parseInt(advM[1], 10);
-    const have = req.includes('≥200 each') ? p.adv_6vp
-      : req.includes('≥100 each') ? p.adv_3vp + p.adv_6vp
-      : req.includes('<100 each') ? p.adv_1vp
-      : p.adv_1vp + p.adv_3vp + p.adv_6vp;
-    if (have < n) return 'stay';
-    if (req.includes('<100 each')) {
-      const vpM = req.match(/\+ (\d+) VP/);
-      if (vpM && p.adv_points < parseInt(vpM[1], 10)) return 'stay';
-    }
-  }
-  return 'advance';
+  return meetsAstRequirements(p, levels[curIdx], effectiveCityCount, expert) ? 'advance' : 'stay';
 }
 
 function pwdFormHtml(query: string): string {
@@ -180,17 +136,20 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
   const { game, players, census } = state;
   const expert = game.expert === 1;
 
-  // Compute final scores including Late Iron Age bonus (5VP)
-  // City count does NOT contribute to final VP (cities are a resource, not a score)
+  // Final VP = AST VP + ADV VP + City VP (1 per city) + LIA bonus (5VP)
+  // Wonder of the World does not count as a city for scoring
   const scored = players.map(p => {
+    const cityEntry = census.find(c => c.player_id === p.id);
+    const cityVp = cityEntry?.city_count ?? 0;
     const liaVp = p.late_iron_age_bonus ? 5 : 0;
-    const total = p.ast_level + p.adv_points + liaVp;
-    return { ...p, liaVp, total };
+    const total = p.ast_level + p.adv_points + cityVp + liaVp;
+    return { ...p, liaVp, cityVp, total };
   }).sort((a, b) => {
     if (b.total !== a.total) return b.total - a.total;
     if (b.ast_level !== a.ast_level) return b.ast_level - a.ast_level;
     if (b.adv_6vp !== a.adv_6vp) return b.adv_6vp - a.adv_6vp;
     if (b.adv_3vp !== a.adv_3vp) return b.adv_3vp - a.adv_3vp;
+    if (b.cityVp !== a.cityVp) return b.cityVp - a.cityVp;
     return (a.rank_order || a.civ_number) - (b.rank_order || b.civ_number);
   });
 
@@ -202,7 +161,8 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
       a.total === b.total &&
       a.ast_level === b.ast_level &&
       a.adv_6vp === b.adv_6vp &&
-      a.adv_3vp === b.adv_3vp
+      a.adv_3vp === b.adv_3vp &&
+      a.cityVp === b.cityVp
     ) { tiedIds.add(a.id); tiedIds.add(b.id); }
   }
 
@@ -218,7 +178,8 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
       scored[gj + 1].total === scored[gi].total &&
       scored[gj + 1].ast_level === scored[gi].ast_level &&
       scored[gj + 1].adv_6vp === scored[gi].adv_6vp &&
-      scored[gj + 1].adv_3vp === scored[gi].adv_3vp
+      scored[gj + 1].adv_3vp === scored[gi].adv_3vp &&
+      scored[gj + 1].cityVp === scored[gi].cityVp
     ) gj++;
     const groupPositions = Array.from({ length: gj - gi + 1 }, (_, k) => pos + k);
     for (let k = gi; k <= gj; k++) groupPositionsMap.set(scored[k].id, groupPositions);
@@ -236,7 +197,8 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
         scored[gj + 1].total === scored[gi].total &&
         scored[gj + 1].ast_level === scored[gi].ast_level &&
         scored[gj + 1].adv_6vp === scored[gi].adv_6vp &&
-        scored[gj + 1].adv_3vp === scored[gi].adv_3vp
+        scored[gj + 1].adv_3vp === scored[gi].adv_3vp &&
+        scored[gj + 1].cityVp === scored[gi].cityVp
       ) gj++;
       const group = scored.slice(gi, gj + 1);
       if (group.every(p => p.rank_order !== 0)) group.forEach(p => resolvedTiedIds.add(p.id));
@@ -285,13 +247,16 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
         `<option value="${gp}"${p.rank_order === gp ? ' selected' : ''}>${gp}</option>`)].join('');
       rankCell = `<td class="go-tie"><select class="rank-select" autocomplete="off" data-player-id="${p.id}" data-group-key="${groupKey}" data-group-players="${groupPlayers}" data-server-value="${currentValue}">${options}</select></td>`;
     }
-    const liaDetail = p.late_iron_age_bonus ? ' +5★' : '';
     return `<tr${unresolved ? ' class="lb-tied"' : ''}>
       <td class="rank go-rank">${unresolved ? '=' : displayRanks[i]}</td>
       <td class="go-empire">
         <span class="civ-badge civ-badge-with-num" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num-in-badge">${p.civ_number}</span><span class="civ-badge-label">${p.civ_name}<span class="go-player-name">${p.name}</span></span></span>
       </td>
-      <td class="total-vp go-total">${star}${medal} <strong>${p.total}</strong></td>
+      <td class="go-ast">${p.ast_level}</td>
+      <td class="go-adv">${p.adv_points}</td>
+      <td class="go-city">${p.cityVp}</td>
+      <td class="go-lia">${star}</td>
+      <td class="total-vp go-total">${medal} <strong>${p.total}</strong></td>
       ${rankCell}
     </tr>`;
   }).join('');
@@ -321,11 +286,14 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
         <thead><tr>
           <th>#</th>
           <th>Empire</th>
-          <th>Player</th>
+          <th title="AST Victory Points">AST</th>
+          <th title="Advance Victory Points">ADV</th>
+          <th title="City Victory Points (1 VP per city)">Cities</th>
+          <th title="Late Iron Age bonus (5 VP)">★</th>
           <th title="Total Victory Points">Total VP</th>
           ${hasTies ? '<th title="Tie-break rank">Tie</th>' : ''}
         </tr></thead>
-        <tbody>${rows || '<tr><td colspan="4">No players</td></tr>'}</tbody>
+        <tbody>${rows || '<tr><td colspan="7">No players</td></tr>'}</tbody>
       </table>
     </div>
     <p class="table-hint">★ = Late Iron Age bonus (5VP, first to reach Late Iron Age). Click ★ to reassign manually.</p>

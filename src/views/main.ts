@@ -215,12 +215,12 @@ export function renderMain(state: FullState): string {
     `<td class="ab-level-num ${levelBand[l] ?? 'age-liron'}${l === 0 ? ' ab-start-col' : ''}${defaultAgeEnds.has(l) ? ' ab-age-end' : ''}">${l === 0 ? 'S' : l}</td>`
   ).join('');
 
-  const roundBeyondBoard = game.active && game.current_round > boardLevels.length;
+  const roundBeyondBoard = game.current_round > boardLevels.length;
   const lastRoundIdx = boardLevels.length - 1;
   const roundCells = boardLevels.map((l, i) => {
     const num = i + 1;
     const displayRound = i === lastRoundIdx ? `${num}+` : `${num}`;
-    const isCurrent = game.active && !roundBeyondBoard && num === game.current_round;
+    const isCurrent = game.started_at !== null && !roundBeyondBoard && num === game.current_round;
     return `<td class="ab-round-num${l === 0 ? ' ab-start-col' : ''}${defaultAgeEnds.has(l) ? ' ab-age-end' : ''}${isCurrent ? ' ab-round-current' : ''}">${displayRound}</td>`;
   }).join('');
 

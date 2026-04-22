@@ -64,52 +64,8 @@ export function meetsAstRequirements(
   }
 
   const reqJson = expert ? currentLevel.expert_req_json : currentLevel.basic_req_json;
-  // Use structured JSON requirement when available (production — always seeded on startup).
-  // Falls back to regex for AstLevelRow stubs that omit the json fields (unit tests).
-  if (reqJson !== undefined) {
-    const req: AstRequirement | null = reqJson ? JSON.parse(reqJson) : null;
-    return checkRequirement(player, req, cityCount);
-  }
-  return legacyTextCheck(player, currentLevel, cityCount, expert);
-}
-
-/** Regex-based fallback — used only when req_json columns are absent (test stubs). */
-function legacyTextCheck(
-  player: PlayerRow,
-  currentLevel: AstLevelRow,
-  cityCount: number,
-  expert: boolean,
-): boolean {
-  const req = expert ? currentLevel.expert_req : currentLevel.basic_req;
-  if (!req || req === 'None') return true;
-  if (req === 'N/A') return false;
-
-  const cityMatch = req.match(/(\d+) cities/);
-  if (!cityMatch) return false;
-  if (cityCount < parseInt(cityMatch[1], 10)) return false;
-
-  if (req.includes('all 17 advances')) {
-    if (player.adv_1vp < 17) return false;
-    const vpM = req.match(/\+ (\d+) VP/);
-    if (vpM && player.adv_points < parseInt(vpM[1], 10)) return false;
-    return true;
-  }
-  if (req.includes('VP in advances')) {
-    const vpM = req.match(/(\d+) VP in advances/);
-    return !vpM || player.adv_points >= parseInt(vpM[1], 10);
-  }
-  const advM = req.match(/(\d+) advances/);
-  if (!advM) return true;
-  const reqAdv = parseInt(advM[1], 10);
-  if (req.includes('≥200 each')) return player.adv_6vp >= reqAdv;
-  if (req.includes('≥100 each')) return (player.adv_3vp + player.adv_6vp) >= reqAdv;
-  if (req.includes('<100 each')) {
-    if (player.adv_1vp < reqAdv) return false;
-    const vpM = req.match(/\+ (\d+) VP/);
-    if (vpM && player.adv_points < parseInt(vpM[1], 10)) return false;
-    return true;
-  }
-  return (player.adv_1vp + player.adv_3vp + player.adv_6vp) >= reqAdv;
+  const req: AstRequirement | null = reqJson ? JSON.parse(reqJson) : null;
+  return checkRequirement(player, req, cityCount);
 }
 
 // ─── AST auto-advancement ──────────────────────────────────────────────────────

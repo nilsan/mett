@@ -181,6 +181,16 @@ export function renderCivFragment(
   });
   const lbPos = leaderboardSorted.findIndex(p => p.id === player.id) + 1;
 
+  // Final rank (game-over only): includes city VP and LIA bonus
+  const finalRank = (() => {
+    if (game.active !== 0 || !game.started_at) return null;
+    const censusMap = new Map(state.census.map(c => [c.player_id, c.city_count ?? 0]));
+    return [...state.players]
+      .map(p => ({ id: p.id, total: p.ast_level + p.adv_points + (censusMap.get(p.id) ?? 0) + (p.late_iron_age_bonus ? 5 : 0) }))
+      .sort((a, b) => b.total - a.total)
+      .findIndex(s => s.id === player.id) + 1;
+  })();
+
   // Move order (only shown after reveal)
   let moveOrderHtml = '';
   if (game.census_revealed && submitted) {
@@ -349,7 +359,12 @@ export function renderCivFragment(
           <h4>To advance to ${nextLevel.level}:</h4>
           ${body}
         </div>`;
-      })() : '<p class="ast-complete">🏆 Maximum A.S.T. position reached!</p>'}
+      })() : (() => {
+        if (finalRank === 1) return '<p class="ast-complete">🥇 Gold!</p>';
+        if (finalRank === 2) return '<p class="ast-complete">🥈 Silver!</p>';
+        if (finalRank === 3) return '<p class="ast-complete">🥉 Bronze!</p>';
+        return '<p class="ast-complete">Maximum A.S.T. position reached!</p>';
+      })()}
       ${astBar(levels, player.ast_level, expert, player.civ_number)}
     </section>
 

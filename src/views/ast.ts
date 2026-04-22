@@ -88,12 +88,12 @@ export function renderAst(state: FullState): string {
   ).join('');
 
   // Round marker row — column i shows round i+1 (Start=1, level5=2, …, last=16+/17+)
-  const roundBeyondBoard = game.active && game.current_round > boardLevels.length;
+  const roundBeyondBoard = game.current_round > boardLevels.length;
   const lastRoundIdx = boardLevels.length - 1;
   const roundCells = boardLevels.map((l, i) => {
     const num = i + 1;
     const displayRound = i === lastRoundIdx ? `${num}+` : `${num}`;
-    const isCurrent = game.active && !roundBeyondBoard && num === game.current_round;
+    const isCurrent = game.started_at !== null && !roundBeyondBoard && num === game.current_round;
     const startCls = l === 0 ? ' ab-start-col' : '';
     const endCls = defaultAgeEnds.has(l) ? ' ab-age-end' : '';
     return `<td class="ab-round-num${startCls}${endCls}${isCurrent ? ' ab-round-current' : ''}">${displayRound}</td>`;
