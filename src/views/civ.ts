@@ -1,91 +1,8 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
 import { sortCensusOrder } from './main.js';
-
-interface ReqStatus {
-  willRegress: boolean;          // city_count === 0 and not at floor
-  regrессLevel: number;          // what level they'd regress to
-  meetsCities: boolean | null;   // null when city count unknown
-  meetsAdvances: boolean;
-  meetsVP: boolean;
-  reqCities: number;
-  reqAdvCount: number;
-  reqAdvType: string;            // 'any' | '<100' | '≥100' | '≥200' | 'all17'
-  reqVP: number;                 // 0 if no VP requirement
-  haveCities: number | null;     // null when city count unknown
-  haveAdv: number;               // relevant card count per type
-  haveVP: number;
-}
-
-function checkReq(reqText: string | null, player: PlayerRow, cityCount: number | null, currentLevelIdx: number, expert: boolean): ReqStatus | null {
-  const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
-  const regrессLevel = currentLevelIdx > 0 ? AST_LEVELS[currentLevelIdx - 1] : AST_LEVELS[0];
-
-  // stoneEnd level itself is still safe from regression; regression only outside Stone Age
-  const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
-  const inStoneAge = player.ast_level <= stoneEnd;
-
-  // Wonder acts as +1 city for all AST purposes (advancement and regression prevention)
-  const effectiveCities = cityCount !== null ? cityCount + (player.wonder ? 1 : 0) : null;
-
-  if (expert && effectiveCities === 0 && !inStoneAge) {
-    return {
-      willRegress: currentLevelIdx > 0,
-      regrессLevel,
-      meetsCities: false, meetsAdvances: true, meetsVP: true,
-      reqCities: 1, reqAdvCount: 0, reqAdvType: 'any', reqVP: 0,
-      haveCities: 0, haveAdv: 0, haveVP: player.adv_points,
-    };
-  }
-
-  if (!reqText || reqText === 'None') return null; // no requirement — will always advance
-
-  const cityMatch = reqText.match(/(\d+) cities/);
-  const reqCities = cityMatch ? parseInt(cityMatch[1], 10) : 0;
-  // null city count = unknown; don't mark as failing (but show "?" in UI)
-  const meetsCities = effectiveCities !== null ? effectiveCities >= reqCities : null;
-
-  let reqAdvCount = 0, reqAdvType = 'any', haveAdv = 0, meetsAdvances = true;
-  let reqVP = 0, haveVP = player.adv_points, meetsVP = true;
-
-  if (reqText.includes('all 17 advances')) {
-    reqAdvCount = 17; reqAdvType = '<100'; haveAdv = player.adv_1vp;
-    meetsAdvances = player.adv_1vp >= 17;
-    const vpM = reqText.match(/\+ (\d+) VP/);
-    if (vpM) { reqVP = parseInt(vpM[1], 10); meetsVP = player.adv_points >= reqVP; }
-  } else {
-    const advM = reqText.match(/(\d+) advances/);
-    const vpInAdvM = reqText.match(/(\d+) VP in advances/);
-    if (advM) {
-      reqAdvCount = parseInt(advM[1], 10);
-      if (reqText.includes('≥200 each')) {
-        reqAdvType = '≥200'; haveAdv = player.adv_6vp;
-        meetsAdvances = player.adv_6vp >= reqAdvCount;
-      } else if (reqText.includes('≥100 each')) {
-        reqAdvType = '≥100'; haveAdv = player.adv_3vp + player.adv_6vp;
-        meetsAdvances = haveAdv >= reqAdvCount;
-      } else if (reqText.includes('<100 each')) {
-        reqAdvType = '<100'; haveAdv = player.adv_1vp;
-        meetsAdvances = player.adv_1vp >= reqAdvCount;
-        const vpM = reqText.match(/\+ (\d+) VP/);
-        if (vpM) { reqVP = parseInt(vpM[1], 10); meetsVP = player.adv_points >= reqVP; }
-      } else {
-        reqAdvType = 'any';
-        haveAdv = player.adv_1vp + player.adv_3vp + player.adv_6vp;
-        meetsAdvances = haveAdv >= reqAdvCount;
-      }
-    } else if (vpInAdvM) {
-      reqVP = parseInt(vpInAdvM[1], 10); meetsVP = player.adv_points >= reqVP;
-    }
-  }
-
-  return {
-    willRegress: false, regrессLevel,
-    meetsCities, meetsAdvances, meetsVP,
-    reqCities, reqAdvCount, reqAdvType, reqVP,
-    haveCities: effectiveCities ?? null, haveAdv, haveVP,
-  };
-}
+import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
+import { getAdvanceRequirement, advancesOfTier, type AstRequirement } from '../models/ast.js';
 
 function getCivAgeBands(civNumber: number, expert: boolean) {
   const { stoneEnd, ebaEnd } = getCivAstProfile(civNumber, expert);
@@ -148,48 +65,31 @@ export function renderCivFragment(
 
   const levels = state.astLevels;
   const currentLevelIdx = levels.findIndex(l => l.level === player.ast_level);
-  const currentLevel = levels[currentLevelIdx] ?? null;
   const nextLevel = levels[currentLevelIdx + 1] ?? null;
   const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
-  // The requirement stored AT the current level is what you need to advance FROM it.
-  const nextReq = nextLevel
-    ? (() => {
-        // Slow-start civs (stoneEnd=25): level 20 is mid-Stone-Age — no requirement
-        // Level 25 (stoneEnd) uses the DB value — EBA entry requirement applies there
-        if (stoneEnd > 20 && (currentLevel?.level ?? 0) < stoneEnd) return 'None';
-        // In basic mode, override stored MBA req for slow/late civs still in EBA at 35 or 40
-        if (!expert && (currentLevel?.level === 35 || currentLevel?.level === 40)) {
-          const { ebaEnd } = getCivAstProfile(player.civ_number, false);
-          if ((currentLevel?.level ?? 0) < ebaEnd) return '2 cities';
-        }
-        const req = (expert ? currentLevel?.expert_req : currentLevel?.basic_req) ?? null;
-        if (!req || req === 'None' || req === 'N/A') return 'None';
-        return req;
-      })()
+
+  // Structured advance requirement from model (null = no requirement / already at max)
+  const advReq: AstRequirement | null = nextLevel
+    ? getAdvanceRequirement(player, levels, expert)
     : null;
 
   const regionLabel = player.region === 'west' ? 'West block' : 'East block';
 
   // Leaderboard position — same algorithm as status page
-  const leaderboardSorted = [...state.players].sort((a, b) => {
-    const tA = a.ast_level + a.adv_points, tB = b.ast_level + b.adv_points;
-    if (tB !== tA) return tB - tA;
-    if (b.ast_level !== a.ast_level) return b.ast_level - a.ast_level;
-    if (b.adv_6vp !== a.adv_6vp) return b.adv_6vp - a.adv_6vp;
-    if (b.adv_3vp !== a.adv_3vp) return b.adv_3vp - a.adv_3vp;
-    return a.rank_order - b.rank_order;
-  });
-  const lbPos = leaderboardSorted.findIndex(p => p.id === player.id) + 1;
+  const censusMap = new Map(state.census.map(c => [c.player_id, c.city_count ?? 0]));
+  const leaderboardSorted = [...state.players].sort((a, b) =>
+    compareScores(makeScoreEntry(a, censusMap.get(a.id) ?? 0), makeScoreEntry(b, censusMap.get(b.id) ?? 0))
+  );
+  const playerIdx = leaderboardSorted.findIndex(p => p.id === player.id);
+  const playerScore = makeScoreEntry(leaderboardSorted[playerIdx]!, censusMap.get(leaderboardSorted[playerIdx]!.id) ?? 0);
+  let groupStart = playerIdx;
+  while (groupStart > 0 && sameScoreGroup(makeScoreEntry(leaderboardSorted[groupStart - 1]!, censusMap.get(leaderboardSorted[groupStart - 1]!.id) ?? 0), playerScore)) groupStart--;
+  const lbTied = playerIdx > groupStart ||
+    (playerIdx + 1 < leaderboardSorted.length && sameScoreGroup(playerScore, makeScoreEntry(leaderboardSorted[playerIdx + 1]!, censusMap.get(leaderboardSorted[playerIdx + 1]!.id) ?? 0)));
+  const lbPos = groupStart + 1;
 
-  // Final rank (game-over only): includes city VP and LIA bonus
-  const finalRank = (() => {
-    if (game.active !== 0 || !game.started_at) return null;
-    const censusMap = new Map(state.census.map(c => [c.player_id, c.city_count ?? 0]));
-    return [...state.players]
-      .map(p => ({ id: p.id, total: p.ast_level + p.adv_points + (censusMap.get(p.id) ?? 0) + (p.late_iron_age_bonus ? 5 : 0) }))
-      .sort((a, b) => b.total - a.total)
-      .findIndex(s => s.id === player.id) + 1;
-  })();
+  // Final rank (game-over only): tie-group start position, matching status/admin pages
+  const finalRank = (game.active !== 0 || !game.started_at) ? null : lbPos;
 
   // Move order (only shown after reveal)
   let moveOrderHtml = '';
@@ -306,57 +206,71 @@ export function renderCivFragment(
       <h3>A.S.T. Progress</h3>
       <div class="ast-current">
         <span class="ast-level-label">Leaderboard position:</span>
-        <span class="ast-level-value">${lbPos}${ordinal(lbPos)}</span>
+        <span class="ast-level-value">${lbTied ? '=' : ''}${lbPos}${ordinal(lbPos)}</span>
         <span class="ast-era">of ${state.players.length}</span>
       </div>
       <div class="ast-current">
         <span class="ast-level-label">Total VP:</span>
-        <span class="ast-level-value">${player.ast_level + player.adv_points}</span>
+        <span class="ast-level-value">${playerTotalVp(player, census?.city_count)}</span>
       </div>
       ${player.late_iron_age_bonus ? `<div class="ast-current lia-bonus-row"><span class="ast-level-label">LIA bonus:</span> <span class="lia-bonus-chip">★ +5 VP at game end</span></div>` : ''}
       ${nextLevel ? (() => {
         const cityCount = census?.city_count ?? null;
-        // Always run checkReq — advances/VP are always evaluable even without city count
-        const status = checkReq(nextReq, player, cityCount, currentLevelIdx, expert);
+        const effectiveCities = cityCount !== null ? cityCount + (player.wonder ? 1 : 0) : null;
+        const inStoneAge = player.ast_level <= stoneEnd;
 
-        if (status?.willRegress) {
+        // Regression: expert mode, 0 effective cities, outside Stone Age
+        if (expert && effectiveCities === 0 && !inStoneAge && currentLevelIdx > 0) {
+          const regrессLevel = levels[currentLevelIdx - 1]?.level ?? 0;
           return `<div class="ast-next req-not-met">
             <h4>To advance to ${nextLevel.level}:</h4>
-            <p class="ast-warn-regress">⚠ 0 cities — will regress to ${status.regrессLevel} next round</p>
+            <p class="ast-warn-regress">⚠ 0 cities — will regress to ${regrессLevel} next round</p>
           </div>`;
         }
 
         const rows: string[] = [];
         let allMet = true;
-        if (status) {
-          // meetsCities null = unknown; treat as not-failing for allMet but show "?" in row
-          allMet = (status.meetsCities !== false) && status.meetsAdvances && status.meetsVP;
-          if (status.reqCities > 0) {
-            if (status.meetsCities === null) {
-              rows.push(`<span class="req-row req-unknown">? ${status.reqCities} cities <span class="req-have">(not yet submitted)</span></span>`);
+        if (advReq && !advReq.impossible) {
+          // Cities
+          if (advReq.cities > 0) {
+            const meetsCities = effectiveCities !== null ? effectiveCities >= advReq.cities : null;
+            if (meetsCities === null) {
+              rows.push(`<span class="req-row req-unknown">? ${advReq.cities} cities <span class="req-have">(not yet submitted)</span></span>`);
+              // unknown doesn't set allMet=false — we just show "?"
             } else {
-              const ok = status.meetsCities;
-              const cityNote = player.wonder && cityCount !== null && cityCount < status.haveCities!
+              const cityNote = player.wonder && cityCount !== null && cityCount < effectiveCities!
                 ? `${cityCount} + ★`
-                : `${status.haveCities}`;
-              rows.push(`<span class="req-row${ok ? ' req-ok' : ' req-fail'}">${ok ? '✓' : '✗'} ${status.reqCities} cities <span class="req-have">(you have ${cityNote})</span></span>`);
+                : `${effectiveCities}`;
+              rows.push(`<span class="req-row${meetsCities ? ' req-ok' : ' req-fail'}">${meetsCities ? '✓' : '✗'} ${advReq.cities} cities <span class="req-have">(you have ${cityNote})</span></span>`);
+              if (!meetsCities) allMet = false;
             }
           }
-          if (status.reqAdvCount > 0) {
-            const ok = status.meetsAdvances;
-            const typeLabel = status.reqAdvType === '<100' ? ' cheap (<100)' : status.reqAdvType === '≥100' ? ' mid (≥100)' : status.reqAdvType === '≥200' ? ' expensive (≥200)' : '';
-            rows.push(`<span class="req-row${ok ? ' req-ok' : ' req-fail'}">${ok ? '✓' : '✗'} ${status.reqAdvCount === 17 ? 'all 17' : status.reqAdvCount} advances${typeLabel} <span class="req-have">(you have ${status.haveAdv})</span></span>`);
+          // Advance count
+          if (advReq.advCount !== undefined) {
+            const haveAdv = advancesOfTier(player, advReq.advTier);
+            const meetsAdv = haveAdv >= advReq.advCount;
+            if (!meetsAdv) allMet = false;
+            const tierLabel = advReq.advTier === 'cheap' ? ' cheap (<100)' : advReq.advTier === 'medium' ? ' mid (≥100)' : advReq.advTier === 'expensive' ? ' expensive (≥200)' : '';
+            rows.push(`<span class="req-row${meetsAdv ? ' req-ok' : ' req-fail'}">${meetsAdv ? '✓' : '✗'} ${advReq.advCount === 17 ? 'all 17' : advReq.advCount} advances${tierLabel} <span class="req-have">(you have ${haveAdv})</span></span>`);
           }
-          if (status.reqVP > 0) {
-            const ok = status.meetsVP;
-            rows.push(`<span class="req-row${ok ? ' req-ok' : ' req-fail'}">${ok ? '✓' : '✗'} ${status.reqVP} total VP <span class="req-have">(you have ${status.haveVP})</span></span>`);
+          // VP-in-advances requirement (MBA expert: "5 VP in advances")
+          if (advReq.advVpTotal !== undefined) {
+            const meets = player.adv_points >= advReq.advVpTotal;
+            if (!meets) allMet = false;
+            rows.push(`<span class="req-row${meets ? ' req-ok' : ' req-fail'}">${meets ? '✓' : '✗'} ${advReq.advVpTotal} VP in advances <span class="req-have">(you have ${player.adv_points})</span></span>`);
+          }
+          // Total VP floor (EIA/LIA expert)
+          if (advReq.totalVp !== undefined) {
+            const meets = player.adv_points >= advReq.totalVp;
+            if (!meets) allMet = false;
+            rows.push(`<span class="req-row${meets ? ' req-ok' : ' req-fail'}">${meets ? '✓' : '✗'} ${advReq.totalVp} total VP <span class="req-have">(you have ${player.adv_points})</span></span>`);
           }
         }
 
-        const borderClass = status ? (allMet ? ' req-all-ok' : ' req-not-met') : '';
+        const borderClass = advReq ? (allMet ? ' req-all-ok' : ' req-not-met') : '';
         const body = rows.length
           ? `<div class="ast-req-status">${rows.join('')}</div>`
-          : `<p class="ast-req-text">${nextReq ?? 'None'}</p>`;
+          : `<p class="ast-req-text">None</p>`;
         return `<div class="ast-next${borderClass}">
           <h4>To advance to ${nextLevel.level}:</h4>
           ${body}
@@ -392,5 +306,5 @@ ${fragment}
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;
-  return s[(v - 20) % 10] ?? s[v] ?? s[0];
+  return s[(v - 20) % 10] ?? s[v] ?? 'th';
 }

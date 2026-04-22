@@ -40,7 +40,7 @@ const server = Bun.serve({
     // Upgrade WebSocket connections
     if (req.headers.get('upgrade') === 'websocket') {
       const id = crypto.randomUUID();
-      const upgraded = server.upgrade(req, { data: { id } });
+      const upgraded = server.upgrade(req, { data: { id } } as never);
       if (upgraded) return undefined;
       return new Response('WebSocket upgrade failed', { status: 500 });
     }

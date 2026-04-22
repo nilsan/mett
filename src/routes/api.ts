@@ -3,6 +3,7 @@ import * as db from '../db.js';
 import { broadcastState } from '../ws.js';
 import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS } from '../civs.js';
 import { isAdminAuthed } from './pages.js';
+import { LIA_THRESHOLD } from '../models/ast.js';
 
 const api = new Hono();
 
@@ -169,7 +170,7 @@ api.post('/players/:id/late-iron-age-bonus', async (c) => {
   const body = await c.req.json<{ grant: boolean }>();
   if (body.grant) {
     const player = db.getPlayers().find(p => p.id === playerId);
-    if (!player || player.ast_level < 75) {
+    if (!player || player.ast_level < LIA_THRESHOLD) {
       return c.json({ error: 'LIA bonus can only be granted to empires that have reached Late Iron Age (AST ≥75)' }, 400);
     }
   }
@@ -207,7 +208,7 @@ api.post('/players/:id/rank', async (c) => {
     }
     const unclaimed = body.group_positions!.filter(pos => !claimed.has(pos));
     if (unresolved.length === 1 && unclaimed.length === 1) {
-      db.setRankOrder(unresolved[0].id, unclaimed[0]);
+      db.setRankOrder(unresolved[0]!.id, unclaimed[0]!);
     }
   }
 

@@ -32,7 +32,7 @@ function renderTable(title: string, rows: Array<PlayerRow & { city_count: number
         ? `<td class="trade-card-col">${cardChips(p.city_count)}</td>`
         : `<td class="trade-card-col not-submitted">?</td>`;
     }
-    const groupStart = allSubmitted && i > 0 && rows[i - 1].city_count !== p.city_count;
+    const groupStart = allSubmitted && i > 0 && rows[i - 1]!.city_count !== p.city_count;
     return `<tr${groupStart ? ' class="trade-group-start"' : ''}>
       <td>
         <span class="civ-badge civ-badge-with-num" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num-in-badge">${p.civ_number}</span>${p.civ_name}</span>

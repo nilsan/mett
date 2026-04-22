@@ -1,47 +1,10 @@
 import type { FullState, PlayerRow, CensusRow } from '../db.js';
-import { getCivAstProfile } from '../civs.js';
+import { AST_LEVELS, getAgeBands, civBandClass, isAgeEnd } from '../models/ast.js';
+import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
 
 interface PlayerWithCensus extends PlayerRow {
   census: CensusRow | null;
   city_count: number | null;
-}
-
-const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
-
-interface AgeBand { name: string; shortName: string; expertReq: string; basicReq: string; levels: number[]; cls: string; }
-
-function getAgeBands(expert: boolean): AgeBand[] {
-  return [
-    { name: 'Start',             shortName: '',          expertReq: '',                                basicReq: '',                                levels: [0],             cls: 'age-start'   },
-    { name: 'Stone Age',         shortName: 'Stone',     expertReq: 'No requirements',                 basicReq: 'No requirements',                 levels: [5, 10, 15, 20], cls: 'age-stone'   },
-    { name: 'Early Bronze Age',  shortName: 'E. Bronze', expertReq: '3 Cities',                        basicReq: '2 Cities',                        levels: [25, 30, 35],    cls: 'age-ebronze' },
-    { name: 'Middle Bronze Age', shortName: 'M. Bronze', expertReq: '3 Cities + 5 VP in Advances',     basicReq: '3 Cities + 3 Advances',           levels: [40, 45, 50],    cls: 'age-mbronze' },
-    { name: 'Late Bronze Age',   shortName: 'L. Bronze', expertReq: '4 Cities + 12 Advances',          basicReq: '3 Cities + 3 Adv (≥100 VP each)', levels: [55, 60, 65],    cls: 'age-lbronze' },
-    ...(expert ? [
-      { name: 'Early Iron Age',  shortName: 'E.I.',      expertReq: '5 Cities + 10 Adv ≤100 + 38 VP', basicReq: '',                                levels: [70],            cls: 'age-eiron'   },
-      { name: 'Late Iron Age',   shortName: 'L. Iron',   expertReq: '6 Cities + 17 Adv ≤100 + 56 VP', basicReq: '',                                levels: [75, 80],        cls: 'age-liron'   },
-    ] : [
-      { name: 'Early Iron Age',  shortName: 'E.I.',      expertReq: '',                                basicReq: '4 Cities + 2 Adv ≥200 VP each',  levels: [70],            cls: 'age-eiron'   },
-      { name: 'Late Iron Age',   shortName: 'L. Iron',   expertReq: '',                                basicReq: '5 Cities + 3 Adv ≥200 VP each',  levels: [75],            cls: 'age-liron'   },
-    ]),
-  ] as AgeBand[];
-}
-
-function civBandClass(civNumber: number, level: number, expert: boolean): string {
-  if (level === 0) return 'age-start';
-  const { stoneEnd, ebaEnd } = getCivAstProfile(civNumber, expert);
-  if (level <= stoneEnd) return 'age-stone';
-  if (level <= ebaEnd)   return 'age-ebronze';
-  if (level <= 50)       return 'age-mbronze';
-  if (level <= 65)       return 'age-lbronze';
-  if (level === 70)      return 'age-eiron';
-  return 'age-liron';
-}
-
-function isAgeEnd(civNumber: number, level: number, expert: boolean): boolean {
-  const { stoneEnd, ebaEnd } = getCivAstProfile(civNumber, expert);
-  const liaEnd = expert ? 80 : 75;
-  return level === stoneEnd || level === ebaEnd || level === 50 || level === 65 || level === 70 || level === liaEnd;
 }
 
 function empireCell(p: PlayerRow): string {
@@ -132,44 +95,21 @@ export function renderMain(state: FullState): string {
           ? `<td class="trade-card-col">${cardChips(p.city_count, p.wonder === 1)}</td>`
           : `<td class="trade-card-col not-submitted">?</td>`;
       }
-      const groupStart = allCitiesSubmitted && i > 0 && list[i - 1].city_count !== p.city_count;
+      const groupStart = allCitiesSubmitted && i > 0 && list[i - 1]!.city_count !== p.city_count;
       return `<tr${groupStart ? ' class="trade-group-start"' : ''}>${empireCell(p)}${cardCell}</tr>`;
     }).join('');
   }
 
   // ── Leaderboard ─────────────────────────────────────────────────────────
-  const leaderboard = [...pwc].sort((a, b) => {
-    const tA = a.ast_level + a.adv_points, tB = b.ast_level + b.adv_points;
-    if (tB !== tA) return tB - tA;
-    if (b.ast_level !== a.ast_level) return b.ast_level - a.ast_level;
-    if (b.adv_6vp !== a.adv_6vp) return b.adv_6vp - a.adv_6vp;
-    if (b.adv_3vp !== a.adv_3vp) return b.adv_3vp - a.adv_3vp;
-    return (a.rank_order || a.civ_number) - (b.rank_order || b.civ_number);
-  });
+  const leaderboard = [...pwc].sort((a, b) =>
+    compareScores(makeScoreEntry(a, a.city_count ?? 0), makeScoreEntry(b, b.city_count ?? 0))
+  );
 
-  function sameTieGroup(a: typeof leaderboard[0], b: typeof leaderboard[0]): boolean {
-    return a.ast_level + a.adv_points === b.ast_level + b.adv_points &&
-      a.ast_level === b.ast_level &&
-      a.adv_6vp === b.adv_6vp &&
-      a.adv_3vp === b.adv_3vp;
-  }
-  const lbMeta: Array<{ displayRank: number; tied: boolean; groupStart: boolean; resolved: boolean }> = new Array(leaderboard.length);
-  let lbPos = 1, lbGi = 0;
-  while (lbGi < leaderboard.length) {
-    let lbGj = lbGi;
-    while (lbGj + 1 < leaderboard.length && sameTieGroup(leaderboard[lbGi], leaderboard[lbGj + 1])) lbGj++;
-    const groupSize = lbGj - lbGi + 1;
-    const tied = groupSize > 1;
-    const resolved = tied && leaderboard.slice(lbGi, lbGj + 1).every(p => p.rank_order !== 0);
-    for (let k = lbGi; k <= lbGj; k++) {
-      lbMeta[k] = { displayRank: lbPos, tied, groupStart: k === lbGi, resolved };
-    }
-    lbPos += groupSize;
-    lbGi = lbGj + 1;
-  }
+  const lbScores = leaderboard.map(p => ({ ...makeScoreEntry(p, p.city_count ?? 0), rank_order: p.rank_order }));
+  const lbMeta = computeTieGroupMeta(lbScores);
 
   const lbRows = leaderboard.map((p, i) => {
-    const { displayRank, tied, groupStart, resolved } = lbMeta[i];
+    const { displayRank, tied, groupStart, resolved } = lbMeta[i]!;
     const unresolved = tied && !resolved;
     const rankCell = tied
       ? `<td class="rank rank-tie" title="${unresolved ? 'Manual resolution needed' : ''}">${unresolved ? `=${displayRank}` : displayRank}</td>`
@@ -181,7 +121,7 @@ export function renderMain(state: FullState): string {
       <td class="player-name-col">${p.name}</td>
       <td class="adv-pts">${p.adv_points}</td>
       <td class="ast-pts">${p.ast_level}</td>
-      <td class="total-vp">${p.ast_level + p.adv_points}${p.late_iron_age_bonus ? ' <span class="lia-bonus-chip" title="Late Iron Age bonus: +5 VP at game end">★</span>' : ''}</td>
+      <td class="total-vp">${playerTotalVp(p, p.city_count)}${p.late_iron_age_bonus ? ' <span class="lia-bonus-chip" title="Late Iron Age bonus: +5 VP">★</span>' : ''}</td>
     </tr>`;
   }).join('');
 
@@ -190,7 +130,7 @@ export function renderMain(state: FullState): string {
     b.ast_level !== a.ast_level ? b.ast_level - a.ast_level : a.civ_number - b.civ_number
   );
   const astOrderRows = astOrderSorted.map((p, i) => {
-    const groupStart = i > 0 && astOrderSorted[i - 1].ast_level !== p.ast_level;
+    const groupStart = i > 0 && astOrderSorted[i - 1]!.ast_level !== p.ast_level;
     return `<tr${groupStart ? ' class="ast-order-group-start"' : ''}>${empireCell(p)}</tr>`;
   }).join('');
 

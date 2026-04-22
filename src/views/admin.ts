@@ -1,6 +1,8 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import type { CivRefRow } from '../db.js';
 import { nextAstStatus, type AstStatus } from '../models/ast.js';
+import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
+import { LIA_THRESHOLD } from '../models/ast.js';
 
 function pwdFormHtml(query: string): string {
   const error = query.includes('pwd_error=1') ? 'Current password is incorrect.'
@@ -119,50 +121,29 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
   // Final VP = AST VP + ADV VP + City VP (1 per city) + LIA bonus (5VP)
   // Wonder of the World does not count as a city for scoring
   const scored = players.map(p => {
-    const cityEntry = census.find(c => c.player_id === p.id);
-    const cityVp = cityEntry?.city_count ?? 0;
+    const cityVp = census.find(c => c.player_id === p.id)?.city_count ?? 0;
     const liaVp = p.late_iron_age_bonus ? 5 : 0;
-    const total = p.ast_level + p.adv_points + cityVp + liaVp;
-    return { ...p, liaVp, cityVp, total };
-  }).sort((a, b) => {
-    if (b.total !== a.total) return b.total - a.total;
-    if (b.ast_level !== a.ast_level) return b.ast_level - a.ast_level;
-    if (b.adv_6vp !== a.adv_6vp) return b.adv_6vp - a.adv_6vp;
-    if (b.adv_3vp !== a.adv_3vp) return b.adv_3vp - a.adv_3vp;
-    if (b.cityVp !== a.cityVp) return b.cityVp - a.cityVp;
-    return (a.rank_order || a.civ_number) - (b.rank_order || b.civ_number);
-  });
+    const total = playerTotalVp(p, cityVp);
+    return { ...p, liaVp, cityVp, total, _score: makeScoreEntry(p, cityVp) };
+  }).sort((a, b) => compareScores(a._score, b._score));
 
   // Detect unresolved ties; rank_order is a stable sort key only, not a tie resolver
   const tiedIds = new Set<number>();
   for (let i = 0; i < scored.length - 1; i++) {
-    const a = scored[i], b = scored[i + 1];
-    if (
-      a.total === b.total &&
-      a.ast_level === b.ast_level &&
-      a.adv_6vp === b.adv_6vp &&
-      a.adv_3vp === b.adv_3vp &&
-      a.cityVp === b.cityVp
-    ) { tiedIds.add(a.id); tiedIds.add(b.id); }
+    if (sameScoreGroup(scored[i]!._score, scored[i + 1]!._score)) {
+      tiedIds.add(scored[i]!.id); tiedIds.add(scored[i + 1]!.id);
+    }
   }
 
   // For each tie group, compute which actual leaderboard positions they span
-  // e.g. players tied at 5th and 6th → groupPositions = [5, 6]
   const groupPositionsMap = new Map<number, number[]>(); // player id → [pos, pos+1, ...]
   let pos = 1;
   let gi = 0;
   while (gi < scored.length) {
     let gj = gi;
-    while (
-      gj + 1 < scored.length &&
-      scored[gj + 1].total === scored[gi].total &&
-      scored[gj + 1].ast_level === scored[gi].ast_level &&
-      scored[gj + 1].adv_6vp === scored[gi].adv_6vp &&
-      scored[gj + 1].adv_3vp === scored[gi].adv_3vp &&
-      scored[gj + 1].cityVp === scored[gi].cityVp
-    ) gj++;
+    while (gj + 1 < scored.length && sameScoreGroup(scored[gi]!._score, scored[gj + 1]!._score)) gj++;
     const groupPositions = Array.from({ length: gj - gi + 1 }, (_, k) => pos + k);
-    for (let k = gi; k <= gj; k++) groupPositionsMap.set(scored[k].id, groupPositions);
+    for (let k = gi; k <= gj; k++) groupPositionsMap.set(scored[k]!.id, groupPositions);
     pos += gj - gi + 1;
     gi = gj + 1;
   }
@@ -171,14 +152,10 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
   const resolvedTiedIds = new Set<number>();
   { let gi = 0;
     while (gi < scored.length) {
-      if (!tiedIds.has(scored[gi].id)) { gi++; continue; }
+      if (!tiedIds.has(scored[gi]!.id)) { gi++; continue; }
       let gj = gi;
-      while (gj + 1 < scored.length && tiedIds.has(scored[gj + 1].id) &&
-        scored[gj + 1].total === scored[gi].total &&
-        scored[gj + 1].ast_level === scored[gi].ast_level &&
-        scored[gj + 1].adv_6vp === scored[gi].adv_6vp &&
-        scored[gj + 1].adv_3vp === scored[gi].adv_3vp &&
-        scored[gj + 1].cityVp === scored[gi].cityVp
+      while (gj + 1 < scored.length && tiedIds.has(scored[gj + 1]!.id) &&
+        sameScoreGroup(scored[gi]!._score, scored[gj + 1]!._score)
       ) gj++;
       const group = scored.slice(gi, gj + 1);
       if (group.every(p => p.rank_order !== 0)) group.forEach(p => resolvedTiedIds.add(p.id));
@@ -190,12 +167,11 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
   const displayRanks: number[] = [];
   for (let i = 0; i < scored.length; i++) {
     if (i > 0) {
-      const prev = scored[i - 1], curr = scored[i];
+      const prev = scored[i - 1]!, curr = scored[i]!;
       const shareRank = tiedIds.has(prev.id) && tiedIds.has(curr.id) &&
         !resolvedTiedIds.has(prev.id) &&
-        prev.total === curr.total && prev.ast_level === curr.ast_level &&
-        prev.adv_6vp === curr.adv_6vp && prev.adv_3vp === curr.adv_3vp;
-      displayRanks.push(shareRank ? displayRanks[i - 1] : i + 1);
+        sameScoreGroup(prev._score, curr._score);
+      displayRanks.push(shareRank ? displayRanks[i - 1]! : i + 1);
     } else {
       displayRanks.push(1);
     }
@@ -209,7 +185,7 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = ''): str
 
   const rows = scored.map((p, i) => {
     const unresolved = tiedIds.has(p.id) && !resolvedTiedIds.has(p.id);
-    const medal = MEDALS[displayRanks[i]] ?? '';
+    const medal = MEDALS[displayRanks[i]!] ?? '';
     const star = p.late_iron_age_bonus
       ? `<button class="lia-star-btn lia-star-on" data-player-id="${p.id}" data-granted="1" title="Late Iron Age bonus (5VP) — click to remove">★</button>`
       : `<button class="lia-star-btn lia-star-off" data-player-id="${p.id}" data-granted="0" title="Grant Late Iron Age bonus (5VP)">★</button>`;
@@ -360,7 +336,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
         </div>
       </td>
       <td data-label="★">
-        ${p.ast_level >= 75
+        ${p.ast_level >= LIA_THRESHOLD
           ? `<button class="lia-star-btn ${p.late_iron_age_bonus ? 'lia-star-on' : 'lia-star-off'}" data-player-id="${p.id}" data-granted="${p.late_iron_age_bonus ? '1' : '0'}"
               title="${p.late_iron_age_bonus ? 'LIA bonus (5VP) — click to remove' : 'Grant LIA bonus (5VP)'}">★</button>`
           : `<span class="lia-star-btn lia-star-ineligible" title="Not yet in Late Iron Age">★</span>`

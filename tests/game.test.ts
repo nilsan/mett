@@ -103,7 +103,7 @@ function getGame(db: Database) {
 // Since the service uses a module-level singleton, we dynamically override it.
 
 import { autoAdvanceAst } from '../src/models/ast.js';
-import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound } from '../src/models/game.js';
+import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp } from '../src/models/game.js';
 import { _setTestDb } from '../src/services/db.js';
 import { sortCensusOrder } from '../src/views/main.js';
 
@@ -461,6 +461,28 @@ describe('checkAndSetFinalRound — expert mode', () => {
     checkAndSetFinalRound();  // should be no-op
 
     expect(getGame(db).is_final_round).toBe(1);
+  });
+});
+
+describe('playerTotalVp', () => {
+  const base = { ast_level: 60, adv_points: 40, late_iron_age_bonus: 0 };
+
+  it('sums AST + ADV only when no city count or LIA bonus', () => {
+    expect(playerTotalVp(base, null)).toBe(100);
+    expect(playerTotalVp(base, undefined)).toBe(100);
+    expect(playerTotalVp(base, 0)).toBe(100);
+  });
+
+  it('adds city VP (1 per city)', () => {
+    expect(playerTotalVp(base, 7)).toBe(107);
+  });
+
+  it('adds 5 VP for LIA bonus', () => {
+    expect(playerTotalVp({ ...base, late_iron_age_bonus: 1 }, 0)).toBe(105);
+  });
+
+  it('includes all three components together', () => {
+    expect(playerTotalVp({ ...base, late_iron_age_bonus: 1 }, 7)).toBe(112);
   });
 });
 
