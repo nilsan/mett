@@ -19,6 +19,8 @@
 - **Final scoring** — when the game ends, me[tt] shows a full breakdown: Advance VP + A.S.T. VP + city VP (1 per city) + LIA bonus (5 VP for reaching maximum A.S.T. simultaneously)
 - **Live updates** — every screen updates automatically via WebSocket; no manual refreshing
 
+For a detailed description of each implemented rule see [RULES.md](RULES.md).
+
 ---
 
 ## What you need
@@ -150,13 +152,15 @@ Caddy handles TLS certificates automatically via Let's Encrypt.
 
 ---
 
-## License
+## Contributing and development
 
-MIT — Copyright © 2025 [Nils-Anders Nøttseter](https://github.com/nilsan) & [Roe Nøttseter](https://github.com/roenoe)
-
-Inspired by the original [METool](https://github.com/roenoe/METool) by Roe Nøttseter.
-Mega Empires is a game by Flo de Haan and Gerart de Haan.
+me[tt] is built with [Bun](https://bun.sh), [Hono](https://hono.dev) and vanilla JavaScript. If you want to run it locally without Docker, explore the architecture, or contribute, see [DEV.md](DEV.md) for setup instructions, the project layout, API reference and test guide.
 
 ---
 
-[Implemented game rules →](RULES.md) · [Developer documentation →](DEV.md)
+## License
+
+MIT — Copyright © 2026 [Nils-Anders Nøttseter](https://github.com/nilsan)
+
+Inspired by the original [METool](https://github.com/roenoe/METool) by Roe Nøttseter.
+Mega Empires is a game by Flo de Haan and Gerart de Haan.

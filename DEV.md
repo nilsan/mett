@@ -272,4 +272,4 @@ The status page uses a CSS Grid layout that adapts across five breakpoints defin
 
 ## License
 
-MIT — Copyright © 2025 [Nils-Anders Nøttseter](https://github.com/nilsan) & [Roe Nøttseter](https://github.com/roenoe)
+MIT — Copyright © 2026 [Nils-Anders Nøttseter](https://github.com/nilsan)
