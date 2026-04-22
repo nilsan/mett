@@ -1,5 +1,6 @@
 import type { ServerWebSocket } from 'bun';
 import { getFullState } from './db.js';
+import { nextAstStatus } from './models/ast.js';
 
 export interface WsData {
   id: string;
@@ -28,5 +29,11 @@ export function broadcast(type: string, data?: unknown): void {
 
 export function broadcastState(targetPlayerId?: number): void {
   const state = getFullState();
-  broadcast('state_update', { ...state, targetPlayerId: targetPlayerId ?? null });
+  const expert = state.game.expert === 1;
+  const astStatus: Record<number, string> = {};
+  for (const player of state.players) {
+    const c = state.census.find(r => r.player_id === player.id);
+    astStatus[player.id] = nextAstStatus(player, c?.city_count, state.astLevels, expert);
+  }
+  broadcast('state_update', { ...state, astStatus, targetPlayerId: targetPlayerId ?? null });
 }

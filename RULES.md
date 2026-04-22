@@ -42,7 +42,7 @@ City count is collected twice each round:
 1. **Pre-trade** — players enter their city count after building but before buying trade cards. This is used on the main display (A.S.T. progress board).
 2. **Post-calamity** — after calamities are resolved, players re-enter their city count. This is the count used to check A.S.T. advancement and regression requirements.
 
-The admin uses the \*\*Trading & calamities done →\*\* button to transition from the pre-trade phase to the post-calamity phase.
+The admin uses the **Trading done →** button to transition from the pre-trade phase to the post-calamity phase.
 
 ---
 

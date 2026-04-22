@@ -377,11 +377,11 @@ describe('LIA bonus assignment', () => {
     _setTestDb(db);
   });
 
-  it('grants bonus to exactly 1 player at ≥70', () => {
+  it('grants bonus to exactly 1 player at ≥75', () => {
     const pid1 = addPlayer(db, 17, 'Egypt');
     const pid2 = addPlayer(db, 15, 'Hellas');
-    db.query('UPDATE players SET ast_level=70 WHERE id=?').run(pid1);  // Egypt at 70
-    db.query('UPDATE players SET ast_level=65 WHERE id=?').run(pid2);  // Hellas at 65
+    db.query('UPDATE players SET ast_level=75 WHERE id=?').run(pid1);  // Egypt at LIA entry
+    db.query('UPDATE players SET ast_level=70 WHERE id=?').run(pid2);  // Hellas still at EIA
 
     checkAndSetLateIronAgeBonus();
 
@@ -389,11 +389,11 @@ describe('LIA bonus assignment', () => {
     expect(getPlayer(db, pid2).late_iron_age_bonus).toBe(0);
   });
 
-  it('grants no bonus when 2 or more players are at ≥70', () => {
+  it('grants no bonus when 2 or more players are at ≥75', () => {
     const pid1 = addPlayer(db, 17, 'Egypt');
     const pid2 = addPlayer(db, 15, 'Hellas');
-    db.query('UPDATE players SET ast_level=70 WHERE id=?').run(pid1);
-    db.query('UPDATE players SET ast_level=70 WHERE id=?').run(pid2);
+    db.query('UPDATE players SET ast_level=75 WHERE id=?').run(pid1);
+    db.query('UPDATE players SET ast_level=75 WHERE id=?').run(pid2);
 
     checkAndSetLateIronAgeBonus();
 
@@ -404,23 +404,23 @@ describe('LIA bonus assignment', () => {
   it('does not grant a second bonus if one is already held', () => {
     const pid1 = addPlayer(db, 17, 'Egypt');
     const pid2 = addPlayer(db, 15, 'Hellas');
-    db.query('UPDATE players SET ast_level=70, late_iron_age_bonus=1 WHERE id=?').run(pid1);
-    db.query('UPDATE players SET ast_level=70 WHERE id=?').run(pid2);
+    db.query('UPDATE players SET ast_level=75, late_iron_age_bonus=1 WHERE id=?').run(pid1);
+    db.query('UPDATE players SET ast_level=75 WHERE id=?').run(pid2);
 
     checkAndSetLateIronAgeBonus();  // should be a no-op (bonus already granted)
 
     expect(getPlayer(db, pid2).late_iron_age_bonus).toBe(0);
   });
 
-  it('counts players at exactly 70 (boundary: ≥70)', () => {
+  it('counts players at exactly 75 (boundary: ≥75)', () => {
     const pid = addPlayer(db, 17, 'Egypt');
-    db.query('UPDATE players SET ast_level=69 WHERE id=?').run(pid);
+    db.query('UPDATE players SET ast_level=70 WHERE id=?').run(pid);
 
     checkAndSetLateIronAgeBonus();
 
-    expect(getPlayer(db, pid).late_iron_age_bonus).toBe(0);  // 69 < 70
+    expect(getPlayer(db, pid).late_iron_age_bonus).toBe(0);  // 70 < 75
 
-    db.query('UPDATE players SET ast_level=70 WHERE id=?').run(pid);
+    db.query('UPDATE players SET ast_level=75 WHERE id=?').run(pid);
     checkAndSetLateIronAgeBonus();
     expect(getPlayer(db, pid).late_iron_age_bonus).toBe(1);
   });

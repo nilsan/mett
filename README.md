@@ -109,7 +109,7 @@ In Expert mode, a player with 0 cities (and no Wonder) outside the Stone Age wil
 2. **Move order reveals** automatically once all are submitted — highest population moves first within each group, Military holders move last
 3. **Pre-trade city count** — players enter their current city count before buying trade cards
 4. **Trade and calamities** take place as normal
-5. **Post-calamity city count** — players re-enter their city count after calamities are resolved; when all are in, the admin clicks \*\*Trading & calamities done →\*\*
+5. **Post-calamity city count** — players re-enter their city count after calamities are resolved; when all are in, the admin clicks **Trading done →**
 6. **A.S.T. advancement** — me[tt] automatically advances (or regresses in Expert) each player based on their post-calamity cities and advances; the admin can override with the A.S.T. dropdown
 7. **Advance VP** — players update their card totals after purchasing
 8. **Admin advances the round** — click **Advance to Round N+1** (or **End Game** in the final round)

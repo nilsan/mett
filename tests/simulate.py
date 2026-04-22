@@ -372,12 +372,10 @@ def sim2():
     check_eq("EIA: Hellas stalls at 65 (9 cheap < 10 required)", s['Hellas']['ast_level'], 65)
     check_eq("EIA: Minoa at 65 (12 advances satisfied level 60 req → now at 65)", s['Minoa']['ast_level'], 65)
 
-    # LIA bonus: Egypt is the ONLY player at ≥70 → should get the bonus
+    # LIA bonus: Egypt is at 70, but ≥75 threshold not yet reached → no bonus yet
     s_state = state()
-    eg_player = next(p for p in s_state['players'] if p['id'] == eg)
     lia_total = sum(1 for p in s_state['players'] if p['late_iron_age_bonus'])
-    check("Expert LIA bonus: exactly 1 holder", lia_total == 1, f"got {lia_total}")
-    check("Expert LIA bonus: granted to Egypt (first to 70)", eg_player['late_iron_age_bonus'] == 1)
+    check("Expert LIA bonus: 0 granted when leader only at 70", lia_total == 0, f"got {lia_total}")
 
     # is_final_round should NOT be set yet (nobody at ≥75)
     check("is_final_round=0 before anyone reaches 75", s_state['game']['is_final_round'] == 0)
@@ -394,6 +392,10 @@ def sim2():
     check_eq("Egypt reaches 75 (final round triggered)", eg_lvl, 75)
     check("Expert: is_final_round=1 set after someone reaches 75", s_state['game']['is_final_round'] == 1)
     check("Game still active (one more round to play)", s_state['game']['active'] == 1)
+    eg_player = next(p for p in s_state['players'] if p['id'] == eg)
+    lia_total = sum(1 for p in s_state['players'] if p['late_iron_age_bonus'])
+    check("Expert LIA bonus: exactly 1 holder after Egypt reaches 75", lia_total == 1, f"got {lia_total}")
+    check("Expert LIA bonus: granted to Egypt (first to ≥75 alone)", eg_player['late_iron_age_bonus'] == 1)
 
     # ── Final round: autoAdvanceAst runs, then game ends ──────────────────────
     do_round([mi,ku,eg,he,pe],
@@ -881,6 +883,66 @@ def sim5():
         print(f"    {rank:2}. {name:<12} {total} VP")
 
 
+# ─── SIM 6: admin round button enables via WebSocket after city count submission ──
+
+def selenium_admin_button_state(cookie_value):
+    """Return (button_id, is_disabled) for the round action button on the admin page."""
+    opts = Options()
+    opts.add_argument('--headless')
+    opts.add_argument('--no-sandbox')
+    opts.add_argument('--disable-dev-shm-usage')
+    opts.add_argument('--disable-cache')
+    svc = Service('/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=svc, options=opts)
+    try:
+        driver.get(BASE + '/admin')
+        driver.add_cookie({'name': 'mett_admin', 'value': cookie_value})
+        driver.get(BASE + '/admin')
+        time.sleep(1.5)  # wait for WS to connect and page to settle
+        for btn_id in ('prepare-ast', 'advance-round'):
+            btns = driver.find_elements(By.ID, btn_id)
+            if btns:
+                return btn_id, btns[0].get_attribute('disabled') is not None
+        return None, None
+    finally:
+        driver.quit()
+
+
+def sim6():
+    """Admin round button: disabled before all city counts in, enabled after."""
+    print("\nSIM 6: Admin round button WebSocket enable/disable")
+    reset()
+
+    ids = start_game(0, [
+        {'civ_id': 17, 'name': 'Alice', 'region': 'west'},
+        {'civ_id': 11, 'name': 'Bob',   'region': 'west'},
+        {'civ_id':  5, 'name': 'Carol', 'region': 'west'},
+    ])
+    egypt, rome, celt = ids['Egypt'], ids['Rome'], ids['Celt']
+
+    # Submit census so city count fields become available
+    census(egypt, 20); census(rome, 15); census(celt, 10)
+    reveal()
+
+    btn_id, disabled = selenium_admin_button_state(ADMIN_COOKIE)
+    check("Button present", btn_id is not None, f"no round button found")
+    check("Button disabled before any city count submitted", disabled is True, f"button was enabled")
+
+    # Submit city count for 2 of 3 — button must stay disabled
+    city_count(egypt, 4); city_count(rome, 3)
+    time.sleep(0.3)
+    _, disabled2 = selenium_admin_button_state(ADMIN_COOKIE)
+    check("Button still disabled with 2/3 submitted", disabled2 is True, f"button was enabled early")
+
+    # Submit last city count — button must become enabled via WebSocket
+    city_count(celt, 5)
+    time.sleep(1.5)  # allow WS broadcast to reach browser
+    _, disabled3 = selenium_admin_button_state(ADMIN_COOKIE)
+    check("Button enabled after all city counts submitted", disabled3 is False, f"button stayed disabled")
+
+    reset()
+
+
 # ─── Runner ───────────────────────────────────────────────────────────────────
 
 def run_sim(fn):
@@ -905,6 +967,7 @@ if __name__ == '__main__':
     run_sim(sim3)
     run_sim(sim4)
     run_sim(sim5)
+    run_sim(sim6)
 
     print(f"\n{'=' * 50}")
     print(f"Results: {PASS_COUNT} passed, {FAIL_COUNT} failed")

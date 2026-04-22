@@ -1,26 +1,6 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import type { CivRefRow } from '../db.js';
-import { getCivAstProfile } from '../civs.js';
-import { meetsAstRequirements } from '../models/ast.js';
-
-type AstStatus = 'advance' | 'stay' | 'regress' | 'unknown';
-
-function nextAstStatus(p: PlayerRow, cityCount: number | null | undefined, levels: AstLevelRow[], expert: boolean): AstStatus {
-  if (cityCount == null) return 'unknown';
-
-  const AST_LEVELS = levels.map(l => l.level);
-  const curIdx = AST_LEVELS.indexOf(p.ast_level);
-  if (curIdx === -1) return 'unknown';
-
-  const { stoneEnd } = getCivAstProfile(p.civ_number, expert);
-  const inStoneAge = p.ast_level <= stoneEnd;
-  const effectiveCityCount = cityCount + (p.wonder ? 1 : 0);
-
-  if (expert && effectiveCityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
-  if (curIdx >= AST_LEVELS.length - 1) return 'stay';
-
-  return meetsAstRequirements(p, levels[curIdx], effectiveCityCount, expert) ? 'advance' : 'stay';
-}
+import { nextAstStatus, type AstStatus } from '../models/ast.js';
 
 function pwdFormHtml(query: string): string {
   const error = query.includes('pwd_error=1') ? 'Current password is incorrect.'
@@ -379,6 +359,13 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           </div>
         </div>
       </td>
+      <td data-label="★">
+        ${p.ast_level >= 75
+          ? `<button class="lia-star-btn ${p.late_iron_age_bonus ? 'lia-star-on' : 'lia-star-off'}" data-player-id="${p.id}" data-granted="${p.late_iron_age_bonus ? '1' : '0'}"
+              title="${p.late_iron_age_bonus ? 'LIA bonus (5VP) — click to remove' : 'Grant LIA bonus (5VP)'}">★</button>`
+          : `<span class="lia-star-btn lia-star-ineligible" title="Not yet in Late Iron Age">★</span>`
+        }
+      </td>
     </tr>`;
   }).join('');
 
@@ -411,12 +398,12 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
         ? `<button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled'}>
           ${isFinalRound ? 'End Game' : `Advance to Round ${game.current_round + 1}`}
         </button>`
-        : `<button id="prepare-ast" class="btn-primary"${allCitiesReady ? '' : ' disabled'}>Trading &amp; calamities done →</button>`
+        : `<button id="prepare-ast" class="btn-primary"${allCitiesReady ? '' : ' disabled'}>Trading done →</button>`
       }
       <span class="round-hint">
         ${citiesPhase
           ? 'Each empire re-enters city count after calamities. Click Advance when all are submitted.'
-          : 'Each empire submits pre-trade city count. Click the button above after trading and calamities are done.'
+          : 'Each empire submits pre-trade city count. Click the button above after trading is done.'
         }
       </span>
     </div>
@@ -439,8 +426,9 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           <th>Mil / Won</th>
           <th>Adv VP</th>
           <th>A.S.T. Position</th>
+          <th title="Late Iron Age bonus (5 VP) — first to reach LIA alone">★</th>
         </tr></thead>
-        <tbody>${playerRows || '<tr><td colspan="6">No players</td></tr>'}</tbody>
+        <tbody>${playerRows || '<tr><td colspan="7">No players</td></tr>'}</tbody>
       </table>
     </div>
   </section>

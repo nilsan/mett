@@ -181,7 +181,7 @@ export function renderMain(state: FullState): string {
       <td class="player-name-col">${p.name}</td>
       <td class="adv-pts">${p.adv_points}</td>
       <td class="ast-pts">${p.ast_level}</td>
-      <td class="total-vp">${p.ast_level + p.adv_points}</td>
+      <td class="total-vp">${p.ast_level + p.adv_points}${p.late_iron_age_bonus ? ' <span class="lia-bonus-chip" title="Late Iron Age bonus: +5 VP at game end">★</span>' : ''}</td>
     </tr>`;
   }).join('');
 
@@ -221,7 +221,10 @@ export function renderMain(state: FullState): string {
   const roundCells = boardLevels.map((l, i) => {
     const num = i + 1;
     const displayRound = i === lastRoundIdx ? `${num}+` : `${num}`;
-    const isCurrent = game.started_at !== null && !roundBeyondBoard && num === game.current_round;
+    const isCurrent = game.started_at !== null && (
+      (!roundBeyondBoard && num === game.current_round) ||
+      (roundBeyondBoard && i === lastRoundIdx)
+    );
     return `<td class="ab-round-num${l === 0 ? ' ab-start-col' : ''}${defaultAgeEnds.has(l) ? ' ab-age-end' : ''}${isCurrent ? ' ab-round-current' : ''}">${displayRound}</td>`;
   }).join('');
 

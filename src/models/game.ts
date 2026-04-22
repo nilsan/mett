@@ -56,7 +56,7 @@ export function checkAndSetLateIronAgeBonus(): void {
   ).get()!.count;
   if (alreadyGranted > 0) return;
   const atLIA = db.query<{ id: number }, []>(
-    'SELECT id FROM players WHERE ast_level >= 70'
+    'SELECT id FROM players WHERE ast_level >= 75'
   ).all();
   if (atLIA.length === 1) {
     db.query('UPDATE players SET late_iron_age_bonus=1 WHERE id=?').run(atLIA[0].id);

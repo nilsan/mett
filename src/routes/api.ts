@@ -167,6 +167,12 @@ api.post('/players/:id/adv', async (c) => {
 api.post('/players/:id/late-iron-age-bonus', async (c) => {
   const playerId = Number(c.req.param('id'));
   const body = await c.req.json<{ grant: boolean }>();
+  if (body.grant) {
+    const player = db.getPlayers().find(p => p.id === playerId);
+    if (!player || player.ast_level < 75) {
+      return c.json({ error: 'LIA bonus can only be granted to empires that have reached Late Iron Age (AST ≥75)' }, 400);
+    }
+  }
   db.setLateIronAgeBonus(playerId, body.grant);
   broadcastState();
   return c.json({ ok: true });

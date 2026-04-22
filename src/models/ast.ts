@@ -46,6 +46,32 @@ export function checkRequirement(
   return true;
 }
 
+export type AstStatus = 'advance' | 'stay' | 'regress' | 'unknown';
+
+/** Predict next-round AST outcome for a player given their current city count. */
+export function nextAstStatus(
+  player: PlayerRow,
+  cityCount: number | null | undefined,
+  levels: AstLevelRow[],
+  expert: boolean,
+): AstStatus {
+  if (cityCount == null) return 'unknown';
+
+  const levelNums = levels.map(l => l.level);
+  const curIdx = levelNums.indexOf(player.ast_level);
+  if (curIdx === -1) return 'unknown';
+
+  const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
+  const inStoneAge = player.ast_level <= stoneEnd;
+  const effectiveCityCount = cityCount + (player.wonder ? 1 : 0);
+
+  if (expert && effectiveCityCount === 0 && !inStoneAge) return curIdx > 0 ? 'regress' : 'stay';
+  if (curIdx >= levels.length - 1) return 'stay';
+
+  const currentLevel = levels[curIdx]!;
+  return meetsAstRequirements(player, currentLevel, effectiveCityCount, expert) ? 'advance' : 'stay';
+}
+
 /** Full AST advancement check, incorporating per-civ era profile overrides. */
 export function meetsAstRequirements(
   player: PlayerRow,

@@ -313,6 +313,7 @@ export function renderCivFragment(
         <span class="ast-level-label">Total VP:</span>
         <span class="ast-level-value">${player.ast_level + player.adv_points}</span>
       </div>
+      ${player.late_iron_age_bonus ? `<div class="ast-current lia-bonus-row"><span class="ast-level-label">LIA bonus:</span> <span class="lia-bonus-chip">★ +5 VP at game end</span></div>` : ''}
       ${nextLevel ? (() => {
         const cityCount = census?.city_count ?? null;
         // Always run checkReq — advances/VP are always evaluable even without city count

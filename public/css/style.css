@@ -904,6 +904,11 @@ body {
 .lia-star-on  { color: var(--mett-accent); }
 .lia-star-off { color: var(--mett-border); }
 .lia-star-off:hover { color: var(--mett-muted); }
+.lia-star-ineligible { color: var(--mett-border); opacity: 0.3; cursor: default; }
+
+/* LIA bonus chip (leaderboard + player page) */
+.lia-bonus-chip { color: var(--mett-accent); font-size: 0.85rem; }
+.lia-bonus-row  { margin-top: 0.25rem; }
 
 /* Tie-break rank dropdown */
 .rank-select {

@@ -302,6 +302,7 @@
     const resetBtn = document.getElementById('reset-game');
     if (resetBtn) {
       resetBtn.addEventListener('click', async () => {
+        if (!confirm('Reset the game? All current game data will be permanently deleted.')) return;
         await post('/api/game/reset', { confirm: true });
         location.reload();
       });
@@ -453,25 +454,6 @@
       const citiesCount = data.census.filter(c => c.city_count != null).length;
       const citiesPhase = data.game.cities_phase === 1;
       const allCitiesReady = n > 0 && citiesCount === n;
-      const showPrepareAst = allCitiesReady && !citiesPhase;
-
-      // If the last city was just submitted (pre-trade phase), swap advance-round → prepare-ast in place
-      const hasPrepBtn = !!document.getElementById('prepare-ast');
-      if (showPrepareAst && !hasPrepBtn) {
-        const advBtn = document.getElementById('advance-round');
-        if (advBtn) {
-          const prepBtn = document.createElement('button');
-          prepBtn.id = 'prepare-ast';
-          prepBtn.className = 'btn-primary';
-          prepBtn.textContent = `Prepare for AST — Round ${data.game.current_round}`;
-          advBtn.replaceWith(prepBtn);
-          prepBtn.addEventListener('click', async () => {
-            prepBtn.disabled = true;
-            await post('/api/game/cities/clear', {});
-            location.reload();
-          });
-        }
-      }
 
       // Update submission progress bar
       const progItems = document.querySelectorAll('.sub-prog-item');
@@ -488,9 +470,30 @@
         progItems[1].classList.toggle('sub-prog-done', citiesCount === n);
       }
 
-      // Enable/disable the advance button (when it exists and prepare-ast is not shown)
+      // Enable/disable whichever action button is currently rendered
+      const prepBtn = document.getElementById('prepare-ast');
       const advBtn = document.getElementById('advance-round');
+      if (prepBtn) prepBtn.disabled = !allCitiesReady;
       if (advBtn) advBtn.disabled = !allCitiesReady;
+
+      // Update per-player AST status dots
+      if (data.astStatus) {
+        data.players.forEach(p => {
+          const row = document.querySelector(`tr[data-player-id="${p.id}"]`);
+          if (!row) return;
+          const status = data.astStatus[p.id] ?? 'unknown';
+          const title = status === 'advance' ? 'Will advance' : status === 'regress' ? 'Will regress' : status === 'stay' ? 'Requirements not met' : 'Post-calamity city count unknown';
+          const [dot1, dot2] = row.querySelectorAll('.ast-status-dot');
+          if (dot1) {
+            dot1.className = `ast-status-dot ast-status-${status}`;
+            dot1.title = title;
+          }
+          if (dot2) {
+            dot2.className = `ast-status-dot ${status === 'regress' ? 'ast-status-regress' : 'ast-status-hidden'}`;
+            dot2.title = title;
+          }
+        });
+      }
 
       // Update per-player census and city status icons
       data.census.forEach(c => {
