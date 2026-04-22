@@ -223,10 +223,10 @@ export function renderCivFragment(
 
         // Regression: expert mode, 0 effective cities, outside Stone Age
         if (expert && effectiveCities === 0 && !inStoneAge && currentLevelIdx > 0) {
-          const regrессLevel = levels[currentLevelIdx - 1]?.level ?? 0;
+          const regressLevel = levels[currentLevelIdx - 1]?.level ?? 0;
           return `<div class="ast-next req-not-met">
             <h4>To advance to ${nextLevel.level}:</h4>
-            <p class="ast-warn-regress">⚠ 0 cities — will regress to ${regrессLevel} next round</p>
+            <p class="ast-warn-regress">⚠ 0 cities — will regress to ${regressLevel} next round</p>
           </div>`;
         }
 
