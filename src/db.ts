@@ -48,14 +48,29 @@ const PLAYER_SELECT = `
 
 // ── Admin password ─────────────────────────────────────────────────────────────
 
+import { hashPassword, verifyPassword } from './services/password.js';
+
+/** Returns the stored scrypt hash, or '' when unset. */
 export function getAdminPassword(): string {
   return getDb().query<{ admin_password: string | null }, []>(
     'SELECT admin_password FROM game WHERE id=1'
   ).get()?.admin_password ?? '';
 }
 
-export function setAdminPassword(password: string): void {
-  getDb().query('UPDATE game SET admin_password=? WHERE id=1').run(password);
+/** Hash and store a new admin password. Throws on empty input. */
+export function setAdminPassword(plain: string): void {
+  if (!plain) throw new Error('Admin password cannot be empty');
+  getDb().query('UPDATE game SET admin_password=? WHERE id=1').run(hashPassword(plain));
+}
+
+/** Timing-safe check of submitted plaintext against the stored hash. */
+export function verifyAdminPassword(plain: string): boolean {
+  return verifyPassword(plain, getAdminPassword());
+}
+
+/** True when the current stored password is the built-in 'PASSWORD' default. */
+export function isUsingDefaultPassword(): boolean {
+  return verifyPassword('PASSWORD', getAdminPassword());
 }
 
 // ── Players ───────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { hashPassword, isLegacyPlaintext } from './password.js';
 
 const DB_PATH = process.env.DATABASE_PATH ?? join(import.meta.dir, '..', '..', 'data', 'mett.db');
 
@@ -83,11 +84,17 @@ export function getDb(): Database {
     );
   }
 
-  // Seed admin password from env var on first run
-  const envPassword = process.env.ADMIN_PASSWORD ?? 'PASSWORD';
+  // Seed admin password from env var on first run, and migrate pre-hash
+  // databases to the scrypt format. Empty ADMIN_PASSWORD falls back to the
+  // 'PASSWORD' default (|| not ?? so '' also falls through).
+  const envPassword = process.env.ADMIN_PASSWORD || 'PASSWORD';
   const row = _db.query<{ admin_password: string | null }, []>('SELECT admin_password FROM game WHERE id=1').get();
-  if (!row?.admin_password) {
-    _db.query('UPDATE game SET admin_password=? WHERE id=1').run(envPassword);
+  const stored = row?.admin_password ?? null;
+  if (!stored) {
+    _db.query('UPDATE game SET admin_password=? WHERE id=1').run(hashPassword(envPassword));
+  } else if (isLegacyPlaintext(stored)) {
+    console.log('[me[tt]] Migrating admin password storage: plaintext → scrypt');
+    _db.query('UPDATE game SET admin_password=? WHERE id=1').run(hashPassword(stored));
   }
 
   return _db;

@@ -4,16 +4,17 @@ import { layout } from '../views/layout.js';
 import { renderAdmin } from '../views/admin.js';
 import { renderCiv, renderCivFragment } from '../views/civ.js';
 import { renderMain } from '../views/main.js';
-import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, getAdminPassword, setAdminPassword } from '../db.js';
+import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, setAdminPassword, verifyAdminPassword } from '../db.js';
 import { CIVS } from '../civs.js';
 
 const COOKIE_NAME = 'mett_admin';
 
 export function isAdminAuthed(req: Request): boolean {
-  const password = getAdminPassword();
   const cookie = req.headers.get('cookie') ?? '';
   const match = cookie.match(/(?:^|;\s*)mett_admin=([^;]*)/);
-  return match?.[1] === password;
+  const submitted = match?.[1];
+  if (!submitted) return false;
+  return verifyAdminPassword(decodeURIComponent(submitted));
 }
 
 const pages = new Hono();
@@ -50,8 +51,8 @@ pages.get('/login', (c) => {
 pages.post('/login', async (c) => {
   const body = await c.req.parseBody();
   const password = String(body.password ?? '');
-  const stored = getAdminPassword();
-  if (stored && password !== stored) {
+  // Reject empty input unconditionally and mismatches via timing-safe verify.
+  if (!password || !verifyAdminPassword(password)) {
     return c.redirect('/login?error=1');
   }
   setCookie(c, COOKIE_NAME, password, {
@@ -68,8 +69,7 @@ pages.post('/admin/change-password', async (c) => {
   const body = await c.req.parseBody();
   const current = String(body.current ?? '');
   const next = String(body.next ?? '').trim();
-  const stored = getAdminPassword();
-  if (stored && current !== stored) {
+  if (!current || !verifyAdminPassword(current)) {
     return c.redirect('/admin?pwd_error=1');
   }
   if (!next) return c.redirect('/admin?pwd_error=2');
