@@ -1,12 +1,51 @@
 services:
-  mett:
+  mett-katja:
     build:
       context: ..
       dockerfile: docker/Dockerfile
     expose:
       - "3000"
     volumes:
-      - ~/docker/mett:/app/data
+      - ~/docker/mett/katja:/app/data
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /app/data/mett.db
+      PORT: 3000
+
+  mett-arne:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    expose:
+      - "3000"
+    volumes:
+      - ~/docker/mett/arne:/app/data
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /app/data/mett.db
+      PORT: 3000
+
+  mett-dag:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    expose:
+      - "3000"
+    volumes:
+      - ~/docker/mett/dag:/app/data
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /app/data/mett.db
+      PORT: 3000
+
+  mett-me:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    expose:
+      - "3000"
+    volumes:
+      - ~/docker/mett/me:/app/data
     restart: unless-stopped
     environment:
       DATABASE_PATH: /app/data/mett.db
@@ -24,7 +63,10 @@ services:
       - caddy_config:/config
     restart: unless-stopped
     depends_on:
-      - mett
+      - mett-katja
+      - mett-arne
+      - mett-dag
+      - mett-me
 
 volumes:
   caddy_data:

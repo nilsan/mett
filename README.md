@@ -23,19 +23,13 @@ For a detailed description of each implemented rule see [RULES.md](RULES.md).
 
 ---
 
-## What you need
+## Deployment
 
-**Docker Desktop** — free for personal use.
+### Production (Docker)
 
-→ [Download Docker Desktop](https://www.docker.com/products/docker-desktop/)
+The production setup runs four independent instances — katja, arne, dag and me — each at its own subdomain of `example.com`, behind a single Caddy reverse proxy that handles HTTPS automatically.
 
-That's it. No other software required.
-
----
-
-## Quick start
-
-Open a terminal and run:
+**Requirements:** a Linux server with Docker and Docker Compose installed, and DNS A records for each subdomain pointing to the server's IP.
 
 ```bash
 git clone https://github.com/nilsan/mett.git
@@ -43,15 +37,28 @@ cd mett
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-Then open **http://localhost:3000** in your browser.
+Each instance is immediately reachable at its subdomain. Caddy obtains TLS certificates automatically on first request.
 
-To stop:
+To stop all instances:
 
 ```bash
 docker compose -f docker/docker-compose.yml down
 ```
 
-Game data is saved in the `data/` folder and survives restarts.
+Game data for each instance is stored in `~/docker/mett/{instance}/` on the host and survives restarts. The instances are fully independent — separate databases, separate games.
+
+### Development (Bun)
+
+For local development, Docker is not needed. Install [Bun](https://bun.sh), then:
+
+```bash
+git clone https://github.com/nilsan/mett.git
+cd mett
+bun install
+bun --watch run src/index.ts
+```
+
+The app is available at **http://localhost:3000**. The server reloads automatically on file changes.
 
 ---
 
@@ -59,7 +66,7 @@ Game data is saved in the `data/` folder and survives restarts.
 
 ### Admin setup
 
-Open **http://localhost:3000/admin** on the device that will act as the game master (typically a laptop).
+Open **/admin** on the device that will act as the game master (typically a laptop). In production this is e.g. `https://katja.example.com/admin`; in development it is `http://localhost:3000/admin`.
 
 The default admin password is **`PASSWORD`**. You can change it from the admin page once logged in.
 
@@ -71,7 +78,7 @@ The default admin password is **`PASSWORD`**. You can change it from the admin p
 
 ### The main display
 
-Put **http://localhost:3000** on a shared screen or TV. It shows five panels:
+Put the root URL (e.g. `https://katja.example.com` in production, or `http://localhost:3000` in development) on a shared screen or TV. It shows five panels:
 
 | Panel | What it shows |
 |---|---|
@@ -88,9 +95,9 @@ All panels update live as players submit.
 Every player bookmarks their own empire's page, for example:
 
 ```
-http://localhost:3000/egypt
-http://localhost:3000/rome
-http://localhost:3000/hellas
+https://katja.example.com/egypt
+https://katja.example.com/rome
+https://katja.example.com/hellas
 ```
 
 From their page a player can:
@@ -130,27 +137,15 @@ When the admin clicks **End Game**, me[tt] displays a final scoreboard with each
 
 ### Using phones and tablets
 
-All devices must be on the same Wi-Fi network. Use your computer's local IP address instead of `localhost`, for example:
+In production, players simply open their subdomain URL on any device — no local network required.
+
+In development (Bun), all devices must be on the same Wi-Fi network. Use the computer's local IP instead of `localhost`:
 
 ```
 http://192.168.1.42:3000/egypt
 ```
 
-Find your IP in your system's network settings. On Mac: System Settings → Wi-Fi → Details. On Windows: `ipconfig` in PowerShell.
-
-### HTTPS setup
-
-If you want to run me[tt] on a public server with a real domain name:
-
-1. Point your domain's DNS to the server
-2. Edit `docker/Caddyfile` and replace `mett.yourdomain.com` with your domain
-3. Run:
-
-```bash
-docker compose -f docker/docker-compose.caddy.yml up -d
-```
-
-Caddy handles TLS certificates automatically via Let's Encrypt.
+Find your IP in network settings. On Mac: System Settings → Wi-Fi → Details. On Windows: `ipconfig` in PowerShell.
 
 ---
 
