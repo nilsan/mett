@@ -61,7 +61,7 @@ Game data is saved in the `data/` folder and survives restarts.
 
 Open **http://localhost:3000/admin** on the device that will act as the game master (typically a laptop).
 
-The default admin password is **`password`**. You can change it from the admin page once logged in.
+The default admin password is **`PASSWORD`**. You can change it from the admin page once logged in.
 
 1. Choose **Expert** or **Basic** mode
 2. Enter the number of players and click **Apply recommended civs** — me[tt] pre-selects the correct empires from the official scenario table
