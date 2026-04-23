@@ -72,12 +72,11 @@
       });
     }
 
-    // ── ADV card inputs ────────────────────────────────────────────────────────
+    // ── ADV card inputs — auto-submit, no Update button ───────────────────────
     const adv1 = document.getElementById('adv-1vp');
     const adv3 = document.getElementById('adv-3vp');
     const adv6 = document.getElementById('adv-6vp');
     const advTotal = document.getElementById('adv-total');
-    const advBtn = document.getElementById('submit-adv');
 
     function calcAdvTotal() {
       const v1 = parseInt(adv1?.value ?? '0', 10) || 0;
@@ -90,8 +89,32 @@
       if (advTotal) advTotal.textContent = String(calcAdvTotal());
     }
 
+    async function submitAdv() {
+      const v1 = Math.max(0, parseInt(adv1?.value ?? '0', 10) || 0);
+      const v3 = Math.max(0, parseInt(adv3?.value ?? '0', 10) || 0);
+      const v6 = Math.max(0, parseInt(adv6?.value ?? '0', 10) || 0);
+      try {
+        const res = await fetch(`/api/players/${playerId}/adv`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 }),
+        });
+        if (!res.ok) showToast('Failed to save advances — check connection');
+      } catch { showToast('Network error'); }
+    }
+
+    // Typing: debounce so we don't hammer the API on multi-digit input.
+    let advTypingTimer;
+    function submitAdvDebounced() {
+      clearTimeout(advTypingTimer);
+      advTypingTimer = setTimeout(submitAdv, 400);
+    }
+
     [adv1, adv3, adv6].forEach(inp => {
-      if (inp) inp.addEventListener('input', refreshAdvTotal);
+      if (!inp) return;
+      inp.addEventListener('input', () => { refreshAdvTotal(); submitAdvDebounced(); });
+      // Submit immediately on blur so a pending debounce doesn't get lost to an HTMX swap.
+      inp.addEventListener('blur', () => { clearTimeout(advTypingTimer); submitAdv(); });
     });
 
     document.querySelectorAll('.adv-btn').forEach(btn => {
@@ -102,26 +125,10 @@
         const cur = parseInt(inp.value, 10) || 0;
         inp.value = Math.max(0, cur + dir);
         refreshAdvTotal();
+        clearTimeout(advTypingTimer);
+        submitAdv();
       });
     });
-
-    if (advBtn) {
-      advBtn.addEventListener('click', async () => {
-        const v1 = parseInt(adv1?.value ?? '0', 10) || 0;
-        const v3 = parseInt(adv3?.value ?? '0', 10) || 0;
-        const v6 = parseInt(adv6?.value ?? '0', 10) || 0;
-        advBtn.disabled = true;
-        try {
-          const res = await fetch(`/api/players/${playerId}/adv`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 }),
-          });
-          if (!res.ok) showToast('Failed to save advances — check connection');
-        } catch { showToast('Network error'); }
-        finally { advBtn.disabled = false; }
-      });
-    }
 
     // ── Military toggle ───────────────────────────────────────────────────────
     const milBtn = document.getElementById('mil-toggle');

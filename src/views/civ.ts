@@ -187,7 +187,6 @@ export function renderCivFragment(
         <div class="adv-total-row">
           <span class="adv-total-label">Card VP</span>
           <span id="adv-total" class="adv-total-value">${player.adv_points}</span>
-          <button id="submit-adv" class="btn-submit">Update</button>
         </div>
       </div>
     </section>
