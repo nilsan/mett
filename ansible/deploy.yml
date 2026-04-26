@@ -1,0 +1,92 @@
+---
+# Pull the latest source on the production host and rebuild/restart the
+# docker-compose stack. The source tree must already be checked out at
+# {{ repo_path }} (clone is one-time, not done by this playbook).
+
+- name: Update me[tt] containers on bf.nottseter.no
+  hosts: mett
+  gather_facts: false
+  vars:
+    repo_path: /home/nilsan/src/mett
+    compose_file: docker/docker-compose.yml
+
+  tasks:
+    - name: Capture commit before pull
+      ansible.builtin.command:
+        chdir: "{{ repo_path }}"
+        cmd: git rev-parse HEAD
+      register: head_before
+      changed_when: false
+
+    - name: Fast-forward git pull  # noqa: command-instead-of-module
+      # ansible.builtin.git is designed for clone+checkout flows; using the
+      # command directly is simpler when the working copy is already there.
+      ansible.builtin.command:
+        chdir: "{{ repo_path }}"
+        cmd: git pull --ff-only
+      register: git_pull
+      changed_when: "'Already up to date' not in git_pull.stdout"
+
+    - name: Capture commit after pull
+      ansible.builtin.command:
+        chdir: "{{ repo_path }}"
+        cmd: git rev-parse HEAD
+      register: head_after
+      changed_when: false
+
+    - name: List incoming commits
+      ansible.builtin.command:
+        chdir: "{{ repo_path }}"
+        cmd: "git log --oneline {{ head_before.stdout }}..{{ head_after.stdout }}"
+      register: incoming
+      changed_when: false
+      when: head_before.stdout != head_after.stdout
+
+    - name: Print incoming commits
+      ansible.builtin.debug:
+        msg: "{{ incoming.stdout_lines }}"
+      when: head_before.stdout != head_after.stdout
+
+    - name: Print no-op message
+      ansible.builtin.debug:
+        msg: "Already at {{ head_after.stdout[:7] }} — no new commits, will still rebuild and recreate to ensure runtime matches source."
+      when: head_before.stdout == head_after.stdout
+
+    - name: Build service images
+      ansible.builtin.command:
+        chdir: "{{ repo_path }}"
+        cmd: "docker compose -f {{ compose_file }} build"
+      environment:
+        # Bake the deployed commit's short SHA into the image so the version
+        # footer in the running app reflects exactly what's on the host.
+        BUILD_SHA: "{{ head_after.stdout[:7] }}"
+      register: docker_build
+      # Compose v2 build output is hard to parse reliably across versions —
+      # the "DONE" lines appear whether layers were cached or rebuilt. Treat
+      # the step as changed only if at least one layer was actually run.
+      changed_when: >-
+        docker_build.stderr is search('exporting to image') and
+        docker_build.stderr is not search('CACHED \[.*\] exporting')
+
+    - name: Recreate containers (mett services + caddy)
+      ansible.builtin.command:
+        chdir: "{{ repo_path }}"
+        cmd: "docker compose -f {{ compose_file }} up -d"
+      register: compose_up
+      # Compose prints "Started", "Recreate", or "Created" only when state
+      # actually changes; a fully steady-state run prints just "Running".
+      changed_when: >-
+        compose_up.stderr is search('Recreate') or
+        compose_up.stderr is search('Started') or
+        compose_up.stderr is search('Created')
+
+    - name: Capture container status
+      ansible.builtin.command:
+        chdir: "{{ repo_path }}"
+        cmd: "docker compose -f {{ compose_file }} ps"
+      register: compose_ps
+      changed_when: false
+
+    - name: Print container status
+      ansible.builtin.debug:
+        msg: "{{ compose_ps.stdout_lines }}"
