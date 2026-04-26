@@ -5,6 +5,18 @@ import { hashPassword, isLegacyPlaintext } from './password.js';
 
 const DB_PATH = process.env.DATABASE_PATH ?? join(import.meta.dir, '..', '..', 'data', 'mett.db');
 
+/** Canonical PlayerRow shape — joins civs to expose civ_number/name/slug/colors alongside the player row. */
+export const PLAYER_SELECT = `
+  SELECT
+    p.id, p.civ_id, p.name, p.military, p.wonder, p.ast_level, p.adv_points,
+    p.adv_1vp, p.adv_3vp, p.adv_6vp, p.region, p.rank_order, p.late_iron_age_bonus,
+    c.number AS civ_number, c.name AS civ_name, c.slug AS civ_slug,
+    c.color AS civ_color, c.text_color AS civ_text_color
+  FROM players p
+  JOIN civs c ON c.id = p.civ_id
+  ORDER BY c.number ASC
+`;
+
 let _db: Database | null = null;
 let _testDb: Database | null = null;
 
@@ -61,7 +73,6 @@ export function getDb(): Database {
   migrate('ALTER TABLE players ADD COLUMN adv_3vp INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE players ADD COLUMN adv_6vp INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE census ADD COLUMN city_count INTEGER');
-  migrate('ALTER TABLE players ADD COLUMN ast_moved INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');

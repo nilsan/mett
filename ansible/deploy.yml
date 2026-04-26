@@ -52,29 +52,22 @@
         msg: "Already at {{ head_after.stdout[:7] }} — no new commits, will still rebuild and recreate to ensure runtime matches source."
       when: head_before.stdout == head_after.stdout
 
-    - name: Build service images
+    - name: Build service images  # noqa: no-changed-when
+      # Compose's build output is too varied across versions to predicate
+      # `changed` on; default to always-changed and let the recreate step
+      # below do accurate change detection from container state.
       ansible.builtin.command:
         chdir: "{{ repo_path }}"
         cmd: "docker compose -f {{ compose_file }} build"
       environment:
-        # Bake the deployed commit's short SHA into the image so the version
-        # footer in the running app reflects exactly what's on the host.
         BUILD_SHA: "{{ head_after.stdout[:7] }}"
       register: docker_build
-      # Compose v2 build output is hard to parse reliably across versions —
-      # the "DONE" lines appear whether layers were cached or rebuilt. Treat
-      # the step as changed only if at least one layer was actually run.
-      changed_when: >-
-        docker_build.stderr is search('exporting to image') and
-        docker_build.stderr is not search('CACHED \[.*\] exporting')
 
     - name: Recreate containers (mett services + caddy)
       ansible.builtin.command:
         chdir: "{{ repo_path }}"
         cmd: "docker compose -f {{ compose_file }} up -d"
       register: compose_up
-      # Compose prints "Started", "Recreate", or "Created" only when state
-      # actually changes; a fully steady-state run prints just "Running".
       changed_when: >-
         compose_up.stderr is search('Recreate') or
         compose_up.stderr is search('Started') or

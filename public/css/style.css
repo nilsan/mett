@@ -36,8 +36,7 @@ body {
   padding: 0.45rem 0.75rem 0.3rem;
 }
 
-/* Tiny build-version stamp pinned to the bottom-right of the viewport.
-   pointer-events:none so it never blocks a click on whatever is under it. */
+/* Tiny build-version stamp pinned to the bottom-right of the viewport. */
 .version-footer {
   position: fixed;
   right: 0.4rem;
@@ -2018,23 +2017,7 @@ button.secondary {
   color: var(--mett-muted);
 }
 
-/* ── Trade page ────────────────────────────────────────────────────────────── */
-.trade-page { max-width: 56.25rem; margin: 0 auto; }
-.trade-hint { font-size: 0.78rem; color: var(--mett-muted); margin: 0 0 1rem; }
-.trade-no-game { color: var(--mett-muted); padding: 2rem 0; }
-
-.trade-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-}
-.trade-grid.trade-split {
-  grid-template-columns: 1fr 1fr;
-}
-@media (max-width: 37.5em) {
-  .trade-grid.trade-split { grid-template-columns: 1fr; }
-}
-
+/* ── Trade card layout (still used in main view) ──────────────────────────── */
 .trade-table { width: 100%; }
 .trade-table .trade-card-col {
   width: 10rem;
@@ -2044,7 +2027,6 @@ button.secondary {
 }
 .trade-table .trade-card-col.submitted-hidden { color: #4a8a5a; font-size: 1rem; font-weight: 700; }
 .trade-table .trade-card-col.not-submitted    { color: #8a3a3a; font-size: 1rem; font-weight: 700; }
-.trade-no-cities { color: var(--mett-muted); font-weight: 400; }
 .trade-no-cards { color: var(--mett-muted); }
 .trade-locked-msg { color: var(--mett-muted); font-size: 0.75rem; padding: 0.5rem 0; margin: 0; }
 .phase-hint { color: var(--mett-muted); font-size: 0.78rem; margin: 0 0 0.4rem; }

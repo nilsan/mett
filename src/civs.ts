@@ -160,10 +160,3 @@ export function getCivAstProfile(civNumber: number, expert: boolean): CivAstProf
   }
 }
 
-export function getCivBySlug(slug: string): CivDef | undefined {
-  return CIVS.find(c => c.slug === slug);
-}
-
-export function getCivByNumber(number: number): CivDef | undefined {
-  return CIVS.find(c => c.number === number);
-}

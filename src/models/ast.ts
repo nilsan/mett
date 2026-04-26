@@ -1,4 +1,4 @@
-import { getDb } from '../services/db.js';
+import { getDb, PLAYER_SELECT } from '../services/db.js';
 import { getCivAstProfile } from '../civs.js';
 import type { PlayerRow, AstLevelRow } from '../types.js';
 
@@ -92,6 +92,12 @@ export const AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65,
 /** AST level at which an empire enters Late Iron Age — triggers LIA bonus eligibility. */
 export const LIA_THRESHOLD = 75;
 
+/** Maximum population each empire can hold on the table. */
+export const MAX_POPULATION = 55;
+
+/** Maximum cities an empire can have on the board. */
+export const MAX_CITIES = 9;
+
 // ─── Display utilities ────────────────────────────────────────────────────────
 
 export interface AgeBand {
@@ -174,17 +180,6 @@ export function getAdvanceRequirement(
 }
 
 // ─── AST auto-advancement ──────────────────────────────────────────────────────
-
-const PLAYER_SELECT = `
-  SELECT
-    p.id, p.civ_id, p.name, p.military, p.wonder, p.ast_level, p.adv_points,
-    p.adv_1vp, p.adv_3vp, p.adv_6vp, p.region, p.rank_order, p.late_iron_age_bonus,
-    c.number AS civ_number, c.name AS civ_name, c.slug AS civ_slug,
-    c.color AS civ_color, c.text_color AS civ_text_color
-  FROM players p
-  JOIN civs c ON c.id = p.civ_id
-  ORDER BY c.number ASC
-`;
 
 export function autoAdvanceAst(round: number, expert: boolean): void {
   const db = getDb();

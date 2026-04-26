@@ -3,7 +3,7 @@ import * as db from '../db.js';
 import { broadcastState } from '../ws.js';
 import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS } from '../civs.js';
 import { isAdminAuthed } from './pages.js';
-import { LIA_THRESHOLD } from '../models/ast.js';
+import { AST_LEVELS, LIA_THRESHOLD, MAX_POPULATION, MAX_CITIES } from '../models/ast.js';
 
 const api = new Hono();
 
@@ -93,9 +93,9 @@ api.post('/players/:id/census', async (c) => {
   const playerId = Number(c.req.param('id'));
   const body = await c.req.json<{ population: number }>();
   let pop = Number(body.population);
-  if (pop < 0) pop = 55 + pop; // negative shorthand: -27 → 28 tokens remaining
-  if (!Number.isInteger(pop) || pop < 1 || pop > 55) {
-    return c.json({ error: 'Invalid population (must be 1–55)' }, 400);
+  if (pop < 0) pop = MAX_POPULATION + pop; // negative shorthand: -27 → 28 tokens remaining
+  if (!Number.isInteger(pop) || pop < 1 || pop > MAX_POPULATION) {
+    return c.json({ error: `Invalid population (must be 1–${MAX_POPULATION})` }, 400);
   }
   const game = db.getGame();
   db.submitCensus(playerId, game.current_round, pop);
@@ -114,8 +114,8 @@ api.post('/players/:id/city-count', async (c) => {
   const playerId = Number(c.req.param('id'));
   const body = await c.req.json<{ city_count: number }>();
   const count = Number(body.city_count);
-  if (!Number.isInteger(count) || count < 0 || count > 9) {
-    return c.json({ error: 'Invalid city count (must be 0–9)' }, 400);
+  if (!Number.isInteger(count) || count < 0 || count > MAX_CITIES) {
+    return c.json({ error: `Invalid city count (must be 0–${MAX_CITIES})` }, 400);
   }
   const game = db.getGame();
   db.submitCityCount(playerId, game.current_round, count);
@@ -140,8 +140,7 @@ api.post('/players/:id/wonder', (c) => {
 api.post('/players/:id/ast', async (c) => {
   const playerId = Number(c.req.param('id'));
   const body = await c.req.json<{ level: number }>();
-  const validLevels = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
-  if (!validLevels.includes(body.level)) {
+  if (!AST_LEVELS.includes(body.level)) {
     return c.json({ error: 'Invalid AST level' }, 400);
   }
   db.setAstLevel(playerId, body.level);

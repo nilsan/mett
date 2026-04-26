@@ -135,9 +135,8 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
   // Wonder of the World does not count as a city for scoring
   const scored = players.map(p => {
     const cityVp = census.find(c => c.player_id === p.id)?.city_count ?? 0;
-    const liaVp = p.late_iron_age_bonus ? 5 : 0;
     const total = playerTotalVp(p, cityVp);
-    return { ...p, liaVp, cityVp, total, _score: makeScoreEntry(p, cityVp) };
+    return { ...p, cityVp, total, _score: makeScoreEntry(p, cityVp) };
   }).sort((a, b) => compareScores(a._score, b._score));
 
   // Detect unresolved ties; rank_order is a stable sort key only, not a tie resolver

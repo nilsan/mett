@@ -1,5 +1,5 @@
 import { getDb } from '../services/db.js';
-import { autoAdvanceAst } from './ast.js';
+import { autoAdvanceAst, LIA_THRESHOLD } from './ast.js';
 import type { GameRow, PlayerRow } from '../types.js';
 
 /** Final VP for a player: AST VP + ADV VP + city VP (1 per city) + LIA bonus (5 VP). */
@@ -121,7 +121,7 @@ export function checkAndSetFinalRound(): void {
   const game = getGame();
   if (!game.active || game.is_final_round) return;
   const atLia = db.query<{ count: number }, []>(
-    'SELECT COUNT(*) AS count FROM players WHERE ast_level >= 75'
+    `SELECT COUNT(*) AS count FROM players WHERE ast_level >= ${LIA_THRESHOLD}`
   ).get();
   if (atLia && atLia.count > 0) {
     db.query('UPDATE game SET is_final_round=1 WHERE id=1').run();
@@ -135,7 +135,7 @@ export function checkAndSetLateIronAgeBonus(): void {
   ).get()!.count;
   if (alreadyGranted > 0) return;
   const atLIA = db.query<{ id: number }, []>(
-    'SELECT id FROM players WHERE ast_level >= 75'
+    `SELECT id FROM players WHERE ast_level >= ${LIA_THRESHOLD}`
   ).all();
   if (atLIA.length === 1) {
     db.query('UPDATE players SET late_iron_age_bonus=1 WHERE id=?').run(atLIA[0]!.id);
@@ -154,9 +154,9 @@ export function advanceRound(): number | null {
     checkAndSetLateIronAgeBonus();
 
     if (!expert) {
-      // Basic: end immediately when any player reaches ≥75 this round
+      // Basic: end immediately when any player reaches LIA this round
       const atLia = db.query<{ count: number }, []>(
-        'SELECT COUNT(*) AS count FROM players WHERE ast_level >= 75'
+        `SELECT COUNT(*) AS count FROM players WHERE ast_level >= ${LIA_THRESHOLD}`
       ).get();
       if (atLia && atLia.count > 0) {
         db.query('UPDATE game SET active=0, is_final_round=0 WHERE id=1').run();

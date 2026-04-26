@@ -30,21 +30,10 @@ export {
 
 // ─── CRUD (players, census, admin, civs, full state) ──────────────────────────
 
-import { getDb } from './services/db.js';
+import { getDb, PLAYER_SELECT } from './services/db.js';
 import type { PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow } from './types.js';
 import { getGame } from './models/game.js';
-import { getAstLevels } from './models/ast.js';
-
-const PLAYER_SELECT = `
-  SELECT
-    p.id, p.civ_id, p.name, p.military, p.wonder, p.ast_level, p.adv_points,
-    p.adv_1vp, p.adv_3vp, p.adv_6vp, p.region, p.rank_order, p.late_iron_age_bonus,
-    c.number AS civ_number, c.name AS civ_name, c.slug AS civ_slug,
-    c.color AS civ_color, c.text_color AS civ_text_color
-  FROM players p
-  JOIN civs c ON c.id = p.civ_id
-  ORDER BY c.number ASC
-`;
+import { getAstLevels, LIA_THRESHOLD } from './models/ast.js';
 
 // ── Admin password ─────────────────────────────────────────────────────────────
 
@@ -129,16 +118,12 @@ export function setAstLevel(playerId: number, level: number): void {
   ).get();
   if (game?.active && game.expert === 1 && game.is_final_round) {
     const atLia = db.query<{ count: number }, []>(
-      'SELECT COUNT(*) AS count FROM players WHERE ast_level >= 75'
+      `SELECT COUNT(*) AS count FROM players WHERE ast_level >= ${LIA_THRESHOLD}`
     ).get();
     if (!atLia || atLia.count === 0) {
       db.query('UPDATE game SET is_final_round=0 WHERE id=1').run();
     }
   }
-}
-
-export function setAdvPoints(playerId: number, points: number): void {
-  getDb().query('UPDATE players SET adv_points=? WHERE id=?').run(points, playerId);
 }
 
 export function setAdvCards(playerId: number, v1: number, v3: number, v6: number): void {

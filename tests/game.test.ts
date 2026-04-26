@@ -25,7 +25,6 @@ function makeDb(): Database {
   migrate('ALTER TABLE players ADD COLUMN adv_3vp INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE players ADD COLUMN adv_6vp INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE census ADD COLUMN city_count INTEGER');
-  migrate('ALTER TABLE players ADD COLUMN ast_moved INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
