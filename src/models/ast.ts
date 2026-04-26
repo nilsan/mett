@@ -1,4 +1,4 @@
-import { getDb, PLAYER_SELECT } from '../services/db.js';
+import { getDb, _onReset, PLAYER_SELECT } from '../services/db.js';
 import { getCivAstProfile } from '../civs.js';
 import type { PlayerRow, AstLevelRow } from '../types.js';
 
@@ -214,8 +214,15 @@ export function autoAdvanceAst(round: number, expert: boolean): void {
 
 // ─── AST level queries ─────────────────────────────────────────────────────────
 
+// ast_levels rows are seeded once at boot and never mutated, so cache the
+// result for the lifetime of the process. Reset on test-DB swap.
+let _astLevelsCache: AstLevelRow[] | null = null;
+_onReset(() => { _astLevelsCache = null; });
+
 export function getAstLevels(): AstLevelRow[] {
-  return getDb().query<AstLevelRow, []>('SELECT * FROM ast_levels ORDER BY level ASC').all();
+  if (_astLevelsCache) return _astLevelsCache;
+  _astLevelsCache = getDb().query<AstLevelRow, []>('SELECT * FROM ast_levels ORDER BY level ASC').all();
+  return _astLevelsCache;
 }
 
 export function getAstLevel(level: number): AstLevelRow | null {

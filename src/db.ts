@@ -30,7 +30,7 @@ export {
 
 // ─── CRUD (players, census, admin, civs, full state) ──────────────────────────
 
-import { getDb, PLAYER_SELECT } from './services/db.js';
+import { getDb, _onReset, PLAYER_SELECT } from './services/db.js';
 import type { PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow } from './types.js';
 import { getGame } from './models/game.js';
 import { getAstLevels, LIA_THRESHOLD } from './models/ast.js';
@@ -188,8 +188,15 @@ export function clearCityCount(round: number): void {
 
 // ── Civs reference ────────────────────────────────────────────────────────────
 
+// civs rows are seeded once at boot and never mutated. Cache for the process
+// lifetime; reset on test-DB swap.
+let _civsCache: CivRefRow[] | null = null;
+_onReset(() => { _civsCache = null; });
+
 export function getAllCivs(): CivRefRow[] {
-  return getDb().query<CivRefRow, []>('SELECT * FROM civs ORDER BY number ASC').all();
+  if (_civsCache) return _civsCache;
+  _civsCache = getDb().query<CivRefRow, []>('SELECT * FROM civs ORDER BY number ASC').all();
+  return _civsCache;
 }
 
 export function getCivBySlug(slug: string): CivRefRow | null {

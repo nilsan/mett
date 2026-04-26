@@ -579,3 +579,23 @@ describe('computeTieGroupMeta', () => {
     expect(meta[0]!.groupPositions).toBe(meta[1]!.groupPositions);
   });
 });
+
+describe('static-row caches reset on _setTestDb', () => {
+  // ast_levels and civs are cached for the lifetime of the process. Tests
+  // swap the DB via _setTestDb, which must invalidate the cache so the
+  // next call sees the new database's rows.
+  it('getAstLevels cache invalidates between DB swaps', async () => {
+    const { getAstLevels } = await import('../src/models/ast.js');
+    const dbA = makeDb();
+    _setTestDb(dbA);
+    dbA.exec("UPDATE ast_levels SET era='SENTINEL_A' WHERE level=0");
+    const a = getAstLevels();
+    expect(a[0]!.era).toBe('SENTINEL_A');
+
+    const dbB = makeDb();
+    _setTestDb(dbB);  // must clear the cache
+    dbB.exec("UPDATE ast_levels SET era='SENTINEL_B' WHERE level=0");
+    const b = getAstLevels();
+    expect(b[0]!.era).toBe('SENTINEL_B');
+  });
+});

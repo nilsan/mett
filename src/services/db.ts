@@ -20,9 +20,18 @@ export const PLAYER_SELECT = `
 let _db: Database | null = null;
 let _testDb: Database | null = null;
 
+// Cache-reset registry. Modules that cache static DB rows (ast_levels, civs)
+// register a reset callback here so swapping the DB in tests invalidates them.
+const _resetHooks: Array<() => void> = [];
+
+export function _onReset(hook: () => void): void {
+  _resetHooks.push(hook);
+}
+
 /** Override the DB instance for isolated unit/integration tests. Pass null to restore. */
 export function _setTestDb(db: Database | null): void {
   _testDb = db;
+  for (const hook of _resetHooks) hook();
 }
 
 // Structured AST requirements seeded into ast_levels.{basic,expert}_req_json.
