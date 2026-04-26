@@ -235,9 +235,6 @@ body {
 .won-toggle-civ.won-on  { background: #2a2a10; border-color: #aaaa22; color: #dddd44; }
 .won-toggle-civ.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
 
-/* WON indicator in census table */
-.census-table .won-active { color: #dddd44; font-size: 0.75em; text-align: center; }
-
 /* Requirement label in AST table */
 .req-label { text-align: center; color: var(--mett-muted); font-size: 0.85rem; width: 2.5rem; }
 
@@ -407,7 +404,7 @@ body {
 .status-grid {
   display: grid;
   /* leaderboard | census | trade | AST board | AST order */
-  grid-template-columns: 2.0fr auto auto 3.5fr auto;
+  grid-template-columns: 2.3fr auto auto 3.2fr auto;
   gap: 0.5rem;
   align-items: stretch;
   min-width: 0;
@@ -441,7 +438,6 @@ body {
 .status-grid .census-table thead th:first-child { width: 7.5rem; }
 
 /* Narrow columns — same across all s3 tables */
-.status-grid .won-col    { width: 2.2rem; min-width: 2.2rem; }
 .status-grid .mil-col    { width: 2.2rem; min-width: 2.2rem; }
 .status-grid .city-col   { width: 2.2rem; min-width: 2.2rem; }
 .status-grid .census-pop { width: 2.1rem; min-width: 2.1rem; }
@@ -461,6 +457,13 @@ body {
   min-width: 7.5rem;
   max-width: 7.5rem;
   border-radius: 0.2rem;
+}
+
+/* Leaderboard at the default breakpoint (700px–2560px): the 6-column table
+   needs to fit a ~340px grid cell at 1920×1080, so shrink the empire-cell
+   here without affecting the other tables. WQHD/4K override below. */
+@media (min-width: 43.75em) and (max-width: 159.99rem) {
+  .lb-table .empire-cell { width: 5rem; min-width: 5rem; max-width: 5rem; }
 }
 .civ-num {
   display: inline-block;
@@ -576,11 +579,9 @@ body {
   /* Census: back to normal auto layout filling full width */
   .status-grid .census-table { table-layout: auto; width: 100%; }
   .status-grid .census-table thead th:first-child { width: auto; }
-  .status-grid .won-col    { width: 3.0rem; min-width: 3.0rem; }
   .status-grid .mil-col    { width: 3.0rem; min-width: 3.0rem; }
   .status-grid .city-col   { width: 3.0rem; min-width: 3.0rem; }
   .status-grid .census-pop { width: 3.5rem; min-width: 3.5rem; }
-  .census-table th.won-col,
   .census-table th.mil-col,
   .census-table th.city-col,
   .census-table th.census-pop { padding-left: 0.25rem; padding-right: 0.25rem; }
@@ -622,10 +623,9 @@ body {
   .status-grid .trade-chip-col   { width: 10.25rem; }
   .status-grid .trade-table      { width: calc(7.5rem + 10.25rem); }
 
-  /* Census: keep auto column with a wider fixed table (empire 7.5rem + 3×2.2rem + 2.5rem = 17.1rem) */
-  .status-grid .census-table { width: 17.1rem; }
+  /* Census: keep auto column with a fixed table (empire 7.5rem + 2×2.2rem + 2.5rem = 14.4rem) */
+  .status-grid .census-table { width: 14.4rem; }
   .status-grid .census-table thead th:first-child { width: 7.5rem; }
-  .status-grid .won-col    { width: 2.2rem; min-width: 2.2rem; }
   .status-grid .mil-col    { width: 2.2rem; min-width: 2.2rem; }
   .status-grid .city-col   { width: 2.2rem; min-width: 2.2rem; }
   .status-grid .census-pop { width: 2.5rem; min-width: 2.5rem; }
@@ -680,9 +680,8 @@ body {
   .status-grid .trade-table      { width: calc(9rem + 11.8rem); }
 
   /* Census: explicit width so empire col gets a full 9rem (longest civ name = 8 chars @ 1.15rem) */
-  .status-grid .census-table { width: calc(9rem + 3 * 2.5rem + 3rem); }
+  .status-grid .census-table { width: calc(9rem + 2 * 2.5rem + 3rem); }
   .status-grid .census-table thead th:first-child { width: 9rem; }
-  .status-grid .won-col    { width: 2.5rem; min-width: 2.5rem; }
   .status-grid .mil-col    { width: 2.5rem; min-width: 2.5rem; }
   .status-grid .city-col   { width: 2.5rem; min-width: 2.5rem; }
   .status-grid .census-pop { width: 3rem;   min-width: 3rem; }

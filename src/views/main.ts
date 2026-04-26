@@ -68,8 +68,7 @@ export function renderMain(state: FullState): string {
     const cityCell = p.city_count != null
       ? `<td class="city-col">${p.city_count}</td>`
       : `<td class="city-col not-submitted">?</td>`;
-    const wonCell = p.wonder ? `<td class="won-col won-active">★</td>` : `<td class="won-col"></td>`;
-    return `<tr>${empireCell(p)}${wonCell}${milCell}${cityCell}${popCell}</tr>`;
+    return `<tr>${empireCell(p)}${milCell}${cityCell}${popCell}</tr>`;
   }).join('');
 
   // ── Trade cards (West and East as separate tables) ───────────────────────
@@ -214,12 +213,11 @@ export function renderMain(state: FullState): string {
     <table class="mett-table census-table">
       <thead><tr>
         <th>Empire</th>
-        <th class="won-col" title="Wonder of the World">WON</th>
         <th class="mil-col" title="Military">MIL</th>
         <th class="city-col" title="Cities">CITY</th>
         <th class="census-pop">POP</th>
       </tr></thead>
-      <tbody>${censusRows || '<tr><td colspan="5">No players</td></tr>'}</tbody>
+      <tbody>${censusRows || '<tr><td colspan="4">No players</td></tr>'}</tbody>
     </table>
     <p class="table-hint">${allCensusSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.census?.population != null).length} / ${players.length} submitted`}</p>
   </section>
