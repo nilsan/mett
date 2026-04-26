@@ -57,11 +57,16 @@ export interface TieGroupMeta {
   tied: boolean;
   groupStart: boolean;
   resolved: boolean; // true when all group members have rank_order !== 0
+  /** Ranks this entry's tie group spans, e.g. [5, 6, 7] for a 3-way tie at rank 5. */
+  groupPositions: number[];
+  /** Indices into the original entries array for all members of this tie group. */
+  groupMemberIndices: number[];
 }
 
 /**
  * Given a sorted array of ScoreEntry (with attached rank_order), compute display metadata
- * for each entry: which rank to show, whether it's tied, and whether the tie is resolved.
+ * for each entry: which rank to show, whether it's tied, whether the tie is resolved, and
+ * the group's position span and member indices (for rendering rank-select dropdowns).
  */
 export function computeTieGroupMeta(entries: Array<ScoreEntry & { rank_order: number }>): TieGroupMeta[] {
   const meta: TieGroupMeta[] = new Array(entries.length);
@@ -72,8 +77,17 @@ export function computeTieGroupMeta(entries: Array<ScoreEntry & { rank_order: nu
     const groupSize = gj - gi + 1;
     const tied = groupSize > 1;
     const resolved = tied && entries.slice(gi, gj + 1).every(e => e.rank_order !== 0);
+    const groupPositions = Array.from({ length: groupSize }, (_, k) => pos + k);
+    const groupMemberIndices = Array.from({ length: groupSize }, (_, k) => gi + k);
     for (let k = gi; k <= gj; k++) {
-      meta[k] = { displayRank: resolved ? pos + (k - gi) : pos, tied, groupStart: k === gi, resolved };
+      meta[k] = {
+        displayRank: resolved ? pos + (k - gi) : pos,
+        tied,
+        groupStart: k === gi,
+        resolved,
+        groupPositions,
+        groupMemberIndices,
+      };
     }
     pos += groupSize;
     gi = gj + 1;

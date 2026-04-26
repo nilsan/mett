@@ -102,7 +102,7 @@ function getGame(db: Database) {
 // Since the service uses a module-level singleton, we dynamically override it.
 
 import { autoAdvanceAst } from '../src/models/ast.js';
-import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp } from '../src/models/game.js';
+import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp, computeTieGroupMeta } from '../src/models/game.js';
 import { _setTestDb } from '../src/services/db.js';
 import { sortCensusOrder } from '../src/views/main.js';
 
@@ -521,5 +521,61 @@ describe('census move order — sortCensusOrder from main.ts', () => {
     const ordered = sortCensusOrder(players);
     // Lower civ_number first when populations tied
     expect(ordered.map(p => p.name)).toEqual(['Babylon', 'Egypt']);
+  });
+});
+
+describe('computeTieGroupMeta', () => {
+  // Helper: build the minimum ScoreEntry+rank_order shape the function expects.
+  // Different `total` values force distinct groups; same `total` forces a tie group.
+  const e = (total: number, rank_order = 0, civ_number = 1) => ({
+    total, ast_level: 0, adv_6vp: 0, adv_3vp: 0, rank_order, civ_number,
+  });
+
+  it('all unique scores: every entry is solo, displayRank == position', () => {
+    const meta = computeTieGroupMeta([e(30), e(20), e(10)]);
+    expect(meta.map(m => m.displayRank)).toEqual([1, 2, 3]);
+    expect(meta.every(m => !m.tied)).toBe(true);
+    expect(meta.every(m => m.resolved === false)).toBe(true);
+    expect(meta.map(m => m.groupPositions)).toEqual([[1], [2], [3]]);
+    expect(meta.map(m => m.groupMemberIndices)).toEqual([[0], [1], [2]]);
+  });
+
+  it('two-way unresolved tie at top: both share rank 1, groupPositions=[1,2]', () => {
+    const meta = computeTieGroupMeta([e(30, 0, 1), e(30, 0, 2), e(20)]);
+    expect(meta[0]!.tied).toBe(true);
+    expect(meta[1]!.tied).toBe(true);
+    expect(meta[0]!.resolved).toBe(false);
+    expect(meta[0]!.displayRank).toBe(1);
+    expect(meta[1]!.displayRank).toBe(1);            // unresolved → both show group start
+    expect(meta[0]!.groupPositions).toEqual([1, 2]);
+    expect(meta[1]!.groupPositions).toEqual([1, 2]);
+    expect(meta[0]!.groupMemberIndices).toEqual([0, 1]);
+    expect(meta[2]!.tied).toBe(false);
+    expect(meta[2]!.displayRank).toBe(3);
+  });
+
+  it('three-way resolved tie: each gets its own rank from rank_order', () => {
+    const meta = computeTieGroupMeta([e(30, 1, 1), e(30, 2, 2), e(30, 3, 3)]);
+    expect(meta.every(m => m.tied && m.resolved)).toBe(true);
+    expect(meta.map(m => m.displayRank)).toEqual([1, 2, 3]);
+    expect(meta.map(m => m.groupPositions)).toEqual([[1, 2, 3], [1, 2, 3], [1, 2, 3]]);
+  });
+
+  it('groupStart marks first index of each tie group', () => {
+    const meta = computeTieGroupMeta([e(30), e(20, 0, 1), e(20, 0, 2), e(10)]);
+    expect(meta.map(m => m.groupStart)).toEqual([true, true, false, true]);
+  });
+
+  it('mixed: solo at top, 2-way tie at 2-3, solo at 4', () => {
+    const meta = computeTieGroupMeta([e(50), e(30, 0, 1), e(30, 0, 2), e(10)]);
+    expect(meta.map(m => m.displayRank)).toEqual([1, 2, 2, 4]);
+    expect(meta.map(m => m.tied)).toEqual([false, true, true, false]);
+    expect(meta[1]!.groupPositions).toEqual([2, 3]);
+    expect(meta[1]!.groupMemberIndices).toEqual([1, 2]);
+  });
+
+  it('group members share the same groupPositions array reference', () => {
+    const meta = computeTieGroupMeta([e(30, 0, 1), e(30, 0, 2)]);
+    expect(meta[0]!.groupPositions).toBe(meta[1]!.groupPositions);
   });
 });

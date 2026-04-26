@@ -1,7 +1,7 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import type { CivRefRow } from '../db.js';
 import { nextAstStatus, type AstStatus } from '../models/ast.js';
-import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
+import { playerTotalVp, compareScores, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
 import { LIA_THRESHOLD } from '../models/ast.js';
 
 function pwdFormHtml(query: string): string {
@@ -139,55 +139,10 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
     return { ...p, cityVp, total, _score: makeScoreEntry(p, cityVp) };
   }).sort((a, b) => compareScores(a._score, b._score));
 
-  // Detect unresolved ties; rank_order is a stable sort key only, not a tie resolver
-  const tiedIds = new Set<number>();
-  for (let i = 0; i < scored.length - 1; i++) {
-    if (sameScoreGroup(scored[i]!._score, scored[i + 1]!._score)) {
-      tiedIds.add(scored[i]!.id); tiedIds.add(scored[i + 1]!.id);
-    }
-  }
-
-  // For each tie group, compute which actual leaderboard positions they span
-  const groupPositionsMap = new Map<number, number[]>(); // player id → [pos, pos+1, ...]
-  let pos = 1;
-  let gi = 0;
-  while (gi < scored.length) {
-    let gj = gi;
-    while (gj + 1 < scored.length && sameScoreGroup(scored[gi]!._score, scored[gj + 1]!._score)) gj++;
-    const groupPositions = Array.from({ length: gj - gi + 1 }, (_, k) => pos + k);
-    for (let k = gi; k <= gj; k++) groupPositionsMap.set(scored[k]!.id, groupPositions);
-    pos += gj - gi + 1;
-    gi = gj + 1;
-  }
-
-  // A tie group is resolved when every member has rank_order !== 0
-  const resolvedTiedIds = new Set<number>();
-  { let gi = 0;
-    while (gi < scored.length) {
-      if (!tiedIds.has(scored[gi]!.id)) { gi++; continue; }
-      let gj = gi;
-      while (gj + 1 < scored.length && tiedIds.has(scored[gj + 1]!.id) &&
-        sameScoreGroup(scored[gi]!._score, scored[gj + 1]!._score)
-      ) gj++;
-      const group = scored.slice(gi, gj + 1);
-      if (group.every(p => p.rank_order !== 0)) group.forEach(p => resolvedTiedIds.add(p.id));
-      gi = gj + 1;
-    }
-  }
-
-  // Display rank: actual position, except unresolved ties share their group's starting rank
-  const displayRanks: number[] = [];
-  for (let i = 0; i < scored.length; i++) {
-    if (i > 0) {
-      const prev = scored[i - 1]!, curr = scored[i]!;
-      const shareRank = tiedIds.has(prev.id) && tiedIds.has(curr.id) &&
-        !resolvedTiedIds.has(prev.id) &&
-        sameScoreGroup(prev._score, curr._score);
-      displayRanks.push(shareRank ? displayRanks[i - 1]! : i + 1);
-    } else {
-      displayRanks.push(1);
-    }
-  }
+  const tieMeta = computeTieGroupMeta(
+    scored.map(p => ({ ...p._score, rank_order: p.rank_order }))
+  );
+  const hasTies = tieMeta.some(m => m.tied);
 
   const MEDALS: Record<number, string> = {
     1: '<span class="medal medal-gold">⚑</span>',
@@ -196,27 +151,24 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
   };
 
   const rows = scored.map((p, i) => {
-    const unresolved = tiedIds.has(p.id) && !resolvedTiedIds.has(p.id);
-    const medal = MEDALS[displayRanks[i]!] ?? '';
+    const meta = tieMeta[i]!;
+    const unresolved = meta.tied && !meta.resolved;
+    const medal = MEDALS[meta.displayRank] ?? '';
     const star = p.late_iron_age_bonus
       ? `<button class="lia-star-btn lia-star-on" data-player-id="${p.id}" data-granted="1" title="Late Iron Age bonus (5VP) — click to remove">★</button>`
       : `<button class="lia-star-btn lia-star-off" data-player-id="${p.id}" data-granted="0" title="Grant Late Iron Age bonus (5VP)">★</button>`;
     let rankCell = '<td class="go-tie"></td>';
-    if (tiedIds.has(p.id)) {
-      const groupPositions = groupPositionsMap.get(p.id) ?? [];
-      const groupKey = groupPositions.join(',');
-      const groupPlayers = scored
-        .filter(s => groupPositionsMap.get(s.id)?.join(',') === groupKey)
-        .map(s => s.id)
-        .join(',');
+    if (meta.tied) {
+      const groupKey = meta.groupPositions.join(',');
+      const groupPlayers = meta.groupMemberIndices.map(idx => scored[idx]!.id).join(',');
       // All tied players get an editable select — server clears conflicts on submit
-      const currentValue = groupPositions.includes(p.rank_order) ? String(p.rank_order) : '';
-      const options = ['<option value="">—</option>', ...groupPositions.map(gp =>
+      const currentValue = meta.groupPositions.includes(p.rank_order) ? String(p.rank_order) : '';
+      const options = ['<option value="">—</option>', ...meta.groupPositions.map(gp =>
         `<option value="${gp}"${p.rank_order === gp ? ' selected' : ''}>${gp}</option>`)].join('');
       rankCell = `<td class="go-tie"><select class="rank-select" autocomplete="off" data-player-id="${p.id}" data-group-key="${groupKey}" data-group-players="${groupPlayers}" data-server-value="${currentValue}">${options}</select></td>`;
     }
     return `<tr${unresolved ? ' class="lb-tied"' : ''}>
-      <td class="rank go-rank">${unresolved ? '=' : displayRanks[i]}</td>
+      <td class="rank go-rank">${unresolved ? '=' : meta.displayRank}</td>
       <td class="go-empire">
         <span class="civ-badge civ-badge-with-num" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num-in-badge">${p.civ_number}</span><span class="civ-badge-label">${p.civ_name}<span class="go-player-name">${p.name}</span></span></span>
       </td>
@@ -233,8 +185,6 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
     id: c.id, number: c.number, name: c.name,
     defRegion: c.def_region, color: c.color, text: c.text_color,
   })));
-
-  const hasTies = tiedIds.size > 0;
 
   return /* html */`
 <div class="admin-page">
