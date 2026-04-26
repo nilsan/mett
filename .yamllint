@@ -1,0 +1,11 @@
+extends: default
+
+rules:
+  # 80-char default is unrealistic for inline ansible commands and compose
+  # build args. Keep a generous cap so genuinely runaway lines still flag.
+  line-length:
+    max: 140
+    level: error
+  # GitHub Actions accepts bare `on:` without quoting, but yamllint flags it
+  # as YAML 1.1 truthy. We quote `"on":` in our workflow; this rule stays on
+  # so the rest of the codebase doesn't accidentally introduce truthy keys.
