@@ -36,6 +36,21 @@ body {
   padding: 0.45rem 0.75rem 0.3rem;
 }
 
+/* Tiny build-version stamp pinned to the bottom-right of the viewport.
+   pointer-events:none so it never blocks a click on whatever is under it. */
+.version-footer {
+  position: fixed;
+  right: 0.4rem;
+  bottom: 0.2rem;
+  font-size: 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--mett-muted);
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
 .mett-wordmark {
   font-size: 1.05rem;
   font-weight: 800;

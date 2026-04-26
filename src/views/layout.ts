@@ -1,3 +1,5 @@
+import { VERSION_STRING } from '../version.js';
+
 export function layout(title: string, body: string, activeSlug?: string): string {
   return /* html */`<!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -21,6 +23,7 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <main class="container-fluid">
     ${body}
   </main>
+  <footer class="version-footer" aria-hidden="true">${VERSION_STRING}</footer>
   <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
   <script src="/js/toast.js"></script>
   <script src="/js/ws-client.js"></script>
