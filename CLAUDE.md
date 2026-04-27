@@ -50,16 +50,16 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
 
 ## Tests
 
-**Always add tests when implementing new features.** New game logic goes in `tests/game.test.ts`; new AST requirement checks go in `tests/ast.test.ts`; new browser/layout checks go in `tests/browser/*.spec.ts`; legacy end-to-end flows live in `tests/simulate.py` (Python, requires live server).
+**Always add tests when implementing new features.** New game logic goes in `tests/game.test.ts`; new AST requirement checks go in `tests/ast.test.ts`; auth/login changes go in `tests/auth.test.ts`; REST endpoint behaviour goes in `tests/api.test.ts`; WebSocket payload/routing changes go in `tests/ws.test.ts`; new browser/layout checks go in `tests/browser/*.spec.ts`; legacy end-to-end flows live in `tests/simulate.py` (Python, requires live server). Shared schema/migration/AST-seed factories live in `tests/_helpers.ts`.
 
 **Always run the full test suite before committing.**
 
 ```bash
-bun run test            # unit + integration via bun test
+bun run test            # unit + integration via bun test (tests/*.test.ts glob)
 bun run test:browser    # Playwright; requires a running dev server on :3000
 ```
 
-`bun run test` runs `tests/ast.test.ts`, `tests/game.test.ts`, and `tests/password.test.ts`. All must pass before any commit. The browser suite is separate and run on demand.
+`bun run test` runs `tests/ast.test.ts`, `tests/game.test.ts`, `tests/password.test.ts`, `tests/auth.test.ts`, `tests/api.test.ts` and `tests/ws.test.ts`. All must pass before any commit. The browser suite is separate and run on demand.
 
 For end-to-end game simulation (also requires the dev server):
 

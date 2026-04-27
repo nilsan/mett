@@ -20,7 +20,7 @@ For the user-facing guide see [README.md](README.md). For which game rules are i
 | Container | **Docker + Docker Compose** | Volume-mounted SQLite for persistence |
 | TLS | **Caddy** | Automatic Let's Encrypt certificates, bundled in compose |
 | CI | **GitHub Actions** | bun test + tsc + ansible-lint + yamllint + hadolint on every push |
-| Deployment | **Ansible** | Idempotent pull/build/recreate, automatic post-deploy smoke test |
+| Deployment | **Ansible** | Idempotent `git pull` + `docker compose pull` from GHCR + recreate, automatic post-deploy smoke test |
 
 ---
 
@@ -70,20 +70,27 @@ mett/
 │   ├── docker-compose.yml  Four mett-* services + Caddy via YAML anchor
 │   └── Caddyfile           Per-subdomain reverse proxy
 ├── ansible/
-│   ├── deploy.yml          Pull → build → recreate → verify
+│   ├── deploy.yml          git pull → docker compose pull (from ghcr.io) → recreate → verify
 │   ├── verify.yml          HTTPS smoke-test of every production subdomain
 │   ├── inventory.ini       Single host: bf.nottseter.no
 │   └── README.md
 ├── .github/
-│   └── workflows/test.yml  CI: bun test + tsc + ansible-lint + yamllint + hadolint
+│   └── workflows/
+│       ├── test.yml        CI: bun test + tsc + ansible-lint + yamllint + hadolint
+│       └── build.yml       Builds + pushes ghcr.io/nilsan/mett:latest on push to main
 ├── playwright.config.ts    Browser-test config (testDir tests/browser/)
 ├── .yamllint               Project-wide yamllint config (line-length 140)
 └── tests/
+    ├── _helpers.ts         Shared schema/migration/AST-seed factory + DB helpers
     ├── ast.test.ts         A.S.T. requirement unit tests
     ├── game.test.ts        Game flow integration (AST, LIA, ties,
-    │                       advanceRound + census prune, computeTieGroupMeta)
+    │                       advanceRound orchestration + census prune,
+    │                       cities_phase reset, computeTieGroupMeta)
     ├── auth.test.ts        Login, change-password, isAdminAuthed, scrypt
     ├── password.test.ts    hashPassword / verifyPassword round-trip
+    ├── api.test.ts         Auth middleware classification, /rank tie resolution,
+    │                       static civ scenario shape
+    ├── ws.test.ts          broadcastState payload contract + per-player routing
     ├── simulate.py         Python end-to-end against a live server (legacy)
     └── browser/            Playwright specs (require running dev server)
         ├── layout.spec.ts          1080p / 4K layout regression
@@ -273,11 +280,13 @@ bunx tsc --noEmit     # TypeScript strict check
 Everything in `tests/*.test.ts` runs against an in-memory SQLite DB (`_setTestDb()` from `services/db.ts` for isolation):
 
 - `tests/ast.test.ts` — A.S.T. requirement unit tests (all level transitions, Expert vs Basic, Wonder bonus, slow-start civs).
-- `tests/game.test.ts` — `autoAdvanceAst`, `checkAndSetLateIronAgeBonus`, `checkAndSetFinalRound`, `playerTotalVp`, `sortCensusOrder`, `computeTieGroupMeta`, `advanceRound` + census prune, static-row cache reset.
+- `tests/game.test.ts` — `autoAdvanceAst`, `checkAndSetLateIronAgeBonus`, `checkAndSetFinalRound`, `playerTotalVp`, `sortCensusOrder`, `computeTieGroupMeta`, `advanceRound` orchestration (basic LIA end, expert `is_final_round` flag, `cities_phase`/`census_revealed` reset) + census prune, static-row cache reset.
 - `tests/auth.test.ts` — Login flow (correct / wrong / **empty** — regression for the bypass fix), `verifyAdminPassword`, `setAdminPassword` (hashing + reject empty), `isAdminAuthed` cookie validation, `isUsingDefaultPassword`, `/admin/change-password`. Drives Hono in-process via `app.request()`.
 - `tests/password.test.ts` — `hashPassword` / `verifyPassword` / `isLegacyPlaintext` round-trips.
+- `tests/api.test.ts` — API auth middleware classification (GET-bypass, public-action whitelist, admin-only POSTs return 401), `POST /api/players/:id/rank` sibling-clear + auto-resolve, `WEST_SCENARIOS`/`EAST_SCENARIOS`/`SETUP_RECOMMENDATIONS` shape.
+- `tests/ws.test.ts` — `broadcastState` payload contract (`game`/`players`/`census`/`astLevels`/`astStatus`/`targetPlayerId`) and per-player routing (targeted broadcast skips civ-page sockets owned by other players; non-civ sockets and the targeted player's own tabs always receive).
 
-All four files must pass before committing. The full suite runs in ~1.2 s; the cost is dominated by scrypt operations in `auth.test.ts` — that's intentional.
+All six files must pass before committing. The full suite (~163 tests) runs in ~2.5 s; the cost is dominated by scrypt operations in `auth.test.ts` — that's intentional.
 
 ### Browser tests (Playwright)
 
@@ -314,7 +323,7 @@ METT_ADMIN_PASSWORD=secret python3 tests/simulate.py
 
 | Job | Command | Purpose |
 |---|---|---|
-| `bun test` | `bun run test` | Unit + integration suite (excluded `tests/browser/`) |
+| `bun test` | `bun run test` | Unit + integration suite (`tests/*.test.ts` glob; `tests/browser/` excluded) |
 | `tsc --noEmit` | `bunx tsc --noEmit` | TypeScript strict typecheck |
 | `ansible-lint` | `ansible-lint` action | Validates `ansible/deploy.yml` and `verify.yml` at production profile |
 | `yamllint` | over `.github/workflows/`, `ansible/`, `docker/docker-compose.yml` | YAML formatting / structure |
@@ -340,12 +349,14 @@ ansible-playbook -i inventory.ini deploy.yml
 `deploy.yml` does:
 
 1. Records the current `HEAD` commit on the remote.
-2. `git pull --ff-only` in `/home/nilsan/src/mett` (aborts if branch diverged).
+2. `git pull --ff-only` in `/home/nilsan/src/mett` (aborts if branch diverged) — only the compose file and Caddyfile come from git; the runtime image comes from ghcr.io.
 3. Lists incoming commits.
-4. `docker compose build` with `BUILD_SHA={{ head_after.stdout[:7] }}` in the environment, baking the deployed commit's short SHA into the image.
+4. `docker compose pull` to fetch `ghcr.io/nilsan/mett:latest` (built and pushed by `.github/workflows/build.yml` on every push to `main`).
 5. `docker compose up -d` to recreate any container whose image changed.
 6. Prints `docker compose ps`.
 7. Imports `verify.yml` (smoke-test, see below).
+
+**Timing:** after `git push`, wait ~1–2 min for the build workflow to publish the new image before deploying — otherwise `verify.yml` reports an SHA mismatch. Watch with `gh run watch --workflow=build.yml`.
 
 Skip the post-deploy verify (e.g. for an emergency rollback) with `--skip-tags verify`.
 
@@ -368,11 +379,18 @@ ansible-playbook -i inventory.ini verify.yml -e expected_sha=abc1234
 ssh nilsan@bf.nottseter.no
 cd ~/src/mett
 git pull --ff-only
-BUILD_SHA=$(git rev-parse --short HEAD) docker compose -f docker/docker-compose.yml build
+docker compose -f docker/docker-compose.yml pull   # from ghcr.io
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer.
+The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer. `build.yml` sets `BUILD_SHA={short-sha}` on every CI build.
+
+For a local-build fallback when GHCR is unreachable:
+
+```bash
+BUILD_SHA=$(git rev-parse --short HEAD) docker compose -f docker/docker-compose.yml build
+docker compose -f docker/docker-compose.yml up -d
+```
 
 ### Tailing logs
 

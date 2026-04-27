@@ -20,7 +20,7 @@ ansible-playbook -i inventory.ini deploy.yml
 Optional flags:
 
 ```bash
-# Show what would change without doing it (note: the build/up steps are not
+# Show what would change without doing it (note: the pull/up steps are not
 # perfectly check-mode-safe, so use this mostly to verify connectivity).
 ansible-playbook -i inventory.ini deploy.yml --check
 

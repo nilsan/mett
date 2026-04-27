@@ -563,3 +563,75 @@ describe('advanceRound — census pruning', () => {
     expect(censusRoundsForPlayer(pid)).toEqual([3]);
   });
 });
+
+describe('advanceRound — game-end orchestration', () => {
+  let db: Database;
+  beforeEach(() => { db = makeDb(); _setTestDb(db); });
+
+  it('basic mode: ends the game when any player reaches LIA (≥75) at round end', () => {
+    const pid = addPlayer(db, 17, 'Egypt');
+    setAstLevel(db, pid, 75);
+    db.exec("UPDATE game SET expert=0, current_round=4");
+
+    expect(advanceRound()).toBeNull();
+    const g = getGame(db);
+    expect(g.active).toBe(0);
+    expect(g.is_final_round).toBe(0);
+    expect(g.current_round).toBe(4); // not advanced — game ended
+  });
+
+  it('basic mode: continues past round 8 when no one is at LIA yet', () => {
+    const pid = addPlayer(db, 17, 'Egypt');
+    setAstLevel(db, pid, 70);
+    db.exec("UPDATE game SET expert=0, current_round=8");
+
+    expect(advanceRound()).toBe(9);
+    expect(getGame(db).active).toBe(1);
+  });
+
+  it('expert mode: a player crossing ≥75 raises is_final_round but the game keeps running', () => {
+    const pid = addPlayer(db, 17, 'Egypt');
+    setAstLevel(db, pid, 75);
+    db.exec("UPDATE game SET expert=1, current_round=5");
+    // Need ≥1 city to avoid the zero-cities expert regression in autoAdvanceAst.
+    submitCensus(db, pid, 5, 30, 1);
+
+    expect(advanceRound()).toBe(6);
+    const g = getGame(db);
+    expect(g.active).toBe(1);
+    expect(g.is_final_round).toBe(1);
+  });
+
+  it('expert mode: the round following is_final_round=1 ends the game', () => {
+    const pid = addPlayer(db, 17, 'Egypt');
+    setAstLevel(db, pid, 80);
+    db.exec("UPDATE game SET expert=1, current_round=6, is_final_round=1");
+    submitCensus(db, pid, 6, 30, 1);
+
+    expect(advanceRound()).toBeNull();
+    const g = getGame(db);
+    expect(g.active).toBe(0);
+    expect(g.is_final_round).toBe(0); // cleared on end
+  });
+});
+
+describe('advanceRound — cities_phase reset on round transition', () => {
+  let db: Database;
+  beforeEach(() => { db = makeDb(); _setTestDb(db); });
+
+  it('clears cities_phase back to 0 when the round advances', () => {
+    addPlayer(db, 17, 'Egypt');
+    db.exec("UPDATE game SET expert=1, current_round=2, cities_phase=1");
+
+    advanceRound();
+    expect(getGame(db).cities_phase).toBe(0);
+  });
+
+  it('clears census_revealed back to 0 when the round advances', () => {
+    addPlayer(db, 17, 'Egypt');
+    db.exec("UPDATE game SET expert=1, current_round=2, census_revealed=1");
+
+    advanceRound();
+    expect(getGame(db).census_revealed).toBe(0);
+  });
+});
