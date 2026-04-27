@@ -776,6 +776,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 }
 
 /* ─── Admin page responsive font scaling ──────────────────────────────────── */
+
 @media (max-width: 75em) {
   .admin-table { font-size: 0.82rem; }
   .admin-table td { height: 1.9rem; }
@@ -1790,6 +1791,31 @@ th.ab-player-col {
 .admin-table { font-size: 0.84rem; }
 .admin-table td { height: 1.75rem; padding: 0.15rem 0.4rem; }
 .admin-table th { padding: 0.25rem 0.4rem; font-size: 0.68rem; }
+
+/* 1080p laptop-on-the-table — primary target is WQHD/4K, but the 18-row
+   Players table runs ~300 px past the fold at FHD with the default
+   density. Tighten rows, form-element padding, and icon buttons so all
+   18 players fit (Danger Zone may still need a small scroll). Capped
+   below the WQHD breakpoint (160em) so TV-display density at 2560px+
+   is untouched. */
+@media (min-width: 75em) and (max-width: 159.99em) {
+  .admin-table td { height: 1.2rem; padding: 0.04rem 0.4rem; }
+  .admin-table th { padding: 0.1rem 0.4rem; }
+  .admin-table input[type=text],
+  .admin-table input[type=number],
+  .admin-table select {
+    --pico-form-element-spacing-vertical: 0.04rem;
+    line-height: 1.1;
+  }
+  .admin-table .icon-toggle { width: 1.3rem; height: 1.3rem; font-size: 0.8rem; }
+  .admin-table .lia-star-btn { font-size: 0.85rem; padding: 0; }
+  .ast-ctrl { gap: 0.2rem; }
+  .admin-section { padding: 0.35rem 0.55rem; }
+  .submission-progress { gap: 0.5rem; }
+  .round-controls { margin-top: 0.35rem; }
+  .admin-header { margin-bottom: 0.4rem; }
+  .admin-header h2 { margin: 0; }
+}
 .admin-table th { width: 14.28%; }
 
 .admin-table .player-name-input {
