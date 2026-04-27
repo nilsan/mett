@@ -6,10 +6,10 @@ import api from './routes/api.js';
 import pages from './routes/pages.js';
 import { addClient, removeClient, broadcastState, sendInitialState, type WsData } from './ws.js';
 import { getDb } from './db.js';
+import { DB_PATH } from './services/db.js';
 
-// Ensure data directory exists
-const dbPath = process.env.DATABASE_PATH ?? './data/mett.db';
-mkdirSync(dirname(dbPath), { recursive: true });
+// Ensure data directory exists alongside the DB file the service will open.
+mkdirSync(dirname(DB_PATH), { recursive: true });
 
 // Write PID file for easy process management
 writeFileSync('.pid', String(process.pid));

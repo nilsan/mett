@@ -3,7 +3,10 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { hashPassword, isLegacyPlaintext } from './password.js';
 
-const DB_PATH = process.env.DATABASE_PATH ?? join(import.meta.dir, '..', '..', 'data', 'mett.db');
+/** Resolved SQLite path. Module-relative so it doesn't depend on the cwd
+ *  the server was started from. Exported so callers (e.g. index.ts'
+ *  mkdirSync) operate on the same path the DB will actually open. */
+export const DB_PATH = process.env.DATABASE_PATH ?? join(import.meta.dir, '..', '..', 'data', 'mett.db');
 
 /** Canonical PlayerRow shape — joins civs to expose civ_number/name/slug/colors alongside the player row. */
 export const PLAYER_SELECT = `
