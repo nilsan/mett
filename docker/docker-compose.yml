@@ -1,64 +1,40 @@
 ---
+# Per-instance services share build, expose, restart, and environment
+# config via the x-mett anchor. Each instance only differs in its
+# data-volume mount path.
+x-mett-defaults: &mett-defaults
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+    args:
+      BUILD_SHA: ${BUILD_SHA:-}
+  expose:
+    - "3000"
+  restart: unless-stopped
+  environment:
+    DATABASE_PATH: /app/data/mett.db
+    PORT: 3000
+
 services:
   mett-katja:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        BUILD_SHA: ${BUILD_SHA:-}
-    expose:
-      - "3000"
+    <<: *mett-defaults
     volumes:
       - ~/docker/mett/katja:/app/data
-    restart: unless-stopped
-    environment:
-      DATABASE_PATH: /app/data/mett.db
-      PORT: 3000
 
   mett-arne:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        BUILD_SHA: ${BUILD_SHA:-}
-    expose:
-      - "3000"
+    <<: *mett-defaults
     volumes:
       - ~/docker/mett/arne:/app/data
-    restart: unless-stopped
-    environment:
-      DATABASE_PATH: /app/data/mett.db
-      PORT: 3000
 
   mett-dag:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        BUILD_SHA: ${BUILD_SHA:-}
-    expose:
-      - "3000"
+    <<: *mett-defaults
     volumes:
       - ~/docker/mett/dag:/app/data
-    restart: unless-stopped
-    environment:
-      DATABASE_PATH: /app/data/mett.db
-      PORT: 3000
 
   mett-me:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        BUILD_SHA: ${BUILD_SHA:-}
-    expose:
-      - "3000"
+    <<: *mett-defaults
     volumes:
       - ~/docker/mett/me:/app/data
-    restart: unless-stopped
-    environment:
-      DATABASE_PATH: /app/data/mett.db
-      PORT: 3000
 
   caddy:
     image: caddy:2-alpine
