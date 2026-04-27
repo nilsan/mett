@@ -8,10 +8,13 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "test": "bun test"
+    "test": "bun test tests/*.test.ts",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@playwright/test": "^1.59.1",
+    "@types/bun": "latest",
+    "playwright": "^1.59.1"
   },
   "peerDependencies": {
     "typescript": "^5"
