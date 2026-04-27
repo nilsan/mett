@@ -354,13 +354,15 @@
       });
     });
 
-    // Late Iron Age bonus star toggle (game-over view)
-    document.querySelectorAll('.lia-star-btn').forEach(btn => {
+    // Late Iron Age bonus star toggle. Skip the lia-star-ineligible spans
+    // (rendered for players below LIA threshold) — they aren't <button>s.
+    document.querySelectorAll('button.lia-star-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         btn.disabled = true;
         const currentlyGranted = btn.dataset.granted === '1';
         await mettPost(`/api/players/${btn.dataset.playerId}/late-iron-age-bonus`, { grant: !currentlyGranted });
-        location.reload();
+        // No reload — the WS broadcast updates every star button in place
+        // via the mett:state handler below.
       });
     });
 
@@ -414,6 +416,21 @@
           }
         });
       }
+
+      // Update per-player LIA-star buttons. Granting the bonus to one player
+      // clears it from any others, so we refresh every eligible button on
+      // every broadcast — not just the one that was clicked.
+      data.players.forEach(p => {
+        const row = document.querySelector(`tr[data-player-id="${p.id}"]`);
+        if (!row) return;
+        const lia = row.querySelector('.lia-star-btn');
+        if (!lia || lia.tagName !== 'BUTTON') return;
+        const granted = !!p.late_iron_age_bonus;
+        lia.className = `lia-star-btn ${granted ? 'lia-star-on' : 'lia-star-off'}`;
+        lia.dataset.granted = granted ? '1' : '0';
+        lia.title = granted ? 'LIA bonus (5VP) — click to remove' : 'Grant LIA bonus (5VP)';
+        lia.disabled = false;
+      });
 
       // Update per-player census and city status icons
       data.census.forEach(c => {

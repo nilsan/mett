@@ -110,7 +110,7 @@ export function renderCivFragment(
   const censusDefault = submitted ? String(census!.population) : '';
 
   return /* html */`
-<div id="civ-content" data-player-id="${player.id}" data-game-active="${game.active}" hx-get="/${slug}" hx-trigger="mett:my-state from:window" hx-swap="outerHTML">
+<div id="civ-content" data-player-id="${player.id}" data-game-active="${game.active}">
 <div class="civ-page" style="--civ-color:${player.civ_color};--civ-text:${player.civ_text_color}">
   <div class="civ-hero">
     <div class="civ-hero-content">
