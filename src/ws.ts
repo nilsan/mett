@@ -31,9 +31,10 @@ export function broadcast(type: string, data?: unknown): void {
 function buildStatePayload(targetPlayerId: number | null = null) {
   const state = getFullState();
   const expert = state.game.expert === 1;
+  const censusByPlayer = new Map(state.census.map(r => [r.player_id, r]));
   const astStatus: Record<number, string> = {};
   for (const player of state.players) {
-    const c = state.census.find(r => r.player_id === player.id);
+    const c = censusByPlayer.get(player.id);
     astStatus[player.id] = nextAstStatus(player, c?.city_count, state.astLevels, expert);
   }
   return { ...state, astStatus, targetPlayerId };

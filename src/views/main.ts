@@ -42,11 +42,11 @@ export function renderMain(state: FullState): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
 
-  const pwc: PlayerWithCensus[] = players.map(p => ({
-    ...p,
-    census: census.find(c => c.player_id === p.id) ?? null,
-    city_count: census.find(c => c.player_id === p.id)?.city_count ?? null,
-  }));
+  const censusByPlayer = new Map(census.map(c => [c.player_id, c]));
+  const pwc: PlayerWithCensus[] = players.map(p => {
+    const c = censusByPlayer.get(p.id) ?? null;
+    return { ...p, census: c, city_count: c?.city_count ?? null };
+  });
 
   const revealed = game.census_revealed === 1;
   const citiesPhase = game.cities_phase === 1;

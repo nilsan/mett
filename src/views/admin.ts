@@ -133,8 +133,9 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
 
   // Final VP = AST VP + ADV VP + City VP (1 per city) + LIA bonus (5VP)
   // Wonder of the World does not count as a city for scoring
+  const cityCountByPlayer = new Map(census.map(c => [c.player_id, c.city_count ?? 0]));
   const scored = players.map(p => {
-    const cityVp = census.find(c => c.player_id === p.id)?.city_count ?? 0;
+    const cityVp = cityCountByPlayer.get(p.id) ?? 0;
     const total = playerTotalVp(p, cityVp);
     return { ...p, cityVp, total, _score: makeScoreEntry(p, cityVp) };
   }).sort((a, b) => compareScores(a._score, b._score));
@@ -243,9 +244,11 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
   const citiesCount = census.filter(c => c.city_count != null).length;
   const allCitiesReady = n > 0 && citiesCount === n;
 
+  const censusByPlayer = new Map(census.map(c => [c.player_id, c]));
+  const prevCensusByPlayer = new Map(prevCensus.map(c => [c.player_id, c]));
   const playerRows = players.map(p => {
-    const c = census.find(x => x.player_id === p.id);
-    const prev = prevCensus.find(x => x.player_id === p.id);
+    const c = censusByPlayer.get(p.id);
+    const prev = prevCensusByPlayer.get(p.id);
     const submitted = c?.population != null;
     const astOptions = AST_LEVELS.map(l =>
       `<option value="${l}" ${p.ast_level === l ? 'selected' : ''}>${l}</option>`

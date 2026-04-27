@@ -188,9 +188,11 @@ api.post('/players/:id/rank', async (c) => {
   const body = await c.req.json<{ rank_order: number; group_players?: number[]; group_positions?: number[] }>();
   if (isNaN(body.rank_order)) return c.json({ error: 'Invalid rank_order' }, 400);
 
+  // Single fetch — both branches below need the player+civ join.
+  const allPlayers = (body.group_players?.length) ? db.getPlayers() : null;
+
   // Clear any sibling already holding this position (allows admin to correct mistakes)
-  if (body.group_players?.length) {
-    const allPlayers = db.getPlayers();
+  if (allPlayers && body.group_players?.length) {
     for (const p of allPlayers) {
       if (body.group_players.includes(p.id) && p.id !== playerId && p.rank_order === body.rank_order) {
         db.setRankOrder(p.id, 0);
@@ -200,9 +202,16 @@ api.post('/players/:id/rank', async (c) => {
 
   db.setRankOrder(playerId, body.rank_order);
 
-  // Auto-assign the sole remaining position to any unresolved group member
-  if (body.group_players?.length && body.group_positions?.length) {
-    const allPlayers = db.getPlayers();
+  // Auto-assign the sole remaining position to any unresolved group member.
+  // Re-read rank_order from the same allPlayers snapshot — the above sibling
+  // clears wrote to the DB but allPlayers is in-memory; we apply the same
+  // diff manually so the second pass sees consistent values.
+  if (allPlayers && body.group_players?.length && body.group_positions?.length) {
+    for (const p of allPlayers) {
+      if (body.group_players.includes(p.id) && p.id !== playerId && p.rank_order === body.rank_order) {
+        p.rank_order = 0;
+      }
+    }
     const others = allPlayers.filter(p => body.group_players!.includes(p.id) && p.id !== playerId);
     const claimed = new Set([body.rank_order]);
     const unresolved: typeof others = [];
