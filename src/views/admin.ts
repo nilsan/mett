@@ -1,6 +1,7 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import type { CivRefRow } from '../db.js';
 import { playerTotalVp, compareScores, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
+import { empireCell } from './empire.js';
 import { LIA_THRESHOLD } from '../models/ast.js';
 
 function pwdFormHtml(query: string): string {
@@ -170,7 +171,7 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
     return `<tr${unresolved ? ' class="lb-tied"' : ''}>
       <td class="rank go-rank">${unresolved ? '=' : meta.displayRank}</td>
       <td class="go-empire">
-        <span class="civ-badge civ-badge-with-num" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num-in-badge">${p.civ_number}</span><span class="civ-badge-label">${p.civ_name}<span class="go-player-name">${p.name}</span></span></span>
+        ${empireCell(p, 'badge-with-player')}
       </td>
       <td class="go-ast">${p.ast_level}</td>
       <td class="go-adv">${p.adv_points}</td>
@@ -258,7 +259,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
 
     return `<tr data-player-id="${p.id}">
       <td data-label="Empire">
-        <span class="civ-badge civ-badge-with-num" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num-in-badge">${p.civ_number}</span>${p.civ_name}</span>
+        ${empireCell(p, 'badge')}
       </td>
       <td data-label="Player">
         <input type="text" class="player-name-input" value="${p.name}" data-player-id="${p.id}">

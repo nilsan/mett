@@ -1,14 +1,13 @@
 import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { AST_LEVELS, getAgeBands, civBandClass, isAgeEnd } from '../models/ast.js';
 import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
+import { empireCell } from './empire.js';
+
+export { empireCell };
 
 interface PlayerWithCensus extends PlayerRow {
   census: CensusRow | null;
   city_count: number | null;
-}
-
-function empireCell(p: PlayerRow): string {
-  return `<td class="empire-cell" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</td>`;
 }
 
 /**
@@ -175,7 +174,7 @@ export function renderMain(state: FullState): string {
         `</td>`;
     }).join('');
     return `<tr>
-      <td class="ab-civ-label empire-cell" style="background:${p.civ_color};color:${p.civ_text_color}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</td>
+      ${empireCell(p, 'cell-ab')}
       ${cells}
     </tr>`;
   }).join('');
