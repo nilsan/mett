@@ -9,54 +9,70 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // ─── Minimal DB setup ─────────────────────────────────────────────────────────
+//
+// Schema text, the migration list, and the seed JSON are all immutable for the
+// life of the test process — read and serialise once at module load so each
+// makeDb() call only pays for the SQLite primitives, not disk IO + JSON.
+
+const SCHEMA_SQL = readFileSync(join(import.meta.dir, '..', 'db', 'schema.sql'), 'utf8');
+
+const MIGRATIONS: readonly string[] = [
+  'ALTER TABLE players ADD COLUMN rank_order INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE players ADD COLUMN adv_1vp INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE players ADD COLUMN adv_3vp INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE players ADD COLUMN adv_6vp INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE census ADD COLUMN city_count INTEGER',
+  'ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE game ADD COLUMN admin_password TEXT',
+  'ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE ast_levels ADD COLUMN basic_req_json TEXT',
+  'ALTER TABLE ast_levels ADD COLUMN expert_req_json TEXT',
+];
+
+const REQS: Record<number, { basic: object | null; expert: object | null }> = {
+  0:  { basic: null,                                                expert: null },
+  5:  { basic: null,                                                expert: null },
+  10: { basic: null,                                                expert: null },
+  15: { basic: null,                                                expert: null },
+  20: { basic: { cities: 2 },                                       expert: { cities: 3 } },
+  25: { basic: { cities: 2 },                                       expert: { cities: 3 } },
+  30: { basic: { cities: 2 },                                       expert: { cities: 3 } },
+  35: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
+  40: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
+  45: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
+  50: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
+  55: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
+  60: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
+  65: { basic: { cities: 4, advCount: 2, advTier: 'expensive' },    expert: { cities: 5, advCount: 10, advTier: 'cheap', totalVp: 38 } },
+  70: { basic: { cities: 5, advCount: 3, advTier: 'expensive' },    expert: { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 } },
+  75: { basic: { impossible: true },                                 expert: { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 } },
+  80: { basic: { impossible: true },                                 expert: { impossible: true } },
+};
+
+// Stringify each row's JSON once.
+const REQ_ROWS: ReadonlyArray<readonly [string | null, string | null, number]> = Object.entries(REQS).map(
+  ([lvl, { basic, expert }]) => [
+    basic  ? JSON.stringify(basic)  : null,
+    expert ? JSON.stringify(expert) : null,
+    parseInt(lvl, 10),
+  ] as const,
+);
 
 function makeDb(): Database {
   const db = new Database(':memory:');
   db.exec('PRAGMA foreign_keys=ON;');
-  db.exec(readFileSync(join(import.meta.dir, '..', 'db', 'schema.sql'), 'utf8'));
+  db.exec(SCHEMA_SQL);
 
-  function migrate(sql: string) {
+  for (const sql of MIGRATIONS) {
     try { db.exec(sql); } catch (e: any) {
       if (!String(e?.message).includes('duplicate column name')) throw e;
     }
   }
-  migrate('ALTER TABLE players ADD COLUMN rank_order INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN adv_1vp INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN adv_3vp INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN adv_6vp INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE census ADD COLUMN city_count INTEGER');
-  migrate('ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE game ADD COLUMN admin_password TEXT');
-  migrate('ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE ast_levels ADD COLUMN basic_req_json TEXT');
-  migrate('ALTER TABLE ast_levels ADD COLUMN expert_req_json TEXT');
 
-  // Seed JSON requirements
-  const reqs: Record<number, { basic: object | null; expert: object | null }> = {
-    0:  { basic: null,                                                expert: null },
-    5:  { basic: null,                                                expert: null },
-    10: { basic: null,                                                expert: null },
-    15: { basic: null,                                                expert: null },
-    20: { basic: { cities: 2 },                                       expert: { cities: 3 } },
-    25: { basic: { cities: 2 },                                       expert: { cities: 3 } },
-    30: { basic: { cities: 2 },                                       expert: { cities: 3 } },
-    35: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
-    40: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
-    45: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
-    50: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
-    55: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
-    60: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
-    65: { basic: { cities: 4, advCount: 2, advTier: 'expensive' },    expert: { cities: 5, advCount: 10, advTier: 'cheap', totalVp: 38 } },
-    70: { basic: { cities: 5, advCount: 3, advTier: 'expensive' },    expert: { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 } },
-    75: { basic: { impossible: true },                                 expert: { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 } },
-    80: { basic: { impossible: true },                                 expert: { impossible: true } },
-  };
   const stmt = db.prepare('UPDATE ast_levels SET basic_req_json=?, expert_req_json=? WHERE level=?');
-  for (const [lvl, { basic, expert }] of Object.entries(reqs)) {
-    stmt.run(basic ? JSON.stringify(basic) : null, expert ? JSON.stringify(expert) : null, parseInt(lvl));
-  }
+  for (const [b, e, lvl] of REQ_ROWS) stmt.run(b, e, lvl);
 
   db.exec("UPDATE game SET active=1, expert=0, current_round=1 WHERE id=1");
   return db;
