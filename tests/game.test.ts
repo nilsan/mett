@@ -118,7 +118,7 @@ function getGame(db: Database) {
 // Since the service uses a module-level singleton, we dynamically override it.
 
 import { autoAdvanceAst } from '../src/models/ast.js';
-import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp, computeTieGroupMeta } from '../src/models/game.js';
+import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp, computeTieGroupMeta, advanceRound } from '../src/models/game.js';
 import { _setTestDb } from '../src/services/db.js';
 import { sortCensusOrder } from '../src/views/main.js';
 
@@ -613,5 +613,63 @@ describe('static-row caches reset on _setTestDb', () => {
     dbB.exec("UPDATE ast_levels SET era='SENTINEL_B' WHERE level=0");
     const b = getAstLevels();
     expect(b[0]!.era).toBe('SENTINEL_B');
+  });
+});
+
+describe('advanceRound — census pruning', () => {
+  let db: Database;
+  beforeEach(() => { db = makeDb(); _setTestDb(db); });
+
+  function censusRoundsForPlayer(playerId: number): number[] {
+    return db.query<{ round: number }, [number]>(
+      'SELECT round FROM census WHERE player_id=? ORDER BY round'
+    ).all(playerId).map(r => r.round);
+  }
+
+  it('after advance, the round just finished is kept and older rounds are dropped', () => {
+    // Artificially pre-populate three rounds (in normal play only one
+    // historical round would ever exist at a time, but the prune must
+    // handle the "we just upgraded a long-running install" case too).
+    const pid = addPlayer(db, 17, 'Egypt');
+    submitCensus(db, pid, 1, 20, 2);
+    submitCensus(db, pid, 2, 21, 2);
+    submitCensus(db, pid, 3, 22, 2);
+    db.exec('UPDATE game SET current_round=3, expert=1');
+    expect(censusRoundsForPlayer(pid)).toEqual([1, 2, 3]);
+
+    // advanceRound from 3 -> 4 prunes rounds < 3, keeping the round we
+    // just finished (round 3) — that's what /admin and /:slug read as
+    // prevCensus on round 4.
+    expect(advanceRound()).toBe(4);
+    expect(censusRoundsForPlayer(pid)).toEqual([3]);
+  });
+
+  it('keeps the round just finished so the next page render can read prevCensus', () => {
+    const pid = addPlayer(db, 17, 'Egypt');
+    submitCensus(db, pid, 1, 20, 2);
+    db.exec('UPDATE game SET current_round=1, expert=1');
+
+    advanceRound();
+    expect(censusRoundsForPlayer(pid)).toEqual([1]); // round 1 = prevCensus on round 2
+  });
+
+  it('across several rounds in steady-state play, only one historical round is ever kept', () => {
+    const pid = addPlayer(db, 17, 'Egypt');
+    db.exec('UPDATE game SET expert=1');
+
+    // Round 1
+    submitCensus(db, pid, 1, 20, 2);
+    advanceRound();
+    expect(censusRoundsForPlayer(pid)).toEqual([1]);
+
+    // Round 2
+    submitCensus(db, pid, 2, 21, 2);
+    advanceRound();
+    expect(censusRoundsForPlayer(pid)).toEqual([2]);
+
+    // Round 3
+    submitCensus(db, pid, 3, 22, 2);
+    advanceRound();
+    expect(censusRoundsForPlayer(pid)).toEqual([3]);
   });
 });

@@ -186,6 +186,12 @@ export function advanceRound(): number | null {
     }
 
     nextRound = game.current_round + 1;
+    // Prune census rows older than the round we just finished. The page
+    // handlers only ever read the current round and current_round - 1
+    // (for the prev-round prevCensus on civ + admin pages), so anything
+    // older is unreachable. Disk doesn't grow unbounded across long
+    // multi-day sessions.
+    db.query('DELETE FROM census WHERE round < ?').run(game.current_round);
     db.query('UPDATE game SET current_round=?, census_revealed=0, cities_phase=0 WHERE id=1').run(nextRound);
   })();
 
