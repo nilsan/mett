@@ -19,6 +19,19 @@ getDb();
 
 const app = new Hono();
 
+// Request logger — runs first so even 404s and errors get a line. Skips static
+// asset paths so the log isn't drowned in /css/ + /js/ noise.
+app.use('*', async (c, next) => {
+  const path = c.req.path;
+  if (path.startsWith('/css/') || path.startsWith('/js/')) return next();
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  const status = c.res.status;
+  // ISO timestamp + method + path + status + duration. Single line, parseable.
+  console.log(`${new Date().toISOString()} ${c.req.method.padEnd(4)} ${path} ${status} ${ms}ms`);
+});
+
 // Static files — no-store so browsers always fetch fresh after server-side changes
 app.use('/css/*', async (c, next) => { await next(); c.res.headers.set('Cache-Control', 'no-store'); });
 app.use('/js/*', async (c, next) => { await next(); c.res.headers.set('Cache-Control', 'no-store'); });
@@ -39,9 +52,12 @@ app.notFound((c) => {
   return c.html('<!doctype html><meta charset="utf-8"><title>Not found</title><p>Not found. <a href="/">Back to overview</a>.</p>', 404);
 });
 
-// Top-level error handler — never leak stack traces to clients
+// Top-level error handler — never leak stack traces to clients. Same line
+// format as the request logger above so log scrapers can match either by
+// timestamp + path; the ERROR marker + stack trace come on the next lines.
 app.onError((err, c) => {
-  console.error(`[me[tt]] ${c.req.method} ${c.req.path} →`, err);
+  console.error(`${new Date().toISOString()} ERROR ${c.req.method} ${c.req.path}`);
+  console.error(err instanceof Error ? (err.stack ?? err.message) : err);
   if (c.req.path.startsWith('/api/')) {
     return c.json({ error: 'Internal server error' }, 500);
   }
