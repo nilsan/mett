@@ -638,9 +638,9 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .table-hint       { font-size: 0.72rem; }
   .status-grid .ab-legend        { font-size: 0.62rem; gap: 0.15rem; }
 
-  .status-grid .mett-table       { font-size: 0.88rem; border-spacing: 0 5px; }
-  .status-grid .mett-table th    { font-size: 0.7rem; padding: 0.15rem 0.4rem; }
-  .status-grid .mett-table td    { height: 2.8rem; padding: 0.08rem 0.4rem; }
+  .status-grid .mett-table       { font-size: 0.88rem; border-spacing: 0 4px; }
+  .status-grid .mett-table th    { font-size: 0.7rem; padding: 0.12rem 0.4rem; }
+  .status-grid .mett-table td    { height: 2.55rem; padding: 0.08rem 0.4rem; }
   .status-grid .trade-chip       { width: 0.95rem; height: 1.5rem; font-size: 0.6rem; }
   /* 9 × 0.95rem + 8 × 0.05rem + 2 × 0.4rem padding = 10.25rem; empire = 7.5rem */
   .status-grid .trade-chip-col   { width: 10.25rem; }
@@ -667,12 +667,12 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .trade-table .trade-group-start td::before { top: -2.5px; }
 
   /* AST board: scale up to match row heights */
-  .ab-table.status-ast { font-size: 0.78rem !important; border-spacing: 0 5px !important; }
-  .status-ast thead th { font-size: 0.7rem; padding: 0.15rem 0.4rem; }
-  .status-ast thead tr { height: 1.3rem; }
+  .ab-table.status-ast { font-size: 0.78rem !important; border-spacing: 0 4px !important; }
+  .status-ast thead th { font-size: 0.7rem; padding: 0.12rem 0.4rem; }
+  .status-ast thead tr { height: 1.2rem; }
   .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
   .status-ast td.empire-cell { padding: 0.08rem 0.4rem; font-size: 1.0rem; }
-  .status-ast .ab-cell      { width: 2.2rem; height: 2.8rem; }
+  .status-ast .ab-cell      { width: 2.2rem; height: 2.55rem; }
   .status-ast .ab-level-num { width: 2.2rem; font-size: 0.62rem !important; }
   .status-ast .ab-round-num { width: 2.2rem; font-size: 0.62rem !important; }
   .status-ast .ab-name      { font-size: 0.65rem !important; }
