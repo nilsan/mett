@@ -52,11 +52,16 @@ export interface AstLevelRow {
   expert_req_json: string | null;
 }
 
+export type AstStatus = 'advance' | 'stay' | 'regress' | 'unknown';
+
 export interface FullState {
   game: GameRow;
   players: PlayerRow[];
   census: CensusRow[];
   astLevels: AstLevelRow[];
+  /** Per-player next-AST prediction. Keyed by player id; computed once in
+   *  getFullState so render paths and the WS broadcast both read the same map. */
+  astStatus: Record<number, AstStatus>;
 }
 
 export interface CivRefRow {

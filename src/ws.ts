@@ -1,6 +1,5 @@
 import type { ServerWebSocket } from 'bun';
 import { getFullState } from './db.js';
-import { nextAstStatus } from './models/ast.js';
 
 export interface WsData {
   id: string;
@@ -27,17 +26,11 @@ export function broadcast(type: string, data?: unknown): void {
   }
 }
 
-/** Build a state_update payload — shared by broadcastState and per-client pushes. */
+/** Build a state_update payload — shared by broadcastState and per-client pushes.
+ *  state.astStatus is precomputed in getFullState(); we only attach the
+ *  targetPlayerId routing hint here. */
 function buildStatePayload(targetPlayerId: number | null = null) {
-  const state = getFullState();
-  const expert = state.game.expert === 1;
-  const censusByPlayer = new Map(state.census.map(r => [r.player_id, r]));
-  const astStatus: Record<number, string> = {};
-  for (const player of state.players) {
-    const c = censusByPlayer.get(player.id);
-    astStatus[player.id] = nextAstStatus(player, c?.city_count, state.astLevels, expert);
-  }
-  return { ...state, astStatus, targetPlayerId };
+  return { ...getFullState(), targetPlayerId };
 }
 
 export function broadcastState(targetPlayerId?: number): void {

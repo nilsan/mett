@@ -33,7 +33,8 @@ export {
 import { getDb, _onReset, PLAYER_SELECT } from './services/db.js';
 import type { PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow } from './types.js';
 import { getGame } from './models/game.js';
-import { getAstLevels, LIA_THRESHOLD } from './models/ast.js';
+import { getAstLevels, LIA_THRESHOLD, nextAstStatus } from './models/ast.js';
+import type { AstStatus } from './types.js';
 
 // ── Admin password ─────────────────────────────────────────────────────────────
 
@@ -210,5 +211,11 @@ export function getFullState(): FullState {
   const players = getPlayers();
   const census = getCensusForRound(game.current_round);
   const astLevels = getAstLevels();
-  return { game, players, census, astLevels };
+  const expert = game.expert === 1;
+  const censusByPlayer = new Map(census.map(c => [c.player_id, c]));
+  const astStatus: Record<number, AstStatus> = {};
+  for (const p of players) {
+    astStatus[p.id] = nextAstStatus(p, censusByPlayer.get(p.id)?.city_count, astLevels, expert);
+  }
+  return { game, players, census, astLevels, astStatus };
 }

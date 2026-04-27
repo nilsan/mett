@@ -1,6 +1,5 @@
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import type { CivRefRow } from '../db.js';
-import { nextAstStatus, type AstStatus } from '../models/ast.js';
 import { playerTotalVp, compareScores, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
 import { LIA_THRESHOLD } from '../models/ast.js';
 
@@ -254,7 +253,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
       `<option value="${l}" ${p.ast_level === l ? 'selected' : ''}>${l}</option>`
     ).join('');
 
-    const astStatus = nextAstStatus(p, c?.city_count, state.astLevels, expert);
+    const astStatus = state.astStatus[p.id] ?? 'unknown';
     const dotTitle = astStatus === 'advance' ? 'Will advance' : astStatus === 'regress' ? 'Will regress' : astStatus === 'stay' ? 'Requirements not met' : 'Post-calamity city count unknown';
 
     return `<tr data-player-id="${p.id}">

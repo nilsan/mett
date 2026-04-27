@@ -1,6 +1,6 @@
 import { getDb, _onReset, PLAYER_SELECT } from '../services/db.js';
 import { getCivAstProfile } from '../civs.js';
-import type { PlayerRow, AstLevelRow } from '../types.js';
+import type { PlayerRow, AstLevelRow, AstStatus } from '../types.js';
 
 // ─── Structured requirement interface ─────────────────────────────────────────
 
@@ -37,7 +37,9 @@ export function checkRequirement(
   return true;
 }
 
-export type AstStatus = 'advance' | 'stay' | 'regress' | 'unknown';
+// AstStatus is canonical in types.ts; re-export so callers that import from
+// models/ast.ts (where nextAstStatus lives) don't need a second import.
+export type { AstStatus };
 
 /** Predict next-round AST outcome for a player given their current city count. */
 export function nextAstStatus(
