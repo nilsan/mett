@@ -13,10 +13,14 @@ For the user-facing guide see [README.md](README.md). For which game rules are i
 | Runtime | **Bun** | Built-in SQLite, built-in WebSocket, TypeScript without a build step |
 | Web framework | **Hono** | Lightweight, TypeScript-first, first-class Bun support |
 | Database | **bun:sqlite** | Zero extra dependencies; Bun includes it natively |
+| Password hashing | **node:crypto scrypt** | OWASP-recommended; sync; no extra dep |
 | CSS | **Pico CSS + custom** | Dark-mode baseline out of the box; small footprint (~10 KB) |
-| Frontend JS | **Vanilla JS + HTMX** | No framework needed at this scale; HTMX for partial updates |
+| Frontend JS | **Vanilla JS + HTMX** | No framework needed at this scale; HTMX for first-paint fragments |
+| Browser tests | **Playwright** | Auto-wait, browser bundled, TypeScript-native (replaced Selenium) |
 | Container | **Docker + Docker Compose** | Volume-mounted SQLite for persistence |
-| TLS (optional) | **Caddy** | Automatic Let's Encrypt certificates |
+| TLS | **Caddy** | Automatic Let's Encrypt certificates, bundled in compose |
+| CI | **GitHub Actions** | bun test + tsc + ansible-lint + yamllint + hadolint on every push |
+| Deployment | **Ansible** | Idempotent pull/build/recreate, automatic post-deploy smoke test |
 
 ---
 
@@ -25,42 +29,65 @@ For the user-facing guide see [README.md](README.md). For which game rules are i
 ```
 mett/
 ├── src/
-│   ├── index.ts            Entry point: Hono app + Bun server
-│   ├── db.ts               Re-export barrel + CRUD for players/census/civs
+│   ├── index.ts            Entry point: Hono app + Bun server, error/404 handlers
+│   ├── db.ts               Re-export barrel + CRUD for players/census/civs;
+│   │                       getFullState() (precomputes per-player astStatus)
 │   ├── civs.ts             Static civ data + official scenario tables
-│   ├── types.ts            Shared TypeScript types
-│   ├── ws.ts               WebSocket connection manager + broadcast
+│   ├── types.ts            Shared TypeScript types (FullState, AstStatus, …)
+│   ├── version.ts          Reads package.json + BUILD_SHA env → footer string
+│   ├── ws.ts               WebSocket clients set + broadcast/sendInitialState
 │   ├── models/
-│   │   ├── ast.ts          AST requirement parsing and advancement logic
-│   │   └── game.ts         Game-state queries + scoring/tie-break
+│   │   ├── ast.ts          AST requirement parsing, advancement, tier helpers
+│   │   └── game.ts         advanceRound, scoring, computeTieGroupMeta
 │   ├── services/
-│   │   └── db.ts           Raw SQLite connection, schema + migrations
+│   │   ├── db.ts           Raw SQLite connection, schema + migrations,
+│   │   │                   PLAYER_SELECT, _onReset cache hooks, DB_PATH
+│   │   └── password.ts     scrypt hashPassword / verifyPassword
 │   ├── routes/
-│   │   ├── api.ts          REST API routes
-│   │   └── pages.ts        Server-rendered HTML page routes
+│   │   ├── api.ts          REST API routes (admin auth + public submissions)
+│   │   └── pages.ts        Server-rendered pages (login, /admin, /:slug)
 │   └── views/
-│       ├── layout.ts       Base HTML shell (Pico CSS, nav, WS script)
-│       ├── main.ts         Main page (5-section status grid)
-│       ├── admin.ts        Admin page (setup wizard + game controls)
-│       └── civ.ts          Individual empire page
+│       ├── layout.ts       Base HTML shell (Pico, htmx, toast.js, api.js,
+│       │                   ws-client.js, version footer)
+│       ├── main.ts         Main display (5-section status grid)
+│       ├── admin.ts        Admin (setup wizard / active game / game over)
+│       └── civ.ts          Individual empire page (initial render only —
+│                           updates flow from WS via civ.js)
 ├── public/
-│   ├── css/style.css       Civ colour variables, Pico overrides, layout
+│   ├── css/style.css       Civ colour vars, Pico overrides, breakpoint sizing
 │   └── js/
 │       ├── ws-client.js    Shared WebSocket client (auto-reconnect)
-│       ├── toast.js        Error toast helper
-│       ├── main.js         Main page JS
-│       ├── admin.js        Admin page JS
-│       └── civ.js          Empire page JS
+│       ├── toast.js        Error toast helper (window.showToast)
+│       ├── api.js          Shared mettPost helper (JSON + toast on error)
+│       ├── main.js         Main page JS (HTMX swap entry-point)
+│       ├── admin.js        Admin page JS (in-place updates from mett:state)
+│       └── civ.js          Empire page JS (full client-side render from
+│                           WS state — no HTMX swap, preserves focus)
 ├── db/
 │   └── schema.sql          Schema + seed data (civs and A.S.T. levels)
 ├── docker/
-│   ├── Dockerfile
-│   ├── docker-compose.yml  Multi-instance setup with bundled Caddy (HTTPS)
-│   └── Caddyfile
+│   ├── Dockerfile          Bun image; ARG BUILD_SHA → ENV
+│   ├── docker-compose.yml  Four mett-* services + Caddy via YAML anchor
+│   └── Caddyfile           Per-subdomain reverse proxy
+├── ansible/
+│   ├── deploy.yml          Pull → build → recreate → verify
+│   ├── verify.yml          HTTPS smoke-test of every production subdomain
+│   ├── inventory.ini       Single host: bf.nottseter.no
+│   └── README.md
+├── .github/
+│   └── workflows/test.yml  CI: bun test + tsc + ansible-lint + yamllint + hadolint
+├── playwright.config.ts    Browser-test config (testDir tests/browser/)
+├── .yamllint               Project-wide yamllint config (line-length 140)
 └── tests/
-    ├── ast.test.ts         Unit tests for A.S.T. requirement logic
-    ├── game.test.ts        Integration tests (AST advancement, LIA bonus, etc.)
-    └── simulate.py         End-to-end game simulations against a live server
+    ├── ast.test.ts         A.S.T. requirement unit tests
+    ├── game.test.ts        Game flow integration (AST, LIA, ties,
+    │                       advanceRound + census prune, computeTieGroupMeta)
+    ├── auth.test.ts        Login, change-password, isAdminAuthed, scrypt
+    ├── password.test.ts    hashPassword / verifyPassword round-trip
+    ├── simulate.py         Python end-to-end against a live server (legacy)
+    └── browser/            Playwright specs (require running dev server)
+        ├── layout.spec.ts          1080p / 4K layout regression
+        └── civ-live-update.spec.ts Civ-page live update preserves focus
 ```
 
 ---
@@ -170,12 +197,22 @@ Every mutating endpoint broadcasts a `state_update` WebSocket event after writin
 ## WebSocket
 
 - Endpoint: `/ws`
-- The server tracks all connected clients in memory.
-- After any state change the server broadcasts to all clients:
+- The server tracks all connected clients in `src/ws.ts`.
+- On client `open`, the server immediately sends one `state_update` so reconnecting tabs are fresh without waiting for the next mutation.
+- After any state-changing API call the server broadcasts:
   ```json
-  { "type": "state_update", "data": { ...fullGameState } }
+  { "type": "state_update", "data": { ...fullGameState, "targetPlayerId": null|number } }
   ```
-- `public/js/ws-client.js` handles reconnection with exponential backoff and dispatches a `CustomEvent` on `window` so each page's JS can listen independently.
+  `fullGameState` includes `astStatus` (per-player advance/stay/regress prediction, computed once in `getFullState()`) so the WS payload and page renders agree on the same map.
+- `public/js/ws-client.js` handles reconnection with exponential backoff and dispatches `mett:state` (every event) and `mett:my-state` (only when the event affects this client's player, or is global).
+
+### How pages consume the WS feed
+
+| Page | First paint | Updates |
+|---|---|---|
+| `/` (status display) | Server-rendered | HTMX swap of `#main-content` on every `mett:state` |
+| `/admin` | Server-rendered | In-place DOM patch on `mett:state` (sub-prog bar, AST status dots, census/city icons, LIA stars, mil/won classes). Five reloads remain by design — round transitions and setup ↔ active page-shape changes |
+| `/<slug>` (player) | Server-rendered (`renderCivFragment`) | **Full client-side render from WS state** in `civ.js`'s `renderFromState()`. No HTMX swap → focused inputs and scroll position are preserved. Pure helpers (`compareScores`, `playerTotalVp`, `getCivAstProfile`, etc.) are mirrored in JS to keep the leaderboard sort and requirement-row formatting identical to the server |
 
 ---
 
@@ -222,53 +259,140 @@ Environment variables:
 
 ---
 
-## Running with Docker
-
-The production compose file runs four named service instances (katja, arne, dag, me) behind a bundled Caddy reverse proxy that obtains Let's Encrypt certificates automatically. Each instance has an isolated SQLite database mounted at `~/docker/mett/{instance}/`.
-
-```bash
-# Build and start all instances + Caddy
-docker compose -f docker/docker-compose.yml up -d
-
-# View logs
-docker compose -f docker/docker-compose.yml logs -f
-
-# Stop
-docker compose -f docker/docker-compose.yml down
-```
-
-To point the instances at your own domains, edit `docker/Caddyfile` and the service names/volume paths in `docker/docker-compose.yml`.
-
----
-
 ## Tests
+
+Test workflow has three layers: fast unit/integration in Bun (always), browser checks in Playwright (on demand against the dev server), and a legacy Python simulator (when changing game logic).
 
 ### Unit and integration tests (Bun)
 
 ```bash
-bun test
+bun run test          # tests/*.test.ts only — does not pick up Playwright specs
+bunx tsc --noEmit     # TypeScript strict check
 ```
 
-- `tests/ast.test.ts` — A.S.T. requirement unit tests (all level transitions, Expert vs Basic, Wonder bonus)
-- `tests/game.test.ts` — Integration tests for auto-advancement, LIA bonus calculation, final-round Expert rules
+Everything in `tests/*.test.ts` runs against an in-memory SQLite DB (`_setTestDb()` from `services/db.ts` for isolation):
 
-All tests must pass before committing.
+- `tests/ast.test.ts` — A.S.T. requirement unit tests (all level transitions, Expert vs Basic, Wonder bonus, slow-start civs).
+- `tests/game.test.ts` — `autoAdvanceAst`, `checkAndSetLateIronAgeBonus`, `checkAndSetFinalRound`, `playerTotalVp`, `sortCensusOrder`, `computeTieGroupMeta`, `advanceRound` + census prune, static-row cache reset.
+- `tests/auth.test.ts` — Login flow (correct / wrong / **empty** — regression for the bypass fix), `verifyAdminPassword`, `setAdminPassword` (hashing + reject empty), `isAdminAuthed` cookie validation, `isUsingDefaultPassword`, `/admin/change-password`. Drives Hono in-process via `app.request()`.
+- `tests/password.test.ts` — `hashPassword` / `verifyPassword` / `isLegacyPlaintext` round-trips.
 
-### End-to-end simulation (Python)
+All four files must pass before committing. The full suite runs in ~1.2 s; the cost is dominated by scrypt operations in `auth.test.ts` — that's intentional.
 
-Requires the dev server running at `http://localhost:3000`.
+### Browser tests (Playwright)
+
+Require the dev server running on `:3000`.
+
+```bash
+bun run test:browser  # bunx playwright test
+```
+
+Specs live under `tests/browser/`:
+
+- `layout.spec.ts` — at 1080 p and 4 K, asserts the main display fits without overflow and shows 18 leaderboard rows.
+- `civ-live-update.spec.ts` — proves the civ page's live update preserves focus on a typed input, and that `#civ-content` is not swapped on state events.
+
+For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun -e` with the Playwright API directly — see `CLAUDE.md` for the pattern.
+
+### End-to-end simulation (Python, legacy)
+
+Requires the dev server. Predates the Bun/Playwright suites; kept around for full-game smoke testing.
 
 ```bash
 python3 tests/simulate.py
 ```
 
-The script runs several complete games against the live server over the HTTP API, verifying census flow, move order, A.S.T. progression, Wonder logic, LIA bonuses and final scoring. It takes roughly 30 seconds. Run it when changing game logic.
-
-The admin password used by the simulation defaults to `PASSWORD` and can be overridden:
+Runs 3 complete games over the HTTP API in ~30 s, exercising census flow, move order, A.S.T. progression, Wonder logic, LIA bonuses, final scoring. Useful when touching game-logic primitives. Admin password override:
 
 ```bash
 METT_ADMIN_PASSWORD=secret python3 tests/simulate.py
 ```
+
+### Continuous integration
+
+`.github/workflows/test.yml` runs five jobs in parallel on every push to `main` and every PR:
+
+| Job | Command | Purpose |
+|---|---|---|
+| `bun test` | `bun run test` | Unit + integration suite (excluded `tests/browser/`) |
+| `tsc --noEmit` | `bunx tsc --noEmit` | TypeScript strict typecheck |
+| `ansible-lint` | `ansible-lint` action | Validates `ansible/deploy.yml` and `verify.yml` at production profile |
+| `yamllint` | over `.github/workflows/`, `ansible/`, `docker/docker-compose.yml` | YAML formatting / structure |
+| `hadolint` | `hadolint-action@v3.1.0` on `docker/Dockerfile` | Dockerfile best practices |
+
+Concurrency group cancels in-flight runs when a new push lands on the same ref. Five-minute timeout per job. Browser tests stay local-only — they need a live server.
+
+`.yamllint` at the repo root relaxes line-length to 140 (the default 80 was too strict for inline ansible commands and the debug-message line) and keeps the rest of yamllint's defaults, including the `truthy` check that makes us quote `"on":` in workflow files.
+
+---
+
+## Deployment
+
+Production runs four `me[tt]` instances behind Caddy on `bf.nottseter.no`, one per subdomain of `example.com` (katja, arne, dag, me). Each instance has an isolated SQLite database mounted at `~/docker/mett/{instance}/`.
+
+### Ansible (recommended)
+
+```bash
+cd ansible
+ansible-playbook -i inventory.ini deploy.yml
+```
+
+`deploy.yml` does:
+
+1. Records the current `HEAD` commit on the remote.
+2. `git pull --ff-only` in `/home/nilsan/src/mett` (aborts if branch diverged).
+3. Lists incoming commits.
+4. `docker compose build` with `BUILD_SHA={{ head_after.stdout[:7] }}` in the environment, baking the deployed commit's short SHA into the image.
+5. `docker compose up -d` to recreate any container whose image changed.
+6. Prints `docker compose ps`.
+7. Imports `verify.yml` (smoke-test, see below).
+
+Skip the post-deploy verify (e.g. for an emergency rollback) with `--skip-tags verify`.
+
+`verify.yml` runs locally (no SSH) and asserts each production subdomain:
+
+- `GET /` → 200 and the version footer carries the expected commit SHA (defaults to local `HEAD`; override with `-e expected_sha=<sha>`)
+- `GET /api/state` → 200 with `game` / `players` / `census` / `astLevels` / `astStatus` and 17 AST levels
+- `GET /api/civs` → 200 with all 18 civilisations
+
+Run it standalone any time:
+
+```bash
+ansible-playbook -i inventory.ini verify.yml
+ansible-playbook -i inventory.ini verify.yml -e expected_sha=abc1234
+```
+
+### Manual (without Ansible)
+
+```bash
+ssh nilsan@bf.nottseter.no
+cd ~/src/mett
+git pull --ff-only
+BUILD_SHA=$(git rev-parse --short HEAD) docker compose -f docker/docker-compose.yml build
+docker compose -f docker/docker-compose.yml up -d
+```
+
+The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer.
+
+### Tailing logs
+
+```bash
+ssh nilsan@bf.nottseter.no docker compose -f /home/nilsan/src/mett/docker/docker-compose.yml logs -f
+```
+
+To filter to a single instance, append the service name (`mett-katja`, `mett-arne`, `mett-dag`, `mett-me`, `caddy`).
+
+### Local Docker testing
+
+You don't need Docker for local development — `bun run dev` is faster. If you do want to test the production-shaped setup locally:
+
+```bash
+docker compose -f docker/docker-compose.yml build
+docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml down
+```
+
+The four mett-* services will all listen on internal port 3000 inside the network; you'd need to expose one with `ports: - "3000:3000"` to reach it from the host. Caddy expects DNS resolving to your machine, so it won't issue certificates locally — strip the `caddy` service or run it with `tls internal` for self-signed.
 
 ---
 
@@ -278,12 +402,25 @@ The status page uses a CSS Grid layout that adapts across five breakpoints defin
 
 | Breakpoint | Viewport | Layout |
 |---|---|---|
-| Default | ≥ 700px | 5-column grid (leaderboard, census, trade, AST board, AST order) |
-| WQHD | ≥ 2560px (`160rem`) | Larger row heights, bigger fonts |
-| 4K @ 1.25× | ≥ 3072px (`192rem`) | 9rem empire cells, even larger fonts |
-| Tablet | ≤ 700px | Single column |
+| Default | ≥ 700 px | 5-column grid (leaderboard, census, trade, AST board, AST order) |
+| 1080p admin | 1200 px ≤ width < 2560 px | `(min-width: 75em) and (max-width: 159.99em)` block tightens admin row density so 18 players fit at 1920×1080 without compromising WQHD |
+| WQHD | ≥ 2560 px (`160rem`) | Larger row heights, bigger fonts (TV target) |
+| 4K @ 1.25× | ≥ 3072 px (`192rem`) | 9 rem empire cells, even larger fonts |
+| Tablet | ≤ 700 px | Single column |
 
 `rem` values in media queries use the browser default font size (16 px), not Pico's fluid root font size (~21 px at 1920 px). Keep this in mind when editing breakpoints.
+
+### Per-page viewport targets
+
+Layout work must respect this hierarchy — captured here so future tightening doesn't accidentally compromise the primary read target.
+
+| Page | Primary | Minimum | Out of scope |
+|---|---|---|---|
+| Status display (`/`) | WQHD / 4K (TV) | 1920×1080 | < 1080p |
+| Admin (`/admin`) | WQHD / 4K (TV) | 1920×1080 | 1280×720 laptop |
+| Player page (`/<slug>`) | Phone (≈ 411×731 portrait) | Tablet | Wide desktop is fine but not optimised for |
+
+When tightening density to fit a smaller viewport, scope the change inside a media query so WQHD/4K density stays untouched. The 1080p admin block above is a worked example of the pattern.
 
 ---
 
