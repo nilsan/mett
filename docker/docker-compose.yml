@@ -3,6 +3,10 @@
 # config via the x-mett anchor. Each instance only differs in its
 # data-volume mount path.
 x-mett-defaults: &mett-defaults
+  # Production pulls this from ghcr.io (built by .github/workflows/build.yml
+  # on every push to main). The build: block is kept so `docker compose build`
+  # still works for local dev — it'll build and tag with the same image name.
+  image: ghcr.io/nilsan/mett:latest
   build:
     context: ..
     dockerfile: docker/Dockerfile
