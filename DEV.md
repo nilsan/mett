@@ -20,7 +20,7 @@ For the user-facing guide see [README.md](README.md). For which game rules are i
 | Container | **Docker + Docker Compose** | Volume-mounted SQLite for persistence |
 | TLS | **Caddy** | Automatic Let's Encrypt certificates, bundled in compose |
 | CI | **GitHub Actions** | bun test + tsc + ansible-lint + yamllint + hadolint on every push |
-| Deployment | **Ansible** | Idempotent `git pull` + `docker compose pull` from GHCR + recreate, automatic post-deploy smoke test |
+| Deployment | **Ansible** | Idempotent `docker compose pull` from GHCR + recreate, automatic post-deploy smoke test (no git pull on remote — image-only swap) |
 
 ---
 
@@ -70,8 +70,8 @@ mett/
 │   ├── docker-compose.yml  Four mett-* services + Caddy via YAML anchor
 │   └── Caddyfile           Per-subdomain reverse proxy
 ├── ansible/
-│   ├── deploy.yml          git pull → docker compose pull (from ghcr.io) → recreate → verify
-│   ├── verify.yml          HTTPS smoke-test of every production subdomain
+│   ├── deploy.yml          docker compose pull (from ghcr.io) → recreate → verify
+│   ├── verify.yml          HTTPS smoke-test asserting the version footer SHA
 │   ├── inventory.ini       Single host: bf.nottseter.no
 │   └── README.md
 ├── .github/
@@ -348,23 +348,18 @@ ansible-playbook -i inventory.ini deploy.yml
 
 `deploy.yml` does:
 
-1. Records the current `HEAD` commit on the remote.
-2. `git pull --ff-only` in `/home/nilsan/src/mett` (aborts if branch diverged) — only the compose file and Caddyfile come from git; the runtime image comes from ghcr.io.
-3. Lists incoming commits.
-4. `docker compose pull` to fetch `ghcr.io/nilsan/mett:latest` (built and pushed by `.github/workflows/build.yml` on every push to `main`).
-5. `docker compose up -d` to recreate any container whose image changed.
-6. Prints `docker compose ps`.
-7. Imports `verify.yml` (smoke-test, see below).
+1. `docker compose pull` to fetch `ghcr.io/nilsan/mett:latest` (built and pushed by `.github/workflows/build.yml` on every push to `main`).
+2. `docker compose up -d` to recreate any container whose image changed.
+3. Prints `docker compose ps`.
+4. Imports `verify.yml` (smoke-test, see below).
+
+The deploy deliberately does **not** run `git pull` on the remote — it's a pure image swap. The compose file and Caddyfile only need refreshing when their definitions change (rare); when that happens, do `ssh nilsan@bf.nottseter.no 'cd ~/src/mett && git pull'` manually first.
 
 **Timing:** after `git push`, wait ~1–2 min for the build workflow to publish the new image before deploying — otherwise `verify.yml` reports an SHA mismatch. Watch with `gh run watch --workflow=build.yml`.
 
 Skip the post-deploy verify (e.g. for an emergency rollback) with `--skip-tags verify`.
 
-`verify.yml` runs locally (no SSH) and asserts each production subdomain:
-
-- `GET /` → 200 and the version footer carries the expected commit SHA (defaults to local `HEAD`; override with `-e expected_sha=<sha>`)
-- `GET /api/state` → 200 with `game` / `players` / `census` / `astLevels` / `astStatus` and 17 AST levels
-- `GET /api/civs` → 200 with all 18 civilisations
+`verify.yml` runs locally (no SSH) and asserts each production subdomain serves `GET /` with status 200 and a footer carrying the expected commit SHA (defaults to local `HEAD`; override with `-e expected_sha=<sha>`). That single check is enough to prove the right image is live; verify deliberately does **not** read `/api/state` or `/api/civs` because that would dump live game contents into the play log for no real safety benefit (the API shape is already covered by the test suite).
 
 Run it standalone any time:
 

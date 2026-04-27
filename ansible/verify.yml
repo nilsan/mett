@@ -1,14 +1,14 @@
 ---
 # Smoke-test the deployed me[tt] instances. Asserts each subdomain
-# responds 200, the version footer carries the expected commit SHA,
-# /api/state returns the expected shape, and /api/civs lists all 18
-# civilisations.
+# responds 200 and the version footer carries the expected commit SHA.
+# That single fact is enough to prove the right image is live — no
+# need to read live game state, which would only pollute the play log.
 #
 # Standalone usage:
 #   ansible-playbook -i inventory.ini verify.yml
 #
 # By default expected_sha is the local repo's HEAD short SHA — what
-# deploy.yml would have baked into the image. Override:
+# build.yml would have baked into the image on push. Override:
 #   ansible-playbook -i inventory.ini verify.yml -e expected_sha=abc1234
 
 - name: Smoke-test deployed me[tt] instances
@@ -48,51 +48,5 @@
         fail_msg: "{{ item.item }}.{{ base_domain }}: status={{ item.status }} or footer is missing SHA {{ expected_sha }}"
         success_msg: "{{ item.item }}.{{ base_domain }}: ✓ status 200, footer carries {{ expected_sha }}"
       loop: "{{ home_responses.results }}"
-      loop_control:
-        label: "{{ item.item }}"
-
-    - name: GET /api/state from each instance
-      ansible.builtin.uri:
-        url: "https://{{ item }}.{{ base_domain }}/api/state"
-        return_content: true
-        timeout: "{{ request_timeout }}"
-      loop: "{{ instances }}"
-      register: state_responses
-      changed_when: false
-
-    - name: Assert /api/state shape
-      ansible.builtin.assert:
-        that:
-          - item.status == 200
-          - item.json is mapping
-          - "'game' in item.json"
-          - "'players' in item.json"
-          - "'census' in item.json"
-          - "'astLevels' in item.json"
-          - "'astStatus' in item.json"
-          - item.json.astLevels | length == 17
-        fail_msg: "{{ item.item }}.{{ base_domain }}/api/state shape mismatch"
-        success_msg: "{{ item.item }}.{{ base_domain }}/api/state: ✓ shape ok, astLevels=17"
-      loop: "{{ state_responses.results }}"
-      loop_control:
-        label: "{{ item.item }}"
-
-    - name: GET /api/civs from each instance
-      ansible.builtin.uri:
-        url: "https://{{ item }}.{{ base_domain }}/api/civs"
-        return_content: true
-        timeout: "{{ request_timeout }}"
-      loop: "{{ instances }}"
-      register: civs_responses
-      changed_when: false
-
-    - name: Assert /api/civs lists all 18 civilisations
-      ansible.builtin.assert:
-        that:
-          - item.status == 200
-          - item.json | length == 18
-        fail_msg: "{{ item.item }}.{{ base_domain }}/api/civs returned {{ item.json | length }} civs (expected 18)"
-        success_msg: "{{ item.item }}.{{ base_domain }}/api/civs: ✓ 18 civs"
-      loop: "{{ civs_responses.results }}"
       loop_control:
         label: "{{ item.item }}"

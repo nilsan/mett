@@ -1,7 +1,10 @@
 ---
-# Pull the latest source on the production host and rebuild/restart the
-# docker-compose stack. The source tree must already be checked out at
-# {{ repo_path }} (clone is one-time, not done by this playbook).
+# Pull the latest container image from ghcr.io and recreate the running
+# me[tt] containers. The host's working copy must already contain a
+# compatible docker-compose.yml + Caddyfile — those rarely change, and
+# updating them is a separate manual `git pull` on the box. This
+# playbook deliberately does not touch the git tree, so a deploy never
+# ships unintended source changes alongside the image swap.
 
 - name: Update me[tt] containers on bf.nottseter.no
   hosts: mett
@@ -11,51 +14,10 @@
     compose_file: docker/docker-compose.yml
 
   tasks:
-    - name: Capture commit before pull
-      ansible.builtin.command:
-        chdir: "{{ repo_path }}"
-        cmd: git rev-parse HEAD
-      register: head_before
-      changed_when: false
-
-    - name: Fast-forward git pull  # noqa: command-instead-of-module
-      # ansible.builtin.git is designed for clone+checkout flows; using the
-      # command directly is simpler when the working copy is already there.
-      ansible.builtin.command:
-        chdir: "{{ repo_path }}"
-        cmd: git pull --ff-only
-      register: git_pull
-      changed_when: "'Already up to date' not in git_pull.stdout"
-
-    - name: Capture commit after pull
-      ansible.builtin.command:
-        chdir: "{{ repo_path }}"
-        cmd: git rev-parse HEAD
-      register: head_after
-      changed_when: false
-
-    - name: List incoming commits
-      ansible.builtin.command:
-        chdir: "{{ repo_path }}"
-        cmd: "git log --oneline {{ head_before.stdout }}..{{ head_after.stdout }}"
-      register: incoming
-      changed_when: false
-      when: head_before.stdout != head_after.stdout
-
-    - name: Print incoming commits
-      ansible.builtin.debug:
-        msg: "{{ incoming.stdout_lines }}"
-      when: head_before.stdout != head_after.stdout
-
-    - name: Print no-op message
-      ansible.builtin.debug:
-        msg: "Already at {{ head_after.stdout[:7] }} — no new commits, will still rebuild and recreate to ensure runtime matches source."
-      when: head_before.stdout == head_after.stdout
-
     - name: Pull latest images from ghcr.io  # noqa: no-changed-when
       # Image is built + pushed by .github/workflows/build.yml on every
-      # push to main. If you've just pushed locally, wait ~1-2 min for the
-      # GitHub Action to finish before running deploy — verify.yml will
+      # push to main. After `git push`, wait ~1-2 min for the GitHub
+      # Action to finish before running deploy — verify.yml will
       # otherwise fail because the footer SHA won't match.
       ansible.builtin.command:
         chdir: "{{ repo_path }}"
@@ -83,9 +45,10 @@
       ansible.builtin.debug:
         msg: "{{ compose_ps.stdout_lines }}"
 
-# Run the smoke-test playbook in a second play. It hits each production
-# subdomain over HTTPS and asserts the deployed footer SHA, /api/state
-# shape, and /api/civs count. Skip with `--skip-tags verify`.
+# Run the smoke-test playbook in a second play. Asserts only that each
+# subdomain serves a 200 with a footer carrying the expected commit
+# SHA — which is the single fact that proves the new image is live.
+# Skip with `--skip-tags verify`.
 - name: Verify deployed instances
   import_playbook: verify.yml
   tags: verify
