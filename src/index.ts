@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
 import api from './routes/api.js';
 import pages from './routes/pages.js';
-import { addClient, removeClient, broadcastState, sendInitialState, type WsData } from './ws.js';
+import { addClient, removeClient, broadcastState, sendInitialState, identifyClient, type WsData } from './ws.js';
 import { getDb } from './db.js';
 import { DB_PATH } from './services/db.js';
 
@@ -57,7 +57,7 @@ const server = Bun.serve({
     // Upgrade WebSocket connections
     if (req.headers.get('upgrade') === 'websocket') {
       const id = crypto.randomUUID();
-      const upgraded = server.upgrade(req, { data: { id } } as never);
+      const upgraded = server.upgrade(req, { data: { id, playerId: null } } as never);
       if (upgraded) return undefined;
       return new Response('WebSocket upgrade failed', { status: 500 });
     }
@@ -68,8 +68,18 @@ const server = Bun.serve({
       addClient(ws as any);
       sendInitialState(ws as any);
     },
-    message(_ws, _msg) {
-      // Clients are receive-only for now
+    message(ws, msg) {
+      // The only client message we accept is `{type:'identify',playerId}` —
+      // sent by ws-client.js on civ pages so per-player broadcasts can route
+      // past unrelated civ sockets.
+      try {
+        const parsed = typeof msg === 'string' ? JSON.parse(msg) : null;
+        if (parsed?.type === 'identify') {
+          identifyClient(ws as any, typeof parsed.playerId === 'number' ? parsed.playerId : null);
+        }
+      } catch {
+        // Ignore malformed payloads — clients are otherwise receive-only.
+      }
     },
     close(ws) {
       removeClient(ws as any);

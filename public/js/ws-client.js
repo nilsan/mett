@@ -15,6 +15,14 @@
     ws.addEventListener('open', () => {
       reconnectDelay = 1000;
       console.debug('[me[tt]] WebSocket connected');
+      // Tell the server which civ page we're on so per-player broadcasts can
+      // route past unrelated civ sockets. Non-civ pages (main, admin, login)
+      // leave PLAYER_ID undefined; the server's playerId stays null and they
+      // receive every broadcast (the default behaviour).
+      const myId = window.PLAYER_ID != null ? Number(window.PLAYER_ID) : null;
+      if (myId !== null) {
+        try { ws.send(JSON.stringify({ type: 'identify', playerId: myId })); } catch {}
+      }
     });
 
     ws.addEventListener('message', (event) => {
