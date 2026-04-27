@@ -26,6 +26,7 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <footer class="version-footer" aria-hidden="true">${VERSION_STRING}</footer>
   <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
   <script src="/js/toast.js"></script>
+  <script src="/js/api.js"></script>
   <script src="/js/ws-client.js"></script>
 </body>
 </html>`;

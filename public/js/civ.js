@@ -21,15 +21,8 @@
         if (value < 1 || value > 55) { popInput.focus(); return; }
         popInput.value = value;
         submitBtn.disabled = true;
-        try {
-          const res = await fetch(`/api/players/${playerId}/census`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ population: value }),
-          });
-          if (!res.ok) showToast('Failed to submit census — check connection');
-        } catch { showToast('Network error'); }
-        finally { submitBtn.disabled = false; }
+        await mettPost(`/api/players/${playerId}/census`, { population: value });
+        submitBtn.disabled = false;
       });
 
       popInput.addEventListener('keydown', (e) => {
@@ -60,15 +53,8 @@
         const value = parseInt(cityInput.value, 10);
         if (isNaN(value) || value < 0 || value > 9) return;
         cityBtn.disabled = true;
-        try {
-          const res = await fetch(`/api/players/${playerId}/city-count`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ city_count: value }),
-          });
-          if (!res.ok) showToast('Failed to save city count — check connection');
-        } catch { showToast('Network error'); }
-        finally { cityBtn.disabled = false; }
+        await mettPost(`/api/players/${playerId}/city-count`, { city_count: value });
+        cityBtn.disabled = false;
       });
     }
 
@@ -93,14 +79,7 @@
       const v1 = Math.max(0, parseInt(adv1?.value ?? '0', 10) || 0);
       const v3 = Math.max(0, parseInt(adv3?.value ?? '0', 10) || 0);
       const v6 = Math.max(0, parseInt(adv6?.value ?? '0', 10) || 0);
-      try {
-        const res = await fetch(`/api/players/${playerId}/adv`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 }),
-        });
-        if (!res.ok) showToast('Failed to save advances — check connection');
-      } catch { showToast('Network error'); }
+      await mettPost(`/api/players/${playerId}/adv`, { adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 });
     }
 
     // Typing: debounce so we don't hammer the API on multi-digit input.
@@ -130,35 +109,22 @@
       });
     });
 
-    // ── Military toggle ───────────────────────────────────────────────────────
+    // ── Military / Wonder toggles ─────────────────────────────────────────────
     const milBtn = document.getElementById('mil-toggle');
     if (milBtn) {
       milBtn.addEventListener('click', async () => {
         milBtn.disabled = true;
-        try {
-          const res = await fetch(`/api/players/${playerId}/military`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}),
-          });
-          if (!res.ok) { showToast('Failed — check connection'); milBtn.disabled = false; }
-        } catch { showToast('Network error'); milBtn.disabled = false; }
+        const res = await mettPost(`/api/players/${playerId}/military`);
+        if (!res.ok) milBtn.disabled = false;
       });
     }
 
-    // ── Wonder toggle ─────────────────────────────────────────────────────────
     const wonBtn = document.getElementById('won-toggle');
     if (wonBtn) {
       wonBtn.addEventListener('click', async () => {
         wonBtn.disabled = true;
-        try {
-          const res = await fetch(`/api/players/${playerId}/wonder`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}),
-          });
-          if (!res.ok) { showToast('Failed — check connection'); wonBtn.disabled = false; }
-        } catch { showToast('Network error'); wonBtn.disabled = false; }
+        const res = await mettPost(`/api/players/${playerId}/wonder`);
+        if (!res.ok) wonBtn.disabled = false;
       });
     }
   }

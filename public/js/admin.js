@@ -169,16 +169,9 @@
         const scenario = n <= 9
           ? (document.querySelector('input[name="scenario"]:checked')?.value ?? 'west')
           : 'combined';
-        try {
-          const res = await fetch('/api/debug/simulate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ expert, player_count: n, rounds, scenario, delay_ms: 300 }),
-          });
-          const data = await res.json();
-          if (data.ok) { location.reload(); }
-          else { showToast(data.error ?? 'Simulate failed.'); simBtn.textContent = origText; simBtn.disabled = false; }
-        } catch { showToast('Network error.'); simBtn.textContent = origText; simBtn.disabled = false; }
+        const res = await mettPost('/api/debug/simulate', { expert, player_count: n, rounds, scenario, delay_ms: 300 });
+        if (res.ok) location.reload();
+        else { simBtn.textContent = origText; simBtn.disabled = false; }
       });
     }
 
@@ -194,23 +187,9 @@
 
       const expert = document.querySelector('input[name="game-mode"]:checked')?.value ?? '1';
       startBtn.disabled = true;
-      try {
-        const res = await fetch('/api/game/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ expert: parseInt(expert, 10), players }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          location.reload();
-        } else {
-          errorEl.textContent = data.error ?? 'Failed to start game.';
-          startBtn.disabled = false;
-        }
-      } catch {
-        errorEl.textContent = 'Network error.';
-        startBtn.disabled = false;
-      }
+      const res = await mettPost('/api/game/start', { expert: parseInt(expert, 10), players });
+      if (res.ok) location.reload();
+      else startBtn.disabled = false;  // mettPost already toasted the failure reason
     });
   }
 
@@ -223,7 +202,7 @@
     if (advanceBtn) {
       advanceBtn.addEventListener('click', async () => {
         advanceBtn.disabled = true;
-        await post('/api/game/round/next', {});
+        await mettPost('/api/game/round/next', {});
         location.reload();
       });
     }
@@ -233,7 +212,7 @@
     if (prepareAstBtn) {
       prepareAstBtn.addEventListener('click', async () => {
         prepareAstBtn.disabled = true;
-        await post('/api/game/cities/clear', {});
+        await mettPost('/api/game/cities/clear', {});
         location.reload();
       });
     }
@@ -244,7 +223,7 @@
     if (resetBtn) {
       resetBtn.addEventListener('click', async () => {
         if (!confirm('Reset the game? All current game data will be permanently deleted.')) return;
-        await post('/api/game/reset', { confirm: true });
+        await mettPost('/api/game/reset', { confirm: true });
         location.reload();
       });
     }
@@ -266,13 +245,13 @@
       });
     }
     document.getElementById('debug-census')?.addEventListener('click', async () => {
-      await post('/api/debug/census', {});
+      await mettPost('/api/debug/census', {});
     });
     document.getElementById('debug-cities')?.addEventListener('click', async () => {
-      await post('/api/debug/cities', {});
+      await mettPost('/api/debug/cities', {});
     });
     document.getElementById('debug-advances')?.addEventListener('click', async () => {
-      await post('/api/debug/advances', {});
+      await mettPost('/api/debug/advances', {});
     });
 
     // Player name edits (on blur)
@@ -281,7 +260,7 @@
       inp.addEventListener('focus', () => { originalValue = inp.value; });
       inp.addEventListener('blur', async () => {
         if (inp.value.trim() === originalValue.trim()) return;
-        await post(`/api/players/${inp.dataset.playerId}/name`, { name: inp.value.trim() || originalValue });
+        await mettPost(`/api/players/${inp.dataset.playerId}/name`, { name: inp.value.trim() || originalValue });
       });
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
     });
@@ -290,7 +269,7 @@
     document.querySelectorAll('.mil-toggle').forEach(btn => {
       btn.addEventListener('click', async () => {
         btn.disabled = true;
-        const res = await post(`/api/players/${btn.dataset.playerId}/military`, {});
+        const res = await mettPost(`/api/players/${btn.dataset.playerId}/military`, {});
         if (res.ok) {
           const on = btn.classList.contains('mil-on');
           btn.classList.toggle('mil-on', !on);
@@ -305,7 +284,7 @@
     document.querySelectorAll('.won-toggle').forEach(btn => {
       btn.addEventListener('click', async () => {
         btn.disabled = true;
-        const res = await post(`/api/players/${btn.dataset.playerId}/wonder`, {});
+        const res = await mettPost(`/api/players/${btn.dataset.playerId}/wonder`, {});
         if (res.ok) {
           const on = btn.classList.contains('won-on');
           btn.classList.toggle('won-on', !on);
@@ -320,7 +299,7 @@
     document.querySelectorAll('.ast-select').forEach(sel => {
       sel.value = sel.dataset.serverValue ?? '';  // bypass browser form restoration
       sel.addEventListener('change', async () => {
-        await post(`/api/players/${sel.dataset.playerId}/ast`, { level: parseInt(sel.value, 10) });
+        await mettPost(`/api/players/${sel.dataset.playerId}/ast`, { level: parseInt(sel.value, 10) });
       });
     });
 
@@ -335,7 +314,7 @@
         if (!chosen) return;
         const groupPlayers = sel.dataset.groupPlayers.split(',').map(Number);
         const groupPositions = sel.dataset.groupKey.split(',').map(Number);
-        await post(`/api/players/${sel.dataset.playerId}/rank`, {
+        await mettPost(`/api/players/${sel.dataset.playerId}/rank`, {
           rank_order: parseInt(chosen, 10),
           group_players: groupPlayers,
           group_positions: groupPositions,
@@ -360,7 +339,7 @@
         if (val < 1 || val > 55) { inp.value = original; return; }
         inp.value = val;
         original = String(val);
-        await post(`/api/players/${inp.dataset.playerId}/census`, { population: val });
+        await mettPost(`/api/players/${inp.dataset.playerId}/census`, { population: val });
       });
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
     });
@@ -371,7 +350,7 @@
       sel.addEventListener('change', async () => {
         const val = parseInt(sel.value, 10);
         if (isNaN(val) || val < 0 || val > 9) return;
-        await post(`/api/players/${sel.dataset.playerId}/city-count`, { city_count: val });
+        await mettPost(`/api/players/${sel.dataset.playerId}/city-count`, { city_count: val });
       });
     });
 
@@ -380,7 +359,7 @@
       btn.addEventListener('click', async () => {
         btn.disabled = true;
         const currentlyGranted = btn.dataset.granted === '1';
-        await post(`/api/players/${btn.dataset.playerId}/late-iron-age-bonus`, { grant: !currentlyGranted });
+        await mettPost(`/api/players/${btn.dataset.playerId}/late-iron-age-bonus`, { grant: !currentlyGranted });
         location.reload();
       });
     });
@@ -468,23 +447,4 @@
     });
   }
 
-  // ─── Helpers ───────────────────────────────────────────────────────────────
-  async function post(url, body) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        let msg = 'Request failed';
-        try { const d = await res.json(); if (d.error) msg = d.error; } catch {}
-        showToast(msg);
-      }
-      return res;
-    } catch {
-      showToast('Network error — check connection');
-      return { ok: false };
-    }
-  }
 })();
