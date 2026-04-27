@@ -143,9 +143,14 @@ api.post('/players/:id/ast', async (c) => {
   if (!AST_LEVELS.includes(body.level)) {
     return c.json({ error: 'Invalid AST level' }, 400);
   }
-  db.setAstLevel(playerId, body.level);
-  db.checkAndSetLateIronAgeBonus();
-  db.checkAndSetFinalRound();
+  // setAstLevel may clear is_final_round; checkAndSetLateIronAgeBonus and
+  // checkAndSetFinalRound then re-evaluate. Wrap so a partial failure can't
+  // leave the game with the LIA bonus granted but the final-round flag wrong.
+  db.getDb().transaction(() => {
+    db.setAstLevel(playerId, body.level);
+    db.checkAndSetLateIronAgeBonus();
+    db.checkAndSetFinalRound();
+  })();
   broadcastState();
   return c.json({ ok: true });
 });
