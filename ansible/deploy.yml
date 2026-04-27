@@ -83,3 +83,10 @@
     - name: Print container status
       ansible.builtin.debug:
         msg: "{{ compose_ps.stdout_lines }}"
+
+# Run the smoke-test playbook in a second play. It hits each production
+# subdomain over HTTPS and asserts the deployed footer SHA, /api/state
+# shape, and /api/civs count. Skip with `--skip-tags verify`.
+- name: Verify deployed instances
+  import_playbook: verify.yml
+  tags: verify

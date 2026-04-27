@@ -36,8 +36,31 @@ ansible-playbook -i inventory.ini deploy.yml --start-at-task="Fast-forward git p
 4. Runs `docker compose -f docker/docker-compose.yml build` to rebuild the four `mett-*` service images.
 5. Runs `docker compose -f docker/docker-compose.yml up -d` to recreate any container whose image changed (Caddy is unaffected unless its image is newer).
 6. Prints `docker compose ps` so you can confirm everything came back up.
+7. Runs `verify.yml` (see below) to smoke-test each subdomain over HTTPS.
 
 The playbook is idempotent: re-running it after a successful deploy is a no-op apart from a quick `git pull` (already up to date), a fully-cached `build`, and an `up -d` that finds nothing to recreate.
+
+Skip the smoke test with `--skip-tags verify` if you've already verified manually:
+
+```bash
+ansible-playbook -i inventory.ini deploy.yml --skip-tags verify
+```
+
+## Standalone verification
+
+`verify.yml` runs locally (no SSH) and hits each production subdomain over HTTPS to assert:
+
+- `GET /` returns 200 and the version footer carries the expected commit SHA.
+- `GET /api/state` returns 200 with the expected JSON shape (`game` / `players` / `census` / `astLevels` / `astStatus`, with 17 AST levels).
+- `GET /api/civs` returns 200 with all 18 civilisations.
+
+The expected SHA defaults to the local repo's `HEAD` short SHA (what `deploy.yml` would have just baked into the image). Override:
+
+```bash
+ansible-playbook -i inventory.ini verify.yml -e expected_sha=abc1234
+```
+
+This replaces the manual `for h in katja arne dag me; do curl …` smoke-test we used to run after every deploy.
 
 ## Caveats
 

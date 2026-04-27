@@ -1,0 +1,98 @@
+---
+# Smoke-test the deployed me[tt] instances. Asserts each subdomain
+# responds 200, the version footer carries the expected commit SHA,
+# /api/state returns the expected shape, and /api/civs lists all 18
+# civilisations.
+#
+# Standalone usage:
+#   ansible-playbook -i inventory.ini verify.yml
+#
+# By default expected_sha is the local repo's HEAD short SHA — what
+# deploy.yml would have baked into the image. Override:
+#   ansible-playbook -i inventory.ini verify.yml -e expected_sha=abc1234
+
+- name: Smoke-test deployed me[tt] instances
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    instances:
+      - katja
+      - arne
+      - dag
+      - me
+    base_domain: example.com
+    expected_sha: "{{ lookup('pipe', 'git -C ' + playbook_dir + '/.. rev-parse --short HEAD') }}"
+    request_timeout: 10
+
+  tasks:
+    - name: Show expected commit SHA
+      ansible.builtin.debug:
+        msg: "Verifying production carries footer SHA {{ expected_sha }}"
+
+    - name: GET / from each instance
+      ansible.builtin.uri:
+        url: "https://{{ item }}.{{ base_domain }}/"
+        return_content: true
+        timeout: "{{ request_timeout }}"
+      loop: "{{ instances }}"
+      register: home_responses
+      changed_when: false
+
+    - name: Assert / returns 200 and the version footer matches expected_sha
+      ansible.builtin.assert:
+        that:
+          - item.status == 200
+          - "'class=\"version-footer\"' in item.content"
+          - "expected_sha in item.content"
+        fail_msg: "{{ item.item }}.{{ base_domain }}: status={{ item.status }} or footer is missing SHA {{ expected_sha }}"
+        success_msg: "{{ item.item }}.{{ base_domain }}: ✓ status 200, footer carries {{ expected_sha }}"
+      loop: "{{ home_responses.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: GET /api/state from each instance
+      ansible.builtin.uri:
+        url: "https://{{ item }}.{{ base_domain }}/api/state"
+        return_content: true
+        timeout: "{{ request_timeout }}"
+      loop: "{{ instances }}"
+      register: state_responses
+      changed_when: false
+
+    - name: Assert /api/state shape
+      ansible.builtin.assert:
+        that:
+          - item.status == 200
+          - item.json is mapping
+          - "'game' in item.json"
+          - "'players' in item.json"
+          - "'census' in item.json"
+          - "'astLevels' in item.json"
+          - "'astStatus' in item.json"
+          - item.json.astLevels | length == 17
+        fail_msg: "{{ item.item }}.{{ base_domain }}/api/state shape mismatch"
+        success_msg: "{{ item.item }}.{{ base_domain }}/api/state: ✓ shape ok, astLevels=17"
+      loop: "{{ state_responses.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: GET /api/civs from each instance
+      ansible.builtin.uri:
+        url: "https://{{ item }}.{{ base_domain }}/api/civs"
+        return_content: true
+        timeout: "{{ request_timeout }}"
+      loop: "{{ instances }}"
+      register: civs_responses
+      changed_when: false
+
+    - name: Assert /api/civs lists all 18 civilisations
+      ansible.builtin.assert:
+        that:
+          - item.status == 200
+          - item.json | length == 18
+        fail_msg: "{{ item.item }}.{{ base_domain }}/api/civs returned {{ item.json | length }} civs (expected 18)"
+        success_msg: "{{ item.item }}.{{ base_domain }}/api/civs: ✓ 18 civs"
+      loop: "{{ civs_responses.results }}"
+      loop_control:
+        label: "{{ item.item }}"
