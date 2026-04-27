@@ -197,10 +197,13 @@
   // ACTIVE GAME ADMIN
   // ─────────────────────────────────────────────────────────────────────────
   function initActive() {
-    // Advance round
+    // Advance round. The button text is 'End Game' on the announced final
+    // round in expert mode — irreversible from the UI, so confirm first.
     const advanceBtn = document.getElementById('advance-round');
     if (advanceBtn) {
       advanceBtn.addEventListener('click', async () => {
+        const isEndGame = advanceBtn.textContent.trim().startsWith('End Game');
+        if (isEndGame && !confirm('End the game now? Final scores will be revealed and the round counter stops here.')) return;
         advanceBtn.disabled = true;
         await mettPost('/api/game/round/next', {});
         location.reload();
@@ -252,6 +255,17 @@
     });
     document.getElementById('debug-advances')?.addEventListener('click', async () => {
       await mettPost('/api/debug/advances', {});
+    });
+
+    // Misclick recovery: roll the round counter back by one. Only present
+    // when current_round > 1 (the server endpoint also clamps to >= 1).
+    // This is the manual "undo the last round-advance" action.
+    document.getElementById('debug-prev-round')?.addEventListener('click', async () => {
+      if (!confirm('Roll the round counter back by one? Census + city counts for the current round will not be reverted.')) return;
+      const cur = window.CURRENT_ROUND;
+      if (typeof cur !== 'number' || cur < 2) return;
+      const res = await mettPost('/api/debug/set-round', { round: cur - 1 });
+      if (res.ok) location.reload();
     });
 
     // Player name edits (on blur)

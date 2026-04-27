@@ -359,6 +359,9 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
       <button id="debug-census" class="btn-danger">⚄ Random Census</button>
       <button id="debug-cities" class="btn-danger">⚄ Random Cities</button>
       <button id="debug-advances" class="btn-danger">⚄ Simulate Advances</button>
+      ${game.current_round > 1
+        ? `<button id="debug-prev-round" class="btn-danger" title="Undo the last round-advance — primarily for misclick recovery">← Round ${game.current_round - 1}</button>`
+        : ''}
     </div>
   </section>
 
