@@ -14,22 +14,13 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { Hono } from 'hono';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 
+import { makeMinimalDb as makeDb } from './_helpers.js';
 import { _setTestDb } from '../src/services/db.js';
 import { setAdminPassword, verifyAdminPassword, isUsingDefaultPassword } from '../src/db.js';
 import pages, { isAdminAuthed } from '../src/routes/pages.js';
 
-// ─── DB helper ────────────────────────────────────────────────────────────────
-
-const SCHEMA_SQL = readFileSync(join(import.meta.dir, '..', 'db', 'schema.sql'), 'utf8');
-
-function makeDb(): Database {
-  const db = new Database(':memory:');
-  db.exec(SCHEMA_SQL);
-  return db;
-}
+// ─── HTTP test helpers (auth-specific) ────────────────────────────────────────
 
 function reqWith(cookie?: string): Request {
   return new Request('http://localhost/admin', {
