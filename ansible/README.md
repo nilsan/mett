@@ -1,13 +1,13 @@
 # Ansible deployment
 
-Pulls the latest image from **ghcr.io** and recreates the running `me[tt]` containers on **bf.nottseter.no**. The image itself is built by the `build` GitHub Actions workflow on every push to `main` — the deploy host never compiles anything, and the deploy playbook deliberately does not touch the git tree so it can never ship unintended source changes alongside the image swap.
+Pulls the latest image from **ghcr.io** and recreates the running `me[tt]` containers on **bf.nottseter.no**. The image itself is built by the `build` GitHub Actions workflow on every push to `main` — the deploy host never compiles anything, and never sees the source tree. Compose file and Caddyfile are shipped from the local repo via the playbook itself, so the host only needs Docker — no git, no source checkout.
 
 ## Prerequisites
 
 - **Ansible** 2.10 or newer on your local machine.
 - **SSH access** to `bf.nottseter.no` as user `nilsan`, using your normal SSH agent / key. Test with `ssh nilsan@bf.nottseter.no echo ok`.
-- **Source already checked out** at `/home/nilsan/src/mett` on the remote with `origin` pointing at the GitHub repo. The compose file and Caddyfile are read from this working copy. This playbook does *not* clone or pull the repo — see "Updating compose / Caddyfile" below for that one-off case.
 - **Docker + Compose v2** installed on the remote and the `nilsan` user in the `docker` group (no `sudo` required for `docker compose ...`).
+- **Persistent data dirs** at `~/docker/mett/{katja,arne,dag,me}/` on the remote (created on first run if missing — Docker auto-creates them when binding the volume, but they'll be `root`-owned; either pre-create them as `nilsan` or let Docker handle them).
 
 ## Usage
 
@@ -30,25 +30,14 @@ ansible-playbook -i inventory.ini deploy.yml --skip-tags verify
 
 ## What it does
 
-1. Runs `docker compose -f docker/docker-compose.yml pull` to fetch `ghcr.io/nilsan/mett:latest`.
-2. Runs `docker compose -f docker/docker-compose.yml up -d` to recreate any container whose image changed (Caddy is unaffected unless its image is newer).
-3. Prints `docker compose ps` so you can confirm everything came back up.
-4. Runs `verify.yml` (see below) to smoke-test each subdomain over HTTPS.
+1. Ships `docker/docker-compose.yml` and `docker/Caddyfile` from the local repo to `/home/nilsan/mett/docker/` on the remote.
+2. Runs `docker compose -f docker/docker-compose.yml pull` from `/home/nilsan/mett/` to fetch `ghcr.io/nilsan/mett:latest`.
+3. Runs `docker compose -f docker/docker-compose.yml up -d` to recreate any container whose image changed (Caddy is unaffected unless its image is newer).
+4. If the Caddyfile changed, sends Caddy a `caddy reload` (Caddy doesn't watch its config; without this, an edited Caddyfile would sit on disk unread until the container is recreated).
+5. Prints `docker compose ps` so you can confirm everything came back up.
+6. Runs `verify.yml` (see below) to smoke-test each subdomain over HTTPS.
 
-The playbook is idempotent: re-running it after a successful deploy is a no-op apart from a `pull` that finds the image cached and an `up -d` that finds nothing to recreate.
-
-## Updating compose / Caddyfile
-
-The deploy playbook does **not** run `git pull` on the remote. The compose file and Caddyfile only need updating when their definitions change (rare — adding a service, changing a route). When that happens, do it manually before deploying:
-
-```bash
-ssh nilsan@bf.nottseter.no
-cd ~/src/mett && git pull --ff-only
-exit
-ansible-playbook -i inventory.ini deploy.yml
-```
-
-Keeping the git pull out of the deploy path means a normal image-swap deploy can never accidentally ship unintended source-tree changes (e.g. half-finished commits left on the remote working copy).
+The playbook is idempotent: re-running it after a successful deploy is a no-op apart from a `pull` that finds the image cached and an `up -d` that finds nothing to recreate. The two file-ship tasks only register `changed` when the file content actually differs.
 
 ### Timing the deploy
 
@@ -80,4 +69,4 @@ This replaces the manual `for h in katja arne dag me; do curl …` smoke-test we
 
 - Brief downtime per instance (~1–3 s while the container is recreated). Not zero-downtime — fine for a casual board-game tracker, not designed for SLA work.
 - Deploys depend on the **build** GitHub Actions workflow having published an image to ghcr.io for the current commit. If the workflow is still running (or failed), `verify.yml` will catch the SHA mismatch.
-- For a manual local-build deploy (no GHCR), set `BUILD_SHA=$(git rev-parse --short HEAD)` and run `docker compose build && up -d` on the host directly. The compose file keeps a `build:` block alongside `image:` precisely for this fallback.
+- For a manual local-build deploy (no GHCR), `scp -r` the repo to the host, then `BUILD_SHA=$(git rev-parse --short HEAD) docker compose build && docker compose up -d` from inside it. The compose file keeps a `build:` block alongside `image:` precisely for this fallback.

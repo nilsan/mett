@@ -70,7 +70,7 @@ mett/
 │   ├── docker-compose.yml  Four mett-* services + Caddy via YAML anchor
 │   └── Caddyfile           Per-subdomain reverse proxy
 ├── ansible/
-│   ├── deploy.yml          docker compose pull (from ghcr.io) → recreate → verify
+│   ├── deploy.yml          ship compose+Caddyfile → docker compose pull (ghcr.io) → recreate → verify
 │   ├── verify.yml          HTTPS smoke-test asserting the version footer SHA
 │   ├── inventory.ini       Single host: bf.nottseter.no
 │   └── README.md
@@ -348,12 +348,14 @@ ansible-playbook -i inventory.ini deploy.yml
 
 `deploy.yml` does:
 
-1. `docker compose pull` to fetch `ghcr.io/nilsan/mett:latest` (built and pushed by `.github/workflows/build.yml` on every push to `main`).
-2. `docker compose up -d` to recreate any container whose image changed.
-3. Prints `docker compose ps`.
-4. Imports `verify.yml` (smoke-test, see below).
+1. Ships `docker/docker-compose.yml` and `docker/Caddyfile` from the local repo to `/home/nilsan/mett/docker/` on the remote (only registers `changed` when the file content actually differs).
+2. `docker compose pull` to fetch `ghcr.io/nilsan/mett:latest` (built and pushed by `.github/workflows/build.yml` on every push to `main`).
+3. `docker compose up -d` to recreate any container whose image changed.
+4. If the Caddyfile changed, runs `caddy reload` inside the caddy container — Caddy doesn't watch its config, so without this an edited Caddyfile would sit on disk unread.
+5. Prints `docker compose ps`.
+6. Imports `verify.yml` (smoke-test, see below).
 
-The deploy deliberately does **not** run `git pull` on the remote — it's a pure image swap. The compose file and Caddyfile only need refreshing when their definitions change (rare); when that happens, do `ssh nilsan@bf.nottseter.no 'cd ~/src/mett && git pull'` manually first.
+The deploy host doesn't need a git checkout; ansible ships the two files docker compose reads. That keeps the image swap cleanly separated from any source-tree state on the box.
 
 **Timing:** after `git push`, wait ~1–2 min for the build workflow to publish the new image before deploying — otherwise `verify.yml` reports an SHA mismatch. Watch with `gh run watch --workflow=build.yml`.
 
@@ -372,15 +374,14 @@ ansible-playbook -i inventory.ini verify.yml -e expected_sha=abc1234
 
 ```bash
 ssh nilsan@bf.nottseter.no
-cd ~/src/mett
-git pull --ff-only
+cd ~/mett
 docker compose -f docker/docker-compose.yml pull   # from ghcr.io
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer. `build.yml` sets `BUILD_SHA={short-sha}` on every CI build.
+This assumes the compose file + Caddyfile are already on the host at `~/mett/docker/` (they're shipped by `deploy.yml`). The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer. `build.yml` sets `BUILD_SHA={short-sha}` on every CI build.
 
-For a local-build fallback when GHCR is unreachable:
+For a local-build fallback when GHCR is unreachable, `scp -r` the repo to the host first:
 
 ```bash
 BUILD_SHA=$(git rev-parse --short HEAD) docker compose -f docker/docker-compose.yml build
@@ -390,7 +391,7 @@ docker compose -f docker/docker-compose.yml up -d
 ### Tailing logs
 
 ```bash
-ssh nilsan@bf.nottseter.no docker compose -f /home/nilsan/src/mett/docker/docker-compose.yml logs -f
+ssh nilsan@bf.nottseter.no docker compose -f /home/nilsan/mett/docker/docker-compose.yml logs -f
 ```
 
 To filter to a single instance, append the service name (`mett-katja`, `mett-arne`, `mett-dag`, `mett-me`, `caddy`).
