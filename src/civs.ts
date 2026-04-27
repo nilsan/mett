@@ -1,13 +1,15 @@
 // Static civilization data and game setup recommendations
 // Based on official Mega Empires: The West & The East rulebook and Scenarios document
 
+import type { Region, TextColor } from './types.js';
+
 export interface CivDef {
   number: number;
   name: string;
   slug: string;
   color: string;
-  textColor: 'black' | 'white';
-  defRegion: 'west' | 'east';
+  textColor: TextColor;
+  defRegion: Region;
 }
 
 export const CIVS: CivDef[] = [
@@ -36,7 +38,7 @@ export const CIVS: CivDef[] = [
 // regionOverrides: civs that play in the opposite block from their default region.
 export interface SetupRecommendation {
   civNumbers: number[];
-  regionOverrides: Record<number, 'west' | 'east'>;
+  regionOverrides: Record<number, Region>;
   note?: string;
 }
 

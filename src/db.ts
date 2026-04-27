@@ -31,7 +31,7 @@ export {
 // ─── CRUD (players, census, admin, civs, full state) ──────────────────────────
 
 import { getDb, _onReset, PLAYER_SELECT } from './services/db.js';
-import type { PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow } from './types.js';
+import type { PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow, Region } from './types.js';
 import { getGame } from './models/game.js';
 import { getAstLevels, LIA_THRESHOLD, nextAstStatus } from './models/ast.js';
 import type { AstStatus } from './types.js';
@@ -69,8 +69,8 @@ export function getPlayers(): PlayerRow[] {
   return getDb().query<PlayerRow, []>(PLAYER_SELECT).all();
 }
 
-export function addPlayer(civId: number, name: string, region: string): number {
-  const result = getDb().query<{ id: number }, [number, string, string]>(
+export function addPlayer(civId: number, name: string, region: Region): number {
+  const result = getDb().query<{ id: number }, [number, string, Region]>(
     'INSERT INTO players (civ_id, name, region, military, ast_level, adv_points, rank_order) VALUES (?,?,?,0,0,0,0) RETURNING id'
   ).get(civId, name, region);
   return result!.id;

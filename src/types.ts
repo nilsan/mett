@@ -1,5 +1,18 @@
 // Shared TypeScript interfaces — no project-level imports
 
+/** Map region for the West & East block split. Validated at API boundaries
+ *  (POST /game/start) so the rest of the codebase can trust the literal type. */
+export type Region = 'west' | 'east';
+
+/** Foreground colour against the civ's brand colour. Static reference data. */
+export type TextColor = 'black' | 'white';
+
+/** Type guard for Region — use at request boundaries before passing user input
+ *  to functions whose signature expects Region. */
+export function isRegion(s: unknown): s is Region {
+  return s === 'west' || s === 'east';
+}
+
 export interface GameRow {
   id: number;
   expert: number;
@@ -23,7 +36,7 @@ export interface PlayerRow {
   adv_1vp: number;
   adv_3vp: number;
   adv_6vp: number;
-  region: string;
+  region: Region;
   rank_order: number;
   late_iron_age_bonus: number;
   // joined from civs
@@ -31,7 +44,7 @@ export interface PlayerRow {
   civ_name: string;
   civ_slug: string;
   civ_color: string;
-  civ_text_color: string;
+  civ_text_color: TextColor;
 }
 
 export interface CensusRow {
@@ -70,6 +83,6 @@ export interface CivRefRow {
   name: string;
   slug: string;
   color: string;
-  text_color: string;
-  def_region: string;
+  text_color: TextColor;
+  def_region: Region;
 }

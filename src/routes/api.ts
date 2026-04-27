@@ -3,6 +3,7 @@ import * as db from '../db.js';
 import { broadcastState } from '../ws.js';
 import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS } from '../civs.js';
 import { isAdminAuthed } from './pages.js';
+import { isRegion } from '../types.js';
 import { AST_LEVELS, LIA_THRESHOLD, MAX_POPULATION, MAX_CITIES } from '../models/ast.js';
 
 const api = new Hono();
@@ -46,8 +47,18 @@ api.post('/game/start', async (c) => {
     return c.json({ error: 'At least one player required' }, 400);
   }
 
-  db.startGame(body.expert);
+  // Validate region values at the boundary so PlayerRow.region can rely on
+  // the 'west' | 'east' literal type everywhere downstream.
+  const validated: Array<{ civ_id: number; name: string; region: 'west' | 'east' }> = [];
   for (const p of body.players) {
+    if (!isRegion(p.region)) {
+      return c.json({ error: `Invalid region for civ ${p.civ_id}: ${p.region}` }, 400);
+    }
+    validated.push({ civ_id: p.civ_id, name: p.name, region: p.region });
+  }
+
+  db.startGame(body.expert);
+  for (const p of validated) {
     db.addPlayer(p.civ_id, p.name.trim() || '?', p.region);
   }
   broadcastState();
@@ -304,7 +315,9 @@ api.post('/debug/simulate', async (c) => {
   for (const num of rec.civNumbers) {
     const civ = civMap.get(num);
     if (!civ) continue;
-    const region = (rec.regionOverrides[num] ?? civ.def_region) as string;
+    // Both sides of the ?? are already typed as Region (from civs.ts +
+    // CivRefRow), so no cast or runtime check needed.
+    const region = rec.regionOverrides[num] ?? civ.def_region;
     db.addPlayer(civ.id, civ.name, region);
   }
 
