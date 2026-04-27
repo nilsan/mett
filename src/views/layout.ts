@@ -18,7 +18,7 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <header class="site-header container-fluid">
     <a href="/" class="mett-wordmark">me<span class="mw-bracket">[</span>tt<span class="mw-bracket">]</span></a>
     <span class="mett-tagline">MEGA EMPIRES TURN TRACKER</span>
-    <a href="/admin" class="admin-gear" title="Admin">⚙</a>
+    <a href="/admin" class="admin-gear" title="Admin" aria-label="Admin"><span aria-hidden="true">⚙</span></a>
   </header>
   <main class="container-fluid">
     ${body}

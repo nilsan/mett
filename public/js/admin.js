@@ -275,6 +275,7 @@
           btn.classList.toggle('mil-on', !on);
           btn.classList.toggle('mil-off', on);
           btn.title = !on ? 'Has Military — click to remove' : 'No Military — click to grant';
+          btn.setAttribute('aria-pressed', !on ? 'true' : 'false');
         }
         btn.disabled = false;
       });
@@ -290,6 +291,7 @@
           btn.classList.toggle('won-on', !on);
           btn.classList.toggle('won-off', on);
           btn.title = !on ? 'Has Wonder — click to remove' : 'No Wonder — click to grant';
+          btn.setAttribute('aria-pressed', !on ? 'true' : 'false');
         }
         btn.disabled = false;
       });
@@ -429,6 +431,11 @@
         lia.className = `lia-star-btn ${granted ? 'lia-star-on' : 'lia-star-off'}`;
         lia.dataset.granted = granted ? '1' : '0';
         lia.title = granted ? 'LIA bonus (5VP) — click to remove' : 'Grant LIA bonus (5VP)';
+        lia.setAttribute('aria-pressed', granted ? 'true' : 'false');
+        lia.setAttribute(
+          'aria-label',
+          granted ? `Remove Late Iron Age bonus (5 VP) from ${p.name}` : `Grant Late Iron Age bonus (5 VP) to ${p.name}`,
+        );
         lia.disabled = false;
       });
 
