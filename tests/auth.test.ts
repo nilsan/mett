@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 /**
  * Auth-flow tests. Locks down the empty-password bypass fix from 47b005d
  * and the scrypt-hashed storage introduced in the same commit.

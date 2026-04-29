@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 // scrypt at N=16384 (2^14), r=8, p=1 — OWASP 2023 minimum. Takes ~20-60 ms on

@@ -157,7 +157,9 @@ me[tt] is built with [Bun](https://bun.sh), [Hono](https://hono.dev) and vanilla
 
 ## License
 
-MIT — Copyright © 2026 [Nils-Anders Nøttseter](https://github.com/nilsan)
+**Mozilla Public License 2.0** — Copyright © 2026 [Nils-Anders Nøttseter](https://github.com/nilsan).
+
+Full license text in [LICENSE](LICENSE). The MPL is a file-level copyleft licence: anyone can use me[tt] in their own work, but modifications to me[tt]'s own source files must remain MPL-licensed.
 
 Inspired by the original [METool](https://github.com/roenoe/METool) by Roe Nøttseter.
 Mega Empires is a game by Flo de Haan and Gerart de Haan.

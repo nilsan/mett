@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 // Public interface — re-exports from domain modules so callers need no import changes.
 // Raw connection lives in src/services/db.ts
 // Game flow lives in src/models/game.ts
