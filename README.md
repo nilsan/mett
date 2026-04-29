@@ -23,6 +23,24 @@ For a detailed description of each implemented rule see [RULES.md](RULES.md).
 
 ---
 
+## What it looks like
+
+**Status display** — the shared TV view, mid-game with 12 players (Round 7, Expert):
+
+![Status display](docs/img/screenshot-status.jpg)
+
+**Admin** — the game master's control panel:
+
+![Admin page](docs/img/screenshot-admin.jpg)
+
+**Player page** (phone) — each empire's personal page, optimised for portrait phones:
+
+<img src="docs/img/screenshot-civ.png" alt="Player page on a phone" width="320">
+
+(Regenerate from a fresh simulated game any time with `bun run screenshots`.)
+
+---
+
 ## Deployment
 
 ### Production (Docker)
