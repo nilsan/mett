@@ -34,6 +34,13 @@
   --col-adv-pts: 1.9rem;
   --col-ast-pts: 1.9rem;
   --col-total-vp: 2.4rem;
+
+  /* AST progress strip on the civ page. Phone breakpoint below
+     overrides these. Declared up here (not next to .ast-progress-grid)
+     so a later unconditional :root block can't accidentally beat the
+     media-query override on source order. */
+  --ast-node-size: 2rem;
+  --ast-node-gap: 0.1875rem;
 }
 
 body {
@@ -1083,9 +1090,11 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .ast-next h4 { font-size: 0.7rem; margin-bottom: 0.12rem; }
   .ast-req-text { font-size: 0.78rem; }
   .ast-mode-note { font-size: 0.64rem; margin-top: 0.1rem; }
-  :root { --ast-node-size: 1.5rem; --ast-node-gap: 0.125rem; }
+  /* AST strip: 17 nodes (expert mode) must fit in a 412 CSS-px phone
+     viewport without horizontal scroll. */
+  :root { --ast-node-size: 1.3rem; --ast-node-gap: 0.0625rem; }
   .ast-node { font-size: 0.55rem; }
-  .ast-age-label { font-size: 0.38rem; padding: 0.0625rem 0; margin-bottom: 0.0625rem; }
+  .ast-age-label { font-size: 0.36rem; padding: 0.0625rem 0; margin-bottom: 0.0625rem; }
 }
 
 .civ-section {
@@ -1252,8 +1261,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   scrollbar-width: none; /* Firefox */
 }
 .ast-bar-wrap::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-
-:root { --ast-node-size: 2rem; --ast-node-gap: 0.1875rem; }
 
 .ast-progress-grid {
   display: grid;
