@@ -46,7 +46,7 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
 **Notes:**
 - Playwright auto-waits for selectors; explicit `time.sleep` is not needed (use `page.waitForLoadState("networkidle")` after navigation if you need a settle moment).
 - Set viewport via `newContext({ viewport: { width, height } })` — Playwright respects the values exactly, including DPR. There's no `--force-device-scale-factor` footgun.
-- For mobile-DPR emulation, use `devices['Pixel 8']` from `playwright/devices`.
+- For mobile-DPR emulation, use `devices['Pixel 7']` from `playwright/devices` (Pixel 8 isn't in Playwright's bundled list yet — `devices['Pixel 8']` resolves to `undefined`, which silently yields the default 1280×720 viewport).
 
 ## Tests
 

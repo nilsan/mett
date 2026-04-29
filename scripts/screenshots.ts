@@ -10,7 +10,7 @@
  * Requires the dev server on :3000. Captures three views into docs/img/:
  *   - screenshot-status.jpg   (1920×1080, JPEG q=85)  ─── status display
  *   - screenshot-admin.jpg    (1920×1080, JPEG q=85)  ─── admin / Players
- *   - screenshot-civ.png      (Pixel 8 viewport)      ─── single empire page
+ *   - screenshot-civ.png      (Pixel 7 viewport)      ─── single empire page
  *
  * Side effect: the simulate call resets the game on the dev DB, so don't run
  * this against an in-progress real session.
@@ -92,7 +92,7 @@ async function captureAdmin(browser: Browser): Promise<void> {
 }
 
 async function captureCiv(browser: Browser, slug: string): Promise<void> {
-  const ctx = await browser.newContext({ ...devices['Pixel 8'] });
+  const ctx = await browser.newContext({ ...devices['Pixel 7'] });
   const page = await ctx.newPage();
   await page.goto(`${BASE}/${slug}`);
   await page.waitForLoadState('networkidle');
