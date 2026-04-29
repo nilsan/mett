@@ -1,15 +1,3 @@
-katja.example.com {
-    reverse_proxy mett-katja:3000
-}
-
-arne.example.com {
-    reverse_proxy mett-arne:3000
-}
-
-dag.example.com {
-    reverse_proxy mett-dag:3000
-}
-
-me.example.com {
-    reverse_proxy mett-me:3000
+demo.mett.games {
+    reverse_proxy mett:3000
 }

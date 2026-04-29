@@ -45,25 +45,33 @@ For a detailed description of each implemented rule see [RULES.md](RULES.md).
 
 ### Production (Docker)
 
-The production setup runs four independent instances — katja, arne, dag and me — each at its own subdomain of `example.com`, behind a single Caddy reverse proxy that handles HTTPS automatically.
+The shipped compose file runs one me[tt] instance behind a Caddy reverse proxy that handles HTTPS automatically. The public demo at **`demo.mett.games`** runs from this exact configuration.
 
-**Requirements:** a Linux server with Docker and Docker Compose installed, and DNS A records for each subdomain pointing to the server's IP.
+**Requirements:** a Linux server with Docker and Docker Compose installed, and a DNS A record for the chosen subdomain pointing to the server's IP.
 
 ```bash
 git clone https://github.com/nilsan/mett.git
 cd mett
+# Edit docker/Caddyfile to use your own hostname instead of demo.mett.games
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-Each instance is immediately reachable at its subdomain. Caddy obtains TLS certificates automatically on first request.
-
-To stop all instances:
+The instance is reachable at the configured hostname; Caddy obtains the TLS certificate on first request.
 
 ```bash
-docker compose -f docker/docker-compose.yml down
+docker compose -f docker/docker-compose.yml down   # stop
 ```
 
-Game data for each instance is stored in `~/docker/mett/{instance}/` on the host and survives restarts. The instances are fully independent — separate databases, separate games.
+Pin a specific upstream image version (recommended in production):
+
+```bash
+METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml pull
+METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml up -d
+```
+
+`:latest` (the default) tracks `main`; semver tags follow `1.2.3` / `1.2` / `1` once 1.0.0 ships. Game data lives at the `mett_data` named volume on the host.
+
+**Multi-instance / multi-game on one host:** duplicate the `mett` service in `docker-compose.yml` under different names with separate volume mounts, and add a Caddyfile block per hostname. Each instance is fully independent — separate database, separate game.
 
 ### Development (Bun)
 
@@ -84,7 +92,7 @@ The app is available at **http://localhost:3000**. The server reloads automatica
 
 ### Admin setup
 
-Open **/admin** on the device that will act as the game master (typically a laptop). In production this is e.g. `https://katja.example.com/admin`; in development it is `http://localhost:3000/admin`.
+Open **/admin** on the device that will act as the game master (typically a laptop). In production this is e.g. `https://demo.mett.games/admin`; in development it is `http://localhost:3000/admin`.
 
 The default admin password is **`PASSWORD`**. You can change it from the admin page once logged in.
 
@@ -96,7 +104,7 @@ The default admin password is **`PASSWORD`**. You can change it from the admin p
 
 ### The main display
 
-Put the root URL (e.g. `https://katja.example.com` in production, or `http://localhost:3000` in development) on a shared screen or TV. It shows five panels:
+Put the root URL (e.g. `https://demo.mett.games` in production, or `http://localhost:3000` in development) on a shared screen or TV. It shows five panels:
 
 | Panel | What it shows |
 |---|---|
@@ -113,9 +121,9 @@ All panels update live as players submit.
 Every player bookmarks their own empire's page, for example:
 
 ```
-https://katja.example.com/egypt
-https://katja.example.com/rome
-https://katja.example.com/hellas
+https://demo.mett.games/egypt
+https://demo.mett.games/rome
+https://demo.mett.games/hellas
 ```
 
 From their page a player can:

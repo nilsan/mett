@@ -1,44 +1,37 @@
 ---
-# Per-instance services share build, expose, restart, and environment
-# config via the x-mett anchor. Each instance only differs in its
-# data-volume mount path.
-x-mett-defaults: &mett-defaults
-  # Production pulls this from ghcr.io (built by .github/workflows/build.yml
-  # on every push to main). The build: block is kept so `docker compose build`
-  # still works for local dev — it'll build and tag with the same image name.
-  image: ghcr.io/nilsan/mett:latest
-  build:
-    context: ..
-    dockerfile: docker/Dockerfile
-    args:
-      BUILD_SHA: ${BUILD_SHA:-}
-  expose:
-    - "3000"
-  restart: unless-stopped
-  environment:
-    DATABASE_PATH: /app/data/mett.db
-    PORT: 3000
+# Single-instance compose for me[tt]. Pulls the upstream image from
+# ghcr.io (built + pushed by .github/workflows/build.yml on every
+# push to main), or builds locally with `docker compose build` for
+# development. Pin a specific upstream version with METT_VERSION:
+#
+#   docker compose pull
+#   docker compose up -d
+#
+#   METT_VERSION=1.2.3 docker compose pull        # pin patch
+#   METT_VERSION=1.2   docker compose pull        # track minor
+#   METT_VERSION=1     docker compose pull        # track major
+#   METT_VERSION=latest docker compose pull       # rolling (default)
+#
+# Multi-instance / multi-host setups: duplicate the `mett` service
+# under different names, mount different volumes, and adjust the
+# Caddyfile.
 
 services:
-  mett-katja:
-    <<: *mett-defaults
+  mett:
+    image: ghcr.io/nilsan/mett:${METT_VERSION:-latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        BUILD_SHA: ${BUILD_SHA:-}
+    expose:
+      - "3000"
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /app/data/mett.db
+      PORT: 3000
     volumes:
-      - ~/docker/mett/katja:/app/data
-
-  mett-arne:
-    <<: *mett-defaults
-    volumes:
-      - ~/docker/mett/arne:/app/data
-
-  mett-dag:
-    <<: *mett-defaults
-    volumes:
-      - ~/docker/mett/dag:/app/data
-
-  mett-me:
-    <<: *mett-defaults
-    volumes:
-      - ~/docker/mett/me:/app/data
+      - mett_data:/app/data
 
   caddy:
     image: caddy:2-alpine
@@ -52,11 +45,9 @@ services:
       - caddy_config:/config
     restart: unless-stopped
     depends_on:
-      - mett-katja
-      - mett-arne
-      - mett-dag
-      - mett-me
+      - mett
 
 volumes:
+  mett_data:
   caddy_data:
   caddy_config:

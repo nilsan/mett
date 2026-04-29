@@ -12,7 +12,7 @@ The following are always allowed without prompting the user:
 
 - **`bun`** — any `bun` command (`bun test`, `bun run`, `bun install`, etc.)
 - **`bunx playwright`** — any Playwright invocation against `http://localhost:3000/`, including ad-hoc inline scripts via `bun -e '...'`
-- **`curl`** — any `curl` command to the me[tt] application (`https://*.example.com/`, `https://mett.nottseter.no/...`, `http://localhost:3000/`)
+- **`curl`** — any `curl` command to the me[tt] application (`https://*.mett.games/`, `http://localhost:3000/`). Operators with their own deployments can extend this list in their personal `~/.claude/settings.local.json`.
 - **`python3`** — any `python3` script that uses `json` (e.g. parsing API responses)
 
 ## Browser inspection (Playwright)

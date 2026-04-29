@@ -67,13 +67,8 @@ mett/
 │   └── schema.sql          Schema + seed data (civs and A.S.T. levels)
 ├── docker/
 │   ├── Dockerfile          Bun image; ARG BUILD_SHA → ENV
-│   ├── docker-compose.yml  Four mett-* services + Caddy via YAML anchor
-│   └── Caddyfile           Per-subdomain reverse proxy
-├── ansible/
-│   ├── deploy.yml          ship compose+Caddyfile → docker compose pull (ghcr.io) → recreate → verify
-│   ├── verify.yml          HTTPS smoke-test asserting the version footer SHA
-│   ├── inventory.ini       Single host: bf.nottseter.no
-│   └── README.md
+│   ├── docker-compose.yml  Single mett service + Caddy; pin via $METT_VERSION
+│   └── Caddyfile           One reverse-proxy block (demo.mett.games by default)
 ├── .github/
 │   └── workflows/
 │       ├── test.yml        CI: bun test + tsc + ansible-lint + yamllint + hadolint
@@ -319,82 +314,66 @@ METT_ADMIN_PASSWORD=secret python3 tests/simulate.py
 
 ### Continuous integration
 
-`.github/workflows/test.yml` runs five jobs in parallel on every push to `main` and every PR:
+`.github/workflows/test.yml` runs four jobs in parallel on every push to `main` and every PR:
 
 | Job | Command | Purpose |
 |---|---|---|
 | `bun test` | `bun run test` | Unit + integration suite (`tests/*.test.ts` glob; `tests/browser/` excluded) |
 | `tsc --noEmit` | `bunx tsc --noEmit` | TypeScript strict typecheck |
-| `ansible-lint` | `ansible-lint` action | Validates `ansible/deploy.yml` and `verify.yml` at production profile |
-| `yamllint` | over `.github/workflows/`, `ansible/`, `docker/docker-compose.yml` | YAML formatting / structure |
+| `yamllint` | over `.github/workflows/`, `docker/docker-compose.yml` | YAML formatting / structure |
 | `hadolint` | `hadolint-action@v3.1.0` on `docker/Dockerfile` | Dockerfile best practices |
 
 Concurrency group cancels in-flight runs when a new push lands on the same ref. Five-minute timeout per job. Browser tests stay local-only — they need a live server.
 
-`.yamllint` at the repo root relaxes line-length to 140 (the default 80 was too strict for inline ansible commands and the debug-message line) and keeps the rest of yamllint's defaults, including the `truthy` check that makes us quote `"on":` in workflow files.
+`.yamllint` at the repo root relaxes line-length to 140 and keeps the rest of yamllint's defaults, including the `truthy` check that makes us quote `"on":` in workflow files.
 
 ---
 
 ## Deployment
 
-Production runs four `me[tt]` instances behind Caddy on `bf.nottseter.no`, one per subdomain of `example.com` (katja, arne, dag, me). Each instance has an isolated SQLite database mounted at `~/docker/mett/{instance}/`.
+The shipped compose file runs a single me[tt] instance behind Caddy. The public demo at `demo.mett.games` runs from this exact configuration. Game data persists in the `mett_data` named Docker volume on the host.
 
-### Ansible (recommended)
-
-```bash
-cd ansible
-ansible-playbook -i inventory.ini deploy.yml
-```
-
-`deploy.yml` does:
-
-1. Ships `docker/docker-compose.yml` and `docker/Caddyfile` from the local repo to `/home/nilsan/mett/docker/` on the remote (only registers `changed` when the file content actually differs).
-2. `docker compose pull` to fetch `ghcr.io/nilsan/mett:latest` (built and pushed by `.github/workflows/build.yml` on every push to `main`).
-3. `docker compose up -d` to recreate any container whose image changed.
-4. If the Caddyfile changed, runs `caddy reload` inside the caddy container — Caddy doesn't watch its config, so without this an edited Caddyfile would sit on disk unread.
-5. Prints `docker compose ps`.
-6. Imports `verify.yml` (smoke-test, see below).
-
-The deploy host doesn't need a git checkout; ansible ships the two files docker compose reads. That keeps the image swap cleanly separated from any source-tree state on the box.
-
-**Timing:** after `git push`, wait ~1–2 min for the build workflow to publish the new image before deploying — otherwise `verify.yml` reports an SHA mismatch. Watch with `gh run watch --workflow=build.yml`.
-
-Skip the post-deploy verify (e.g. for an emergency rollback) with `--skip-tags verify`.
-
-`verify.yml` runs locally (no SSH) and asserts each production subdomain serves `GET /` with status 200 and a footer carrying the expected commit SHA (defaults to local `HEAD`; override with `-e expected_sha=<sha>`). That single check is enough to prove the right image is live; verify deliberately does **not** read `/api/state` or `/api/civs` because that would dump live game contents into the play log for no real safety benefit (the API shape is already covered by the test suite).
-
-Run it standalone any time:
+### Bring it up
 
 ```bash
-ansible-playbook -i inventory.ini verify.yml
-ansible-playbook -i inventory.ini verify.yml -e expected_sha=abc1234
-```
-
-### Manual (without Ansible)
-
-```bash
-ssh nilsan@bf.nottseter.no
-cd ~/mett
-docker compose -f docker/docker-compose.yml pull   # from ghcr.io
+docker compose -f docker/docker-compose.yml pull   # from ghcr.io/nilsan/mett:${METT_VERSION:-latest}
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-This assumes the compose file + Caddyfile are already on the host at `~/mett/docker/` (they're shipped by `deploy.yml`). The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer. `build.yml` sets `BUILD_SHA={short-sha}` on every CI build.
+### Pin a version
 
-For a local-build fallback when GHCR is unreachable, `scp -r` the repo to the host first:
+The `image:` line in compose is `ghcr.io/nilsan/mett:${METT_VERSION:-latest}`. In production, pin:
+
+```bash
+METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml pull
+METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml up -d
+```
+
+(Once 1.0.0 ships, `:1.2.3` / `:1.2` / `:1` semver tags become available alongside `:latest`. Default of `:latest` is fine for the demo / dev; production should pin.)
+
+### Multi-instance / multi-game on one host
+
+Duplicate the `mett` service in `docker-compose.yml` under different names with separate volume mounts, and add a Caddyfile block per hostname. Each instance is fully independent — separate database, separate game.
+
+The `nilsan/mett-deploy` private repo is one example of this pattern (four named instances behind a wildcard Caddy config). It's not part of the public repo; this is the setup you'd build on top.
+
+### Local-build fallback
+
+When GHCR is unreachable, the compose file's `build:` block still works:
 
 ```bash
 BUILD_SHA=$(git rev-parse --short HEAD) docker compose -f docker/docker-compose.yml build
 docker compose -f docker/docker-compose.yml up -d
 ```
 
+The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer. CI's `build.yml` sets the same arg from `${{ github.sha }}`'s short form on every build.
+
 ### Tailing logs
 
 ```bash
-ssh nilsan@bf.nottseter.no docker compose -f /home/nilsan/mett/docker/docker-compose.yml logs -f
+docker compose -f docker/docker-compose.yml logs -f mett
+docker compose -f docker/docker-compose.yml logs -f caddy
 ```
-
-To filter to a single instance, append the service name (`mett-katja`, `mett-arne`, `mett-dag`, `mett-me`, `caddy`).
 
 ### Local Docker testing
 
@@ -406,7 +385,7 @@ docker compose -f docker/docker-compose.yml up -d
 docker compose -f docker/docker-compose.yml down
 ```
 
-The four mett-* services will all listen on internal port 3000 inside the network; you'd need to expose one with `ports: - "3000:3000"` to reach it from the host. Caddy expects DNS resolving to your machine, so it won't issue certificates locally — strip the `caddy` service or run it with `tls internal` for self-signed.
+Caddy in the compose file expects a real DNS name (`demo.mett.games` by default), so it won't issue certificates locally — either strip the `caddy` service and add `ports: - "3000:3000"` to `mett`, or change the Caddyfile to use a local hostname with `tls internal` for a self-signed cert.
 
 ---
 
