@@ -12,6 +12,11 @@
  *   - screenshot-admin.jpg    (1920×1080, JPEG q=85)  ─── admin / Players
  *   - screenshot-civ.png      (Pixel 7 viewport)      ─── single empire page
  *
+ * Status + admin are captured at a 4K *CSS* viewport (3840×2160) with a
+ * deviceScaleFactor of 0.5, so the @media (min-width: 192rem) breakpoint
+ * activates and the page lays out for the TV target — but the resulting
+ * image is rendered at 1920×1080 device pixels, README-friendly.
+ *
  * Side effect: the simulate call resets the game on the dev DB, so don't run
  * this against an in-progress real session.
  */
@@ -34,7 +39,7 @@ async function loginAdmin(ctx: BrowserContext): Promise<void> {
 async function simulateMidGame(ctx: BrowserContext): Promise<void> {
   const page = await ctx.newPage();
   const res = await page.request.post(`${BASE}/api/debug/simulate`, {
-    data: { expert: 1, player_count: 12, rounds: 6 },
+    data: { expert: 1, player_count: 18, rounds: 6 },
   });
   if (!res.ok()) {
     throw new Error(`simulate failed: ${res.status()} ${await res.text()}`);
@@ -58,8 +63,14 @@ async function pickCivSlug(ctx: BrowserContext): Promise<string> {
   return civById.get(first.civ_id)!.slug;
 }
 
+// 4K CSS viewport + half DPR → 4K layout, 1920×1080 image.
+const TV_CONTEXT = {
+  viewport: { width: 3840, height: 2160 },
+  deviceScaleFactor: 0.5,
+};
+
 async function captureStatus(browser: Browser): Promise<void> {
-  const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const ctx = await browser.newContext(TV_CONTEXT);
   const page = await ctx.newPage();
   await page.goto(`${BASE}/`);
   await page.waitForLoadState('networkidle');
@@ -74,7 +85,7 @@ async function captureStatus(browser: Browser): Promise<void> {
 }
 
 async function captureAdmin(browser: Browser): Promise<void> {
-  const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const ctx = await browser.newContext(TV_CONTEXT);
   await ctx.addCookies([
     { name: 'mett_admin', value: ADMIN_PASSWORD, url: BASE },
   ]);
