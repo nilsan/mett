@@ -448,6 +448,12 @@ body {
   gap: 0.5rem;
   align-items: stretch;
   min-width: 0;
+  /* Fill the viewport vertically on desktop sizes — cards stretch to match
+     each other (align-items: stretch), but tables INSIDE cards stay
+     natural-sized (no flex-grow on tables) so rows don't float. Content
+     packs at the top of each card; empty space sits below each table as
+     consistent padding, not as stretched rows. */
+  min-height: calc(100vh - 5rem);
 }
 .status-grid > * { min-width: 0; }
 .status-grid .mett-table { width: 100%; }
