@@ -476,9 +476,15 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .status-grid .ab-legend        { margin-top: auto; font-size: 0.46rem; line-height: 1.2; padding: 0.1rem 0 0; gap: 0.05rem 0.6rem; }
 .status-grid .ab-legend li     { gap: 0.2rem; }
 .status-grid .ab-legend-dot    { width: 0.5rem; height: 0.5rem; }
-.status-grid .mett-table       { font-size: 0.72rem; border-collapse: separate; border-spacing: 0 2px; }
-.status-grid .mett-table th    { font-size: 0.55rem; padding: 0.08rem 0.3rem; }
-.status-grid .mett-table td    { height: 1.55rem; padding: 0.05rem 0.3rem; font-size: inherit; border-bottom: none; }
+/* Row height + font scale with viewport HEIGHT (not width) so the table
+   uses available vertical space without overflowing — works regardless of
+   aspect ratio (1920×1200, 3440×1440 ultrawide, 4K, etc). Floor matches
+   the previous fixed sizing (1080p stays as before); ceiling caps growth
+   on very tall displays. ~4 vh × 18 rows + thead + padding stays under
+   100vh on every realistic monitor. */
+.status-grid .mett-table       { font-size: clamp(0.72rem, 1.1vh, 1.3rem); border-collapse: separate; border-spacing: 0 clamp(2px, 0.3vh, 5px); }
+.status-grid .mett-table th    { font-size: clamp(0.55rem, 0.85vh, 1rem); padding: clamp(0.08rem, 0.25vh, 0.22rem) 0.4rem; }
+.status-grid .mett-table td    { height: clamp(1.55rem, 3.3vh, 3.6rem); padding: clamp(0.05rem, 0.18vh, 0.18rem) 0.4rem; font-size: inherit; border-bottom: none; }
 .status-grid .trade-table      { table-layout: fixed; width: calc(7.5rem + 8.2rem); }
 .status-grid .trade-empire-col { width: 7.5rem; }
 /* 9 chips × 0.8rem + 8 gaps × 0.05rem + 2 × 0.3rem cell padding */
@@ -501,10 +507,11 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .status-grid .ast-pts    { width: var(--col-ast-pts);    min-width: var(--col-ast-pts); }
 .status-grid .total-vp   { width: var(--col-total-vp);   min-width: var(--col-total-vp); }
 
-/* Full-width colored empire cells — fixed width so all tables align */
+/* Full-width colored empire cells — fixed width so all tables align.
+   Font scales with viewport height to match the row heights above. */
 .empire-cell {
   font-weight: 600;
-  font-size: 0.72rem;
+  font-size: clamp(0.72rem, 1.2vh, 1.4rem);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -593,14 +600,14 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   border-collapse: separate !important;
   border-spacing: 0 2px !important;
 }
-.status-ast thead th { font-size: 0.55rem; padding: 0.08rem 0.3rem; }
-.status-ast thead tr { height: 1.0rem; }
+.status-ast thead th { font-size: clamp(0.55rem, 0.85vh, 1rem); padding: clamp(0.08rem, 0.25vh, 0.22rem) 0.4rem; }
+.status-ast thead tr { height: clamp(1rem, 2vh, 1.8rem); }
 .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
-.status-ast td.empire-cell { padding: 0.05rem 0.3rem; font-size: 0.72rem; }
-.status-ast .ab-cell      { width: 1.9rem; height: 1.55rem; }
-.status-ast .ab-level-num { width: 1.9rem; font-size: 0.52rem !important; }
-.status-ast .ab-round-num { width: 1.9rem; font-size: 0.52rem !important; }
-.status-ast .ab-name      { font-size: 0.55rem !important; }
+.status-ast td.empire-cell { padding: clamp(0.05rem, 0.18vh, 0.18rem) 0.4rem; font-size: clamp(0.72rem, 1.2vh, 1.4rem); }
+.status-ast .ab-cell      { width: clamp(1.9rem, 2.4vw, 3rem); height: clamp(1.55rem, 3.3vh, 3.6rem); }
+.status-ast .ab-level-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
+.status-ast .ab-round-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
+.status-ast .ab-name      { font-size: clamp(0.55rem, 0.85vh, 1rem) !important; }
 .status-ast .ab-magnet {
   width: 1.1rem;
   height: 1.1rem;
@@ -671,9 +678,9 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .table-hint       { font-size: 0.72rem; }
   .status-grid .ab-legend        { font-size: 0.62rem; gap: 0.15rem; }
 
-  .status-grid .mett-table       { font-size: 0.88rem; border-spacing: 0 4px; }
-  .status-grid .mett-table th    { font-size: 0.7rem; padding: 0.12rem 0.4rem; }
-  .status-grid .mett-table td    { height: 2.55rem; padding: 0.08rem 0.4rem; }
+  /* font/row sizing now handled by viewport-height-relative clamp() at the
+     base level — see .status-grid .mett-table above. WQHD-specific tweaks
+     stay below for column proportions and chip widths. */
   .status-grid .trade-chip       { width: 0.95rem; height: 1.5rem; font-size: 0.6rem; }
   /* 9 × 0.95rem + 8 × 0.05rem + 2 × 0.4rem padding = 10.25rem; empire = 7.5rem */
   .status-grid .trade-chip-col   { width: 10.25rem; }
@@ -692,7 +699,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
     --col-total-vp: 2.8rem;
   }
 
-  .empire-cell { font-size: 1.0rem !important; width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem; }
+  .empire-cell { width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem; }
   .status-grid .trade-empire-col { width: 7.5rem; }
   .civ-num { font-size: 0.7rem; min-width: 1.15rem; }
   .player-name-col { max-width: 7rem; }
@@ -701,17 +708,9 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   /* Trade separator: re-center 1px line in the now-5px gap */
   .status-grid .trade-table .trade-group-start td::before { top: -2.5px; }
 
-  /* AST board: scale up to match row heights */
-  .ab-table.status-ast { font-size: 0.78rem !important; border-spacing: 0 4px !important; }
-  .status-ast thead th { font-size: 0.7rem; padding: 0.12rem 0.4rem; }
-  .status-ast thead tr { height: 1.2rem; }
+  /* AST board: row heights + fonts handled by viewport-height clamp() above. */
   .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
-  .status-ast td.empire-cell { padding: 0.08rem 0.4rem; font-size: 1.0rem; }
-  .status-ast .ab-cell      { width: 2.2rem; height: 2.55rem; }
-  .status-ast .ab-level-num { width: 2.2rem; font-size: 0.62rem !important; }
-  .status-ast .ab-round-num { width: 2.2rem; font-size: 0.62rem !important; }
-  .status-ast .ab-name      { font-size: 0.65rem !important; }
-  .status-ast .ab-magnet    { width: 1.5rem; height: 1.5rem; font-size: 0.62rem; }
+  .status-ast .ab-magnet    { width: 1.5rem; height: 1.5rem; font-size: clamp(0.62rem, 1vh, 1.05rem); }
 }
 
 /* ─── S3 4K layout — 3072px CSS px (4K @ 1.25×) ───────────────────────────── */
@@ -729,9 +728,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .table-hint       { font-size: 0.82rem; }
   .status-grid .ab-legend        { font-size: 0.72rem; gap: 0.2rem; }
 
-  .status-grid .mett-table       { font-size: 1rem; border-spacing: 0 6px; }
-  .status-grid .mett-table th    { font-size: 0.8rem; padding: 0.18rem 0.45rem; }
-  .status-grid .mett-table td    { height: 3.2rem; padding: 0.1rem 0.45rem; }
+  /* Font/row sizing comes from viewport-height clamp() at the base level. */
   .status-grid .trade-chip       { width: 1.1rem; height: 1.75rem; font-size: 0.7rem; }
   /* 9 × 1.1rem + 8 × 0.05rem + 2 × 0.45rem padding = 11.8rem; empire = 7.5rem */
   .status-grid .trade-chip-col   { width: 11.8rem; }
@@ -750,7 +747,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
     --col-total-vp: 3.3rem;
   }
 
-  .empire-cell { font-size: 1.15rem !important; width: 9rem; min-width: 9rem; max-width: 9rem; }
+  .empire-cell { width: 9rem; min-width: 9rem; max-width: 9rem; }
   .status-grid .trade-empire-col { width: 9rem; }
   .ast-order-table td { width: 9rem; min-width: 9rem; }
   .civ-num { font-size: 0.75rem; min-width: 1.25rem; }
@@ -759,16 +756,9 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   /* Trade separator: re-center in 6px gap */
   .status-grid .trade-table .trade-group-start td::before { top: -3px; }
 
-  .ab-table.status-ast { font-size: 0.9rem !important; border-spacing: 0 6px !important; }
-  .status-ast thead th { font-size: 0.8rem; padding: 0.18rem 0.45rem; }
-  .status-ast thead tr { height: 1.6rem; }
+  /* AST board: row heights + fonts handled by viewport-height clamp() above. */
   .status-ast .ab-civ-label { width: 9rem; min-width: 9rem; }
-  .status-ast td.empire-cell { padding: 0.1rem 0.45rem; font-size: 1.15rem; }
-  .status-ast .ab-cell      { width: 2.6rem; height: 3.2rem; }
-  .status-ast .ab-level-num { width: 2.6rem; font-size: 0.72rem !important; }
-  .status-ast .ab-round-num { width: 2.6rem; font-size: 0.72rem !important; }
-  .status-ast .ab-name      { font-size: 0.76rem !important; }
-  .status-ast .ab-magnet    { width: 1.8rem; height: 1.8rem; font-size: 0.72rem; }
+  .status-ast .ab-magnet    { width: 1.8rem; height: 1.8rem; font-size: clamp(0.72rem, 1vh, 1.05rem); }
 }
 
 /* ─── Main 3-column layout ────────────────────────────────────────────────── */
