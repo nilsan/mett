@@ -619,6 +619,83 @@ describe('advanceRound — game-end orchestration', () => {
   });
 });
 
+describe('LIA bonus + final-round flag through advanceRound (mode-aware)', () => {
+  let db: Database;
+  beforeEach(() => { db = makeDb(); _setTestDb(db); });
+
+  // ── Basic mode ────────────────────────────────────────────────────────────
+  // Basic doesn't use is_final_round — the round in which any player hits
+  // LIA IS the final round. Game ends at that round's advanceRound. The
+  // LIA bonus rule still applies: solo arrival grants +5 VP, simultaneous
+  // arrival grants nothing.
+
+  it('basic: solo LIA reach grants the +5 LIA bonus and ends the game', () => {
+    const pid1 = addPlayer(db, 17, 'Egypt');
+    const pid2 = addPlayer(db, 15, 'Hellas');
+    setAstLevel(db, pid1, 75);
+    setAstLevel(db, pid2, 70);
+    db.exec("UPDATE game SET expert=0, current_round=5");
+
+    expect(advanceRound()).toBeNull();
+    const g = getGame(db);
+    expect(g.active).toBe(0);
+    expect(g.is_final_round).toBe(0); // basic never sets the flag
+    expect(getPlayer(db, pid1).late_iron_age_bonus).toBe(1); // solo arrival
+    expect(getPlayer(db, pid2).late_iron_age_bonus).toBe(0);
+  });
+
+  it('basic: simultaneous LIA reach grants no bonus and ends the game', () => {
+    const pid1 = addPlayer(db, 17, 'Egypt');
+    const pid2 = addPlayer(db, 15, 'Hellas');
+    setAstLevel(db, pid1, 75);
+    setAstLevel(db, pid2, 75);
+    db.exec("UPDATE game SET expert=0, current_round=5");
+
+    expect(advanceRound()).toBeNull();
+    expect(getGame(db).active).toBe(0);
+    expect(getPlayer(db, pid1).late_iron_age_bonus).toBe(0);
+    expect(getPlayer(db, pid2).late_iron_age_bonus).toBe(0);
+  });
+
+  // ── Expert mode ───────────────────────────────────────────────────────────
+  // Expert has one extra round after the trigger. is_final_round=1 means
+  // "next advanceRound ends the game". LIA bonus rule is the same.
+
+  it('expert: solo LIA reach grants the bonus AND raises is_final_round (game continues)', () => {
+    const pid1 = addPlayer(db, 17, 'Egypt');
+    const pid2 = addPlayer(db, 15, 'Hellas');
+    setAstLevel(db, pid1, 75);
+    setAstLevel(db, pid2, 70);
+    db.exec("UPDATE game SET expert=1, current_round=6");
+    // ≥1 city for both so autoAdvanceAst doesn't regress them
+    submitCensus(db, pid1, 6, 30, 1);
+    submitCensus(db, pid2, 6, 30, 1);
+
+    expect(advanceRound()).toBe(7);
+    const g = getGame(db);
+    expect(g.active).toBe(1);
+    expect(g.is_final_round).toBe(1);
+    expect(getPlayer(db, pid1).late_iron_age_bonus).toBe(1);
+    expect(getPlayer(db, pid2).late_iron_age_bonus).toBe(0);
+  });
+
+  it('expert: simultaneous LIA reach raises is_final_round but grants no bonus', () => {
+    const pid1 = addPlayer(db, 17, 'Egypt');
+    const pid2 = addPlayer(db, 15, 'Hellas');
+    setAstLevel(db, pid1, 75);
+    setAstLevel(db, pid2, 75);
+    db.exec("UPDATE game SET expert=1, current_round=6");
+    submitCensus(db, pid1, 6, 30, 1);
+    submitCensus(db, pid2, 6, 30, 1);
+
+    expect(advanceRound()).toBe(7);
+    const g = getGame(db);
+    expect(g.is_final_round).toBe(1);
+    expect(getPlayer(db, pid1).late_iron_age_bonus).toBe(0);
+    expect(getPlayer(db, pid2).late_iron_age_bonus).toBe(0);
+  });
+});
+
 describe('advanceRound — cities_phase reset on round transition', () => {
   let db: Database;
   beforeEach(() => { db = makeDb(); _setTestDb(db); });
