@@ -9,7 +9,7 @@
 
 export { getDb } from './services/db.js';
 
-export type { GameRow, PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow } from './types.js';
+export type { GameRow, PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow, RoundSummary, RoundSummaryPlayer } from './types.js';
 
 export type { AstRequirement } from './models/ast.js';
 export {
@@ -30,13 +30,15 @@ export {
   checkAndSetFinalRound,
   checkAndSetLateIronAgeBonus,
   advanceRound,
+  advanceRoundWithSummary,
+  getRoundSummaries,
 } from './models/game.js';
 
 // ─── CRUD (players, census, admin, civs, full state) ──────────────────────────
 
 import { getDb, _onReset, PLAYER_SELECT } from './services/db.js';
 import type { PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow, Region } from './types.js';
-import { getGame } from './models/game.js';
+import { getGame, getRoundSummaries } from './models/game.js';
 import { getAstLevels, LIA_THRESHOLD, nextAstStatus } from './models/ast.js';
 import type { AstStatus } from './types.js';
 
@@ -221,5 +223,6 @@ export function getFullState(): FullState {
   for (const p of players) {
     astStatus[p.id] = nextAstStatus(p, censusByPlayer.get(p.id)?.city_count, astLevels, expert);
   }
-  return { game, players, census, astLevels, astStatus };
+  const roundSummaries = getRoundSummaries();
+  return { game, players, census, astLevels, astStatus, roundSummaries };
 }

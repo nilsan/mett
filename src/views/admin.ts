@@ -3,10 +3,83 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
-import type { CivRefRow } from '../db.js';
+import type { CivRefRow, RoundSummary, RoundSummaryPlayer } from '../db.js';
 import { playerTotalVp, compareScores, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
 import { empireCell } from './empire.js';
 import { LIA_THRESHOLD } from '../models/ast.js';
+
+function summaryChip(p: RoundSummaryPlayer, levelSuffix = false): string {
+  const chip = empireCell(
+    {
+      civ_number: p.civ_number,
+      civ_name: p.civ_name,
+      civ_color: p.civ_color,
+      civ_text_color: p.civ_text_color,
+    },
+    'badge',
+  );
+  // Compact "→ N" — readers care about the destination level, not where
+  // each player came from. Saves horizontal space when several chips
+  // sit on one line.
+  const lvl = levelSuffix ? `<span class="rs-level">→${p.toLevel}</span>` : '';
+  return `<span class="rs-chip-group">${chip}${lvl}</span>`;
+}
+
+/**
+ * Last round-transition summary panel — admin-only (status page never sees this).
+ * Surfaces what changed at the previous advanceRound so the GM can answer
+ * "what just happened?" without scrubbing AST.PROGRESS by eye. The status page
+ * stays clean by design — players keep watching the TV, the GM has the timeline.
+ */
+function roundSummaryPanelHtml(summaries: RoundSummary[]): string {
+  if (!summaries.length) return '';
+  const last = summaries[summaries.length - 1]!;
+  const header = last.gameEnded
+    ? `<h3>Round ${last.fromRound} — Game ended</h3>`
+    : `<h3>Round ${last.fromRound} → ${last.toRound}</h3>`;
+
+  const lines: string[] = [];
+
+  if (last.advanced.length) {
+    const chips = last.advanced.map(p => summaryChip(p, true)).join(' ');
+    lines.push(`<div class="rs-line rs-advanced"><span class="rs-icon">↑</span>${chips}</div>`);
+  }
+  if (last.regressed.length) {
+    const chips = last.regressed.map(p => summaryChip(p, true)).join(' ');
+    lines.push(`<div class="rs-line rs-regressed"><span class="rs-icon">↓</span>${chips}</div>`);
+  }
+  if (last.stayed.length) {
+    // No level suffix for stayed — they're at the same level as before, so
+    // showing "→ N" would be redundant noise. The chip alone is enough.
+    const chips = last.stayed.map(p => summaryChip(p, false)).join(' ');
+    lines.push(`<div class="rs-line rs-stayed"><span class="rs-icon">=</span>${chips}</div>`);
+  }
+  if (last.liaBonusGranted) {
+    lines.push(`<div class="rs-line rs-lia-bonus">★ ${summaryChip(last.liaBonusGranted)} reached Late Iron Age alone — +5 VP bonus.</div>`);
+  } else if (last.liaBonusBlocked) {
+    const chips = last.liaArrived.map(p => summaryChip(p)).join(' ');
+    lines.push(`<div class="rs-line rs-lia-blocked">${chips} reached Late Iron Age simultaneously — no bonus awarded.</div>`);
+  } else if (last.liaArrived.length === 1) {
+    // Reached LIA but bonus already held by someone else from a previous round.
+    lines.push(`<div class="rs-line rs-lia-late">${summaryChip(last.liaArrived[0]!)} reached Late Iron Age (bonus already awarded earlier).</div>`);
+  }
+  if (last.finalRoundTriggered) {
+    lines.push(`<div class="rs-line rs-final">⚑ Final round triggered — next round is the last.</div>`);
+  }
+  if (last.gameEnded) {
+    lines.push(`<div class="rs-line rs-end">⚑ Game ended — see final scoreboard.</div>`);
+  }
+
+  if (lines.length === 0 && !last.gameEnded) {
+    lines.push(`<div class="rs-line rs-quiet">No AST changes this round.</div>`);
+  }
+
+  return `
+  <section class="admin-section round-summary" id="round-summary">
+    ${header}
+    ${lines.join('\n    ')}
+  </section>`;
+}
 
 function pwdFormHtml(query: string): string {
   const error = query.includes('pwd_error=1') ? 'Current password is incorrect.'
@@ -368,6 +441,8 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
         : ''}
     </div>
   </section>
+
+  ${roundSummaryPanelHtml(state.roundSummaries ?? [])}
 
   <section class="admin-section">
     <h3>Players</h3>

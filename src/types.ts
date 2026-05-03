@@ -71,6 +71,54 @@ export interface AstLevelRow {
 
 export type AstStatus = 'advance' | 'stay' | 'regress' | 'unknown';
 
+/**
+ * Compact reference to an empire that ended a round in some interesting state
+ * (advanced, regressed, reached LIA). Carries enough to render a chip without
+ * re-joining against players + civs on the client.
+ */
+export interface RoundSummaryPlayer {
+  player_id: number;
+  civ_number: number;
+  civ_name: string;
+  civ_color: string;
+  civ_text_color: TextColor;
+  /** AST level coming into the round (before autoAdvanceAst). */
+  fromLevel: number;
+  /** AST level after the round resolved. */
+  toLevel: number;
+}
+
+/**
+ * Round transition summary, pushed onto a small ring buffer (`state.roundSummaries`)
+ * after each advanceRound. Surfaces what changed so the admin page can answer
+ * "what just happened?" without diffing two states by eye. Status page ignores
+ * these — admin-only feature.
+ */
+export interface RoundSummary {
+  /** Round that just completed (e.g. round 7 → 8 → fromRound = 7). */
+  fromRound: number;
+  /** Round we advanced into. Null when the game ended at this transition. */
+  toRound: number | null;
+  /** Players who moved up at least one AST level during this round. */
+  advanced: RoundSummaryPlayer[];
+  /** Players who dropped at least one AST level during this round. Expert mode only. */
+  regressed: RoundSummaryPlayer[];
+  /** Players whose level was unchanged. Useful as an at-a-glance "everyone else". */
+  stayed: RoundSummaryPlayer[];
+  /** Players whose level crossed from <75 to ≥75 this round (entered Late Iron Age). */
+  liaArrived: RoundSummaryPlayer[];
+  /** The single player who received the +5 VP LIA bonus this round, or null.
+   *  The bonus only fires when exactly one player arrives at LIA in a round
+   *  AND no prior bonus has been granted. */
+  liaBonusGranted: RoundSummaryPlayer | null;
+  /** Two or more players arrived at LIA in the same round → bonus is forfeit. */
+  liaBonusBlocked: boolean;
+  /** Expert: is_final_round just transitioned 0 → 1; the round we just entered is the last. */
+  finalRoundTriggered: boolean;
+  /** True if the game ended at this transition (basic LIA, or expert post-final-round). */
+  gameEnded: boolean;
+}
+
 export interface FullState {
   game: GameRow;
   players: PlayerRow[];
@@ -79,6 +127,8 @@ export interface FullState {
   /** Per-player next-AST prediction. Keyed by player id; computed once in
    *  getFullState so render paths and the WS broadcast both read the same map. */
   astStatus: Record<number, AstStatus>;
+  /** Last few round transitions, newest last. Capped at 3 by the server. */
+  roundSummaries: RoundSummary[];
 }
 
 export interface CivRefRow {

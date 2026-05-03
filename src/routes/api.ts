@@ -81,7 +81,10 @@ api.post('/game/round/next', (c) => {
   if (!db.allCitiesSubmitted(db.getGame().current_round)) {
     return c.json({ error: 'All empires must have a city count before advancing the round' }, 400);
   }
-  const round = db.advanceRound();
+  // advanceRoundWithSummary captures a pre/post snapshot, computes the
+  // round-transition summary, and pushes it onto the ring buffer that
+  // surfaces through getFullState (admin page reads state.roundSummaries).
+  const round = db.advanceRoundWithSummary();
   broadcastState();
   // round === null means game ended (basic hit 75, or expert final round completed)
   return c.json(round === null ? { ok: true, ended: true } : { ok: true, round });

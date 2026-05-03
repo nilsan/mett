@@ -12,7 +12,7 @@ import { Database } from 'bun:sqlite';
 
 import { makeDb, addPlayer, setAstLevel, setAdvances, submitCensus, getPlayer, getGame } from './_helpers.js';
 import { autoAdvanceAst } from '../src/models/ast.js';
-import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp, computeTieGroupMeta, advanceRound } from '../src/models/game.js';
+import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp, computeTieGroupMeta, advanceRound, advanceRoundWithSummary, getRoundSummaries, computeRoundSummary, type RoundSnapshot } from '../src/models/game.js';
 import { _setTestDb } from '../src/services/db.js';
 import { sortCensusOrder } from '../src/views/main.js';
 
@@ -714,5 +714,173 @@ describe('advanceRound — cities_phase reset on round transition', () => {
 
     advanceRound();
     expect(getGame(db).census_revealed).toBe(0);
+  });
+});
+
+describe('computeRoundSummary — pure-function diff', () => {
+  function snap(overrides: {
+    current_round?: number;
+    active?: number;
+    is_final_round?: number;
+    expert?: boolean;
+    players?: Array<Partial<RoundSnapshot['players'][0]>>;
+  } = {}): RoundSnapshot {
+    return {
+      current_round: overrides.current_round ?? 5,
+      active: overrides.active ?? 1,
+      is_final_round: overrides.is_final_round ?? 0,
+      expert: overrides.expert ?? true,
+      players: (overrides.players ?? []).map((p, i) => ({
+        id: p.id ?? i + 1,
+        civ_number: p.civ_number ?? i + 1,
+        civ_name: p.civ_name ?? `Civ${i + 1}`,
+        civ_color: p.civ_color ?? '#888',
+        civ_text_color: p.civ_text_color ?? 'white',
+        ast_level: p.ast_level ?? 50,
+        late_iron_age_bonus: p.late_iron_age_bonus ?? 0,
+      })),
+    };
+  }
+
+  it('lists advanced players (toLevel > fromLevel)', () => {
+    const pre = snap({ players: [{ id: 1, ast_level: 50 }, { id: 2, ast_level: 60 }] });
+    const post = snap({ current_round: 6, players: [{ id: 1, ast_level: 55 }, { id: 2, ast_level: 60 }] });
+    const s = computeRoundSummary(pre, post);
+    expect(s.advanced.map(p => p.player_id)).toEqual([1]);
+    expect(s.advanced[0]!.fromLevel).toBe(50);
+    expect(s.advanced[0]!.toLevel).toBe(55);
+    expect(s.regressed).toEqual([]);
+    expect(s.fromRound).toBe(5);
+    expect(s.toRound).toBe(6);
+  });
+
+  it('lists regressed players (toLevel < fromLevel)', () => {
+    const pre = snap({ players: [{ id: 1, ast_level: 50 }] });
+    const post = snap({ current_round: 6, players: [{ id: 1, ast_level: 45 }] });
+    const s = computeRoundSummary(pre, post);
+    expect(s.regressed.map(p => p.player_id)).toEqual([1]);
+    expect(s.advanced).toEqual([]);
+  });
+
+  it('liaArrived: players who crossed from <75 to ≥75', () => {
+    const pre = snap({ players: [
+      { id: 1, ast_level: 70 }, // below threshold
+      { id: 2, ast_level: 75 }, // already at LIA, not "newly arrived"
+    ]});
+    const post = snap({ current_round: 6, players: [
+      { id: 1, ast_level: 75 }, // crossed
+      { id: 2, ast_level: 75 }, // unchanged
+    ]});
+    const s = computeRoundSummary(pre, post);
+    expect(s.liaArrived.map(p => p.player_id)).toEqual([1]);
+  });
+
+  it('liaBonusGranted: solo arrival flips late_iron_age_bonus 0→1', () => {
+    const pre = snap({ players: [{ id: 1, ast_level: 70, late_iron_age_bonus: 0 }] });
+    const post = snap({ current_round: 6, players: [{ id: 1, ast_level: 75, late_iron_age_bonus: 1 }] });
+    const s = computeRoundSummary(pre, post);
+    expect(s.liaBonusGranted?.player_id).toBe(1);
+    expect(s.liaBonusBlocked).toBe(false);
+  });
+
+  it('liaBonusBlocked: 2+ arrived simultaneously, no bonus granted', () => {
+    const pre = snap({ players: [
+      { id: 1, ast_level: 70, late_iron_age_bonus: 0 },
+      { id: 2, ast_level: 70, late_iron_age_bonus: 0 },
+    ]});
+    const post = snap({ current_round: 6, players: [
+      { id: 1, ast_level: 75, late_iron_age_bonus: 0 },
+      { id: 2, ast_level: 75, late_iron_age_bonus: 0 },
+    ]});
+    const s = computeRoundSummary(pre, post);
+    expect(s.liaArrived.length).toBe(2);
+    expect(s.liaBonusGranted).toBeNull();
+    expect(s.liaBonusBlocked).toBe(true);
+  });
+
+  it('finalRoundTriggered: expert is_final_round 0 → 1', () => {
+    const pre  = snap({ expert: true, is_final_round: 0 });
+    const post = snap({ current_round: 6, expert: true, is_final_round: 1 });
+    const s = computeRoundSummary(pre, post);
+    expect(s.finalRoundTriggered).toBe(true);
+  });
+
+  it('finalRoundTriggered is false in basic mode regardless of flag', () => {
+    const pre  = snap({ expert: false, is_final_round: 0 });
+    const post = snap({ current_round: 6, expert: false, is_final_round: 1 }); // shouldn't happen but defensive
+    const s = computeRoundSummary(pre, post);
+    expect(s.finalRoundTriggered).toBe(false);
+  });
+
+  it('gameEnded: active 1 → 0, toRound is null', () => {
+    const pre  = snap({ active: 1 });
+    const post = snap({ active: 0 });  // current_round unchanged on end
+    const s = computeRoundSummary(pre, post);
+    expect(s.gameEnded).toBe(true);
+    expect(s.toRound).toBeNull();
+  });
+
+  it('quiet round: no AST changes, no LIA, no flag — stayed populated, others empty', () => {
+    const pre  = snap({ players: [{ id: 1, ast_level: 60 }] });
+    const post = snap({ current_round: 6, players: [{ id: 1, ast_level: 60 }] });
+    const s = computeRoundSummary(pre, post);
+    expect(s.advanced).toEqual([]);
+    expect(s.regressed).toEqual([]);
+    expect(s.stayed.map(p => p.player_id)).toEqual([1]);
+    expect(s.liaArrived).toEqual([]);
+    expect(s.liaBonusGranted).toBeNull();
+    expect(s.liaBonusBlocked).toBe(false);
+    expect(s.finalRoundTriggered).toBe(false);
+    expect(s.gameEnded).toBe(false);
+  });
+
+  it('stayed list contains every player whose level was unchanged', () => {
+    const pre  = snap({ players: [
+      { id: 1, ast_level: 50 },
+      { id: 2, ast_level: 60 },
+      { id: 3, ast_level: 70 },
+    ]});
+    const post = snap({ current_round: 6, players: [
+      { id: 1, ast_level: 55 }, // advanced
+      { id: 2, ast_level: 60 }, // stayed
+      { id: 3, ast_level: 70 }, // stayed
+    ]});
+    const s = computeRoundSummary(pre, post);
+    expect(s.advanced.map(p => p.player_id)).toEqual([1]);
+    expect(s.stayed.map(p => p.player_id)).toEqual([2, 3]);
+    expect(s.regressed).toEqual([]);
+  });
+});
+
+describe('advanceRoundWithSummary — integration with the ring buffer', () => {
+  let db: Database;
+  beforeEach(() => { db = makeDb(); _setTestDb(db); });
+
+  it('pushes a summary onto the ring buffer after each advance', () => {
+    const pid = addPlayer(db, 17, 'Egypt');
+    setAstLevel(db, pid, 50);
+    submitCensus(db, pid, 1, 30, 5);
+    setAdvances(db, pid, 5);
+    db.exec("UPDATE game SET expert=1, current_round=1");
+
+    expect(getRoundSummaries().length).toBe(0);
+    advanceRoundWithSummary();
+    const sums = getRoundSummaries();
+    expect(sums.length).toBe(1);
+    expect(sums[0]!.fromRound).toBe(1);
+  });
+
+  it('caps the buffer at 3 — older summaries fall off', () => {
+    const pid = addPlayer(db, 17, 'Egypt');
+    setAstLevel(db, pid, 50);
+    db.exec("UPDATE game SET expert=1, current_round=1");
+    for (let r = 1; r <= 5; r++) {
+      submitCensus(db, pid, r, 30, 5);
+      advanceRoundWithSummary();
+    }
+    const sums = getRoundSummaries();
+    expect(sums.length).toBe(3);
+    // Newest is last; with 5 advances the oldest two are dropped.
+    expect(sums.map(s => s.fromRound)).toEqual([3, 4, 5]);
   });
 });
