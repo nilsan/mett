@@ -90,12 +90,11 @@ body {
 }
 .mett-offline-pill[hidden] { display: none; }
 
-/* Tiny build-version stamp pinned to the bottom-left of the viewport. A faint
-   pill background keeps it legible on the body backdrop where no card sits. */
-.version-footer {
-  position: fixed;
-  left: 0.4rem;
-  bottom: 0.3rem;
+/* Tiny build-version stamp inline in the header, immediately to the left of
+   the admin gear. Frees the bottom-left corner so the status grid can reclaim
+   the vertical space the fixed footer used to reserve. */
+.mett-version {
+  margin-left: auto;
   padding: 0.1rem 0.4rem;
   border-radius: 0.25rem;
   background: rgba(255, 255, 255, 0.05);
@@ -103,9 +102,9 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--mett-muted);
   opacity: 0.6;
-  pointer-events: none;
   user-select: none;
-  z-index: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .mett-wordmark {
@@ -130,7 +129,6 @@ body {
 }
 
 .admin-gear {
-  margin-left: auto;
   font-size: 1rem;
   color: var(--mett-muted);
   text-decoration: none;
@@ -497,8 +495,10 @@ body {
      each other (align-items: stretch), but tables INSIDE cards stay
      natural-sized (no flex-grow on tables) so rows don't float. Content
      packs at the top of each card; empty space sits below each table as
-     consistent padding, not as stretched rows. */
-  min-height: calc(100vh - 5rem);
+     consistent padding, not as stretched rows. 3.5rem accounts for the
+     header (the version stamp now lives inline there, so no bottom-fixed
+     footer to leave clearance for). */
+  min-height: calc(100vh - 3.5rem);
 }
 .status-grid > * { min-width: 0; }
 .status-grid .mett-table { width: 100%; }
@@ -539,7 +539,11 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 /* Fixed layout with explicit width (= sum of column widths) so empire column respects stated 5.5rem.
    table-layout:fixed + width:auto causes Chrome to use fill-available, ignoring max-width on cells. */
-.status-grid .census-table { table-layout: fixed; width: 16.2rem; }
+/* width = empire-cell (7.5) + mil + city + census-pop column widths.
+   Sum of the column vars at default break = 7.5 + 2.2 + 2.2 + 2.1 = 14rem
+   so the empire chip column doesn't get any leftover width and the chip
+   stays at its declared 7.5rem like every other table. */
+.status-grid .census-table { table-layout: fixed; width: calc(7.5rem + var(--col-mil) + var(--col-city) + var(--col-census-pop)); }
 .status-grid .census-table thead th:first-child { width: 7.5rem; }
 
 /* Narrow columns — widths come from --col-* on :root, overridden per breakpoint. */
@@ -651,7 +655,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--mett-accent);
+  background: var(--mett-border);
   pointer-events: none;
 }
 
@@ -668,11 +672,32 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 }
 .status-ast thead th { font-size: clamp(0.55rem, 0.85vh, 1rem); padding: clamp(0.08rem, 0.25vh, 0.22rem) 0.4rem; }
 /* Equalised across all status-grid tables so the first data row aligns
-   with the leaderboard / census / ast-order rows next to it. */
-.status-grid thead tr { height: 1.5rem; }
-.status-ast thead tr { height: 1.5rem; }
+   with the leaderboard / census / ast-order rows next to it. The mett-table
+   tr inherits a larger font-size than the ab-table tr (different parent
+   font-size cascades), so a unit-less line-height on tr would compute to
+   different pixel heights per table. line-height: 1 caps that, then the
+   th's own padding sets the actual thead height — identical across all
+   four tables. */
+.status-grid thead tr,
+.status-ast thead tr { line-height: 1; height: 1.6rem; }
+/* Inside the status grid, the AST.PROGRESS chip lives in an .ab-table
+   cell which by default has a 1 px faint-white border + a 2 px dark
+   border-right (for horizontal-scroll separation in the standalone
+   AST board view). Both treatments leave the chip looking different
+   from the other tables' chips (empire colour visible OUTSIDE the
+   inset border ring). Strip them so all five tables render chips
+   identically. */
+/* The .ab-table td rule (line ~1513) zeroes out td padding to give
+   AST.PROGRESS its tight grid look. For the chip column inside the
+   status grid we want the same padding as the leaderboard / census td
+   (the clamp formula from .status-grid .mett-table td), so chip rows
+   compute the same height — and align horizontally — at every viewport. */
+.status-ast .ab-civ-label.empire-cell {
+  border: none !important;
+  padding: clamp(0.05rem, 0.18vh, 0.18rem) 0.4rem;
+}
 .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
-.status-ast td.empire-cell { padding: clamp(0.05rem, 0.18vh, 0.18rem) 0.4rem; font-size: clamp(0.72rem, 1.2vh, 1.4rem); }
+.status-ast td.empire-cell { font-size: clamp(0.72rem, 1.2vh, 1.4rem); }
 .status-ast .ab-cell      { width: clamp(1.9rem, 2.4vw, 3rem); height: clamp(1.55rem, 3.3vh, 3.6rem); }
 .status-ast .ab-level-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
 .status-ast .ab-round-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }

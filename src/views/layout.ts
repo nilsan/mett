@@ -22,12 +22,12 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <header class="site-header container-fluid">
     <a href="/" class="mett-wordmark">me<span class="mw-bracket">[</span>tt<span class="mw-bracket">]</span></a>
     <span class="mett-tagline">MEGA EMPIRES TURN TRACKER</span>
+    <span class="mett-version" aria-hidden="true">${VERSION_STRING}</span>
     <a href="/admin" class="admin-gear" title="Admin" aria-label="Admin"><span aria-hidden="true">⚙</span></a>
   </header>
   <main class="container-fluid">
     ${body}
   </main>
-  <footer class="version-footer" aria-hidden="true">${VERSION_STRING}</footer>
   <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
   <script src="/js/toast.js"></script>
   <script src="/js/api.js"></script>
