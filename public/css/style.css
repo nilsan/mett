@@ -1739,28 +1739,33 @@ th.ab-player-col {
 .round-summary .rs-final     { color: var(--mett-warning); font-weight: 600; font-size: 0.85rem; }
 .round-summary .rs-end       { color: var(--mett-danger); font-weight: 700; font-size: 0.85rem; }
 .round-summary .rs-quiet     { color: var(--mett-muted); font-style: italic; font-size: 0.78rem; }
-.round-summary .rs-chip-group {
+/* Tight chips inside the summary so 18 empire names fit on one or two
+   lines comfortably. Level (→ N) lives as a small dark badge INSIDE
+   the chip on the right, after the empire name — keeps the chip a
+   single self-contained pill. Civ number is dropped (colour + name is
+   enough here). All chips share the same width so they line up neatly
+   when stacked across multiple rows. */
+.round-summary .rs-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-}
-.round-summary .rs-level {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--mett-muted);
-  white-space: nowrap;
-  margin-right: 0.1rem;
-}
-/* Smaller chips inside the summary so several fit comfortably on one line. */
-.round-summary .civ-badge {
-  margin: 0;
-  padding: 0.08rem 0.4rem;
+  justify-content: space-between;
+  gap: 0.3rem;
+  padding: 0.04rem 0.3rem;
   font-size: 0.78rem;
-  min-width: 5rem;
+  margin: 0;
+  /* Wide enough to fit "Carthage" or "Dravidia" + the 2-digit level
+     badge without crowding. */
+  width: 6rem;
 }
-.round-summary .civ-num-in-badge {
-  font-size: 0.62rem;
-  padding: 0 0.2rem;
+.round-summary .rs-level-badge {
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  border-radius: var(--radius-tight);
+  padding: 0 0.3rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.4;
+  flex-shrink: 0;
 }
 
 .mode-toggle-row {
@@ -1977,22 +1982,56 @@ th.ab-player-col {
    below the WQHD breakpoint (160em) so TV-display density at 2560px+
    is untouched. */
 @media (min-width: 75em) and (max-width: 159.99em) {
-  .admin-table td { height: 1.2rem; padding: 0.04rem 0.4rem; }
-  .admin-table th { padding: 0.1rem 0.4rem; }
+  /* Goal at 1080p: full admin page (header → players → round summary →
+     danger zone → nag) fits in 1080px without scrolling. The Players
+     table dominates vertical space, so shrink rows + form elements
+     aggressively here while keeping content readable. */
+  .admin-table { font-size: 0.78rem; }
+  .admin-table td { height: 1rem; padding: 0.02rem 0.4rem; }
+  .admin-table th { padding: 0.08rem 0.4rem; font-size: 0.65rem; }
   .admin-table input[type=text],
   .admin-table input[type=number],
   .admin-table select {
-    --pico-form-element-spacing-vertical: 0.04rem;
-    line-height: 1.1;
+    --pico-form-element-spacing-vertical: 0;
+    height: 1.2rem !important;
+    min-height: 0;
+    line-height: 1;
+    font-size: 0.74rem;
+    padding-top: 0;
+    padding-bottom: 0;
   }
-  .admin-table .icon-toggle { width: 1.3rem; height: 1.3rem; font-size: 0.8rem; }
+  .admin-table .icon-toggle { width: 1.15rem; height: 1.15rem; font-size: 0.72rem; }
   .admin-table .lia-star-btn { font-size: 0.85rem; padding: 0; }
-  .ast-ctrl { gap: 0.2rem; }
-  .admin-section { padding: 0.35rem 0.55rem; }
-  .submission-progress { gap: 0.5rem; }
-  .round-controls { margin-top: 0.35rem; }
-  .admin-header { margin-bottom: 0.4rem; }
-  .admin-header h2 { margin: 0; }
+  /* Empire chip in admin row — shrink to match the 1080p row height */
+  .admin-table .civ-badge { padding: 0.05rem 0.4rem; font-size: 0.74rem; }
+  .admin-table .civ-badge-with-num { padding-left: 0.15rem; gap: 0.2rem; width: 6rem; }
+  .admin-table .civ-num-in-badge { width: 0.9rem; height: 0.9rem; font-size: 0.6rem; }
+  .ast-ctrl { gap: 0.15rem; }
+  .admin-section { padding: 0.2rem 0.5rem; margin-bottom: 0.15rem; }
+  .admin-section h3 { font-size: 0.65rem; margin-bottom: 0.18rem; }
+  .submission-progress { gap: 0.4rem; margin-bottom: 0.2rem; }
+  .sub-prog-item { padding: 0.08rem 0.45rem; font-size: 0.7rem; }
+  .round-controls { margin-top: 0.15rem; gap: 0.5rem; align-items: center; }
+  .round-controls button { padding: 0.25rem 0.7rem; font-size: 0.78rem; min-height: 0; line-height: 1.2; }
+  .round-hint { font-size: 0.7rem; }
+  /* Admin page header — compact title row sitting above the round-section. */
+  .admin-page > h2 {
+    font-size: 0.95rem;
+    line-height: 1.2;
+    margin: 0 0 0.25rem;
+  }
+  .admin-page > h2 .mode-badge { font-size: 0.6rem; padding: 0.05rem 0.4rem; }
+  /* Compact danger zone + password nag at the foot. */
+  .danger-section .danger-row { gap: 0.4rem; }
+  .danger-section button { padding: 0.2rem 0.6rem; font-size: 0.74rem; min-height: 0; }
+  .default-pwd-nag { padding: 0.2rem 0.6rem; font-size: 0.7rem; margin-top: 0.15rem; }
+  /* Round-summary slimmed: drop the h3 header (the icon strip is
+     self-explanatory) and tighten line spacing. */
+  .round-summary h3 { display: none; }
+  .round-summary { padding: 0.2rem 0.5rem; }
+  .round-summary .rs-line { padding: 0.04rem 0; gap: 0.2rem; }
+  .round-summary .rs-chip { width: 5.5rem; font-size: 0.72rem; padding: 0.02rem 0.25rem; }
+  .round-summary .rs-level-badge { font-size: 0.6rem; padding: 0 0.25rem; }
 }
 .admin-table th { width: 14.28%; }
 

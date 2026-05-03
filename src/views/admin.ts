@@ -9,20 +9,12 @@ import { empireCell } from './empire.js';
 import { LIA_THRESHOLD } from '../models/ast.js';
 
 function summaryChip(p: RoundSummaryPlayer, levelSuffix = false): string {
-  const chip = empireCell(
-    {
-      civ_number: p.civ_number,
-      civ_name: p.civ_name,
-      civ_color: p.civ_color,
-      civ_text_color: p.civ_text_color,
-    },
-    'badge',
-  );
-  // Compact "→ N" — readers care about the destination level, not where
-  // each player came from. Saves horizontal space when several chips
-  // sit on one line.
-  const lvl = levelSuffix ? `<span class="rs-level">→${p.toLevel}</span>` : '';
-  return `<span class="rs-chip-group">${chip}${lvl}</span>`;
+  // Built directly (not via empireCell) so the level can live INSIDE the
+  // chip as a small dark badge after the name. Tighter than two adjacent
+  // elements, and lets the chip width match content + level together.
+  const style = `background:${p.civ_color};color:${p.civ_text_color}`;
+  const lvl = levelSuffix ? `<span class="rs-level-badge">${p.toLevel}</span>` : '';
+  return `<span class="civ-badge rs-chip" style="${style}">${p.civ_name}${lvl}</span>`;
 }
 
 /**
@@ -49,9 +41,7 @@ function roundSummaryPanelHtml(summaries: RoundSummary[]): string {
     lines.push(`<div class="rs-line rs-regressed"><span class="rs-icon">↓</span>${chips}</div>`);
   }
   if (last.stayed.length) {
-    // No level suffix for stayed — they're at the same level as before, so
-    // showing "→ N" would be redundant noise. The chip alone is enough.
-    const chips = last.stayed.map(p => summaryChip(p, false)).join(' ');
+    const chips = last.stayed.map(p => summaryChip(p, true)).join(' ');
     lines.push(`<div class="rs-line rs-stayed"><span class="rs-icon">=</span>${chips}</div>`);
   }
   if (last.liaBonusGranted) {
@@ -442,8 +432,6 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
     </div>
   </section>
 
-  ${roundSummaryPanelHtml(state.roundSummaries ?? [])}
-
   <section class="admin-section">
     <h3>Players</h3>
     <div class="table-scroll">
@@ -463,6 +451,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
     </div>
   </section>
 
+  ${roundSummaryPanelHtml(state.roundSummaries ?? [])}
 
   <section class="admin-section danger-section">
     <h3>Danger Zone</h3>
