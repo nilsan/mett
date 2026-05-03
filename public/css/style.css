@@ -66,6 +66,30 @@ body {
   padding: 0.45rem 0.75rem 0.3rem;
 }
 
+/* WebSocket offline indicator — rendered by ws-client.js when the
+   connection has been down for more than ~1.5 s (instant flicker doesn't
+   show the pill). Pinned bottom-centre so it's visible on every page,
+   above the version footer. */
+.mett-offline-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 0.5rem;
+  transform: translateX(-50%);
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-soft);
+  background: rgba(204, 51, 51, 0.92);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  user-select: none;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.35);
+}
+.mett-offline-pill[hidden] { display: none; }
+
 /* Tiny build-version stamp pinned to the bottom-left of the viewport. A faint
    pill background keeps it legible on the body backdrop where no card sits. */
 .version-footer {
@@ -658,6 +682,30 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   font-size: 0.5rem;
   font-weight: 700;
   vertical-align: middle;
+}
+
+/* AST status hints on the AST.PROGRESS row (item 11.3): surface
+   "will advance" and "will regress" so the GM and table see what's
+   about to happen at the next AST run.
+   Two complementary signals per state:
+   - A faint coloured tint behind the row (red for regress, gold for
+     advance) — the AST cells alongside the chip pick up the tint;
+     the chip itself sits on top with its own empire colour, so the
+     chip's visual rhythm with neighbouring rows stays intact.
+   - A glyph appended after the empire name inside the chip
+     (⚠ for regress, ↑ for advance), travelling with the chip
+     without changing its dimensions. */
+.status-ast tr.will-regress { background: rgba(204, 51, 51, 0.22); }
+.status-ast tr.will-regress td.empire-cell::after {
+  content: ' ⚠';
+  margin-left: 0.35rem;
+  font-weight: 700;
+}
+.status-ast tr.will-advance { background: rgba(196, 147, 63, 0.22); }
+.status-ast tr.will-advance td.empire-cell::after {
+  content: ' ↑';
+  margin-left: 0.35rem;
+  font-weight: 700;
 }
 
 /* ─── S3 phone layout — single column, normal density ────────────────────── */

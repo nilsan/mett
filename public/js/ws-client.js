@@ -12,12 +12,46 @@
   let reconnectDelay = 1000;
   const MAX_DELAY = 30000;
 
+  // Connection-state indicator. Dropped briefly during reconnect attempts
+  // (sub-second drops are silent — only show the pill once we've been
+  // disconnected long enough for the user to notice page staleness).
+  const SHOW_OFFLINE_AFTER_MS = 1500;
+  let offlineTimer = null;
+  let pillEl = null;
+
+  function ensurePill() {
+    if (pillEl) return pillEl;
+    pillEl = document.createElement('div');
+    pillEl.className = 'mett-offline-pill';
+    pillEl.setAttribute('role', 'status');
+    pillEl.setAttribute('aria-live', 'polite');
+    pillEl.textContent = '● offline — reconnecting…';
+    pillEl.hidden = true;
+    document.body.appendChild(pillEl);
+    return pillEl;
+  }
+
+  function showOffline() {
+    ensurePill().hidden = false;
+  }
+
+  function hideOffline() {
+    if (offlineTimer) { clearTimeout(offlineTimer); offlineTimer = null; }
+    if (pillEl) pillEl.hidden = true;
+  }
+
+  function scheduleOffline() {
+    if (offlineTimer) return;
+    offlineTimer = setTimeout(() => { offlineTimer = null; showOffline(); }, SHOW_OFFLINE_AFTER_MS);
+  }
+
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws`);
 
     ws.addEventListener('open', () => {
       reconnectDelay = 1000;
+      hideOffline();
       console.debug('[me[tt]] WebSocket connected');
       // Tell the server which civ page we're on so per-player broadcasts can
       // route past unrelated civ sockets. Non-civ pages (main, admin, login)
@@ -45,6 +79,7 @@
 
     ws.addEventListener('close', () => {
       console.debug(`[me[tt]] WebSocket closed — reconnecting in ${reconnectDelay}ms`);
+      scheduleOffline();
       setTimeout(connect, reconnectDelay);
       reconnectDelay = Math.min(reconnectDelay * 2, MAX_DELAY);
     });

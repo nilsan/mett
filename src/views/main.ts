@@ -42,7 +42,7 @@ function cardChips(cityCount: number, wonder = false): string {
 }
 
 export function renderMain(state: FullState): string {
-  const { game, players, census } = state;
+  const { game, players, census, astStatus } = state;
   const expert = game.expert === 1;
 
   const censusByPlayer = new Map(census.map(c => [c.player_id, c]));
@@ -171,13 +171,20 @@ export function renderMain(state: FullState): string {
   }).join('');
 
   const boardRows = sorted.map(p => {
+    const status = astStatus[p.id];
+    const willRegress = status === 'regress';
+    const willAdvance = status === 'advance';
+    const rowClass = willRegress ? 'will-regress' : willAdvance ? 'will-advance' : '';
+    const titlePrefix = willRegress
+      ? 'Will regress next round — '
+      : willAdvance ? 'Will advance next round — ' : '';
     const cells = boardLevels.map(l => {
       const here = p.ast_level === l;
       return `<td class="ab-cell ${civBandClass(p.civ_number, l, expert)}${here ? ' ab-here' : ''}${l === 0 ? ' ab-start-col' : ''}${isAgeEnd(p.civ_number, l, expert) ? ' ab-age-end' : ''}">` +
-        (here ? `<span class="ab-magnet" style="background:${p.civ_color};color:${p.civ_text_color}" title="${p.civ_name}">${l === 0 ? 'S' : l}</span>` : '') +
+        (here ? `<span class="ab-magnet" style="background:${p.civ_color};color:${p.civ_text_color}" title="${titlePrefix}${p.civ_name}">${l === 0 ? 'S' : l}</span>` : '') +
         `</td>`;
     }).join('');
-    return `<tr>
+    return `<tr${rowClass ? ` class="${rowClass}"` : ''}>
       ${empireCell(p, 'cell-ab')}
       ${cells}
     </tr>`;
