@@ -488,8 +488,8 @@ body {
 
 .status-grid {
   display: grid;
-  /* leaderboard | census | trade | AST board | AST order */
-  grid-template-columns: 2.6fr auto auto 3.0fr auto;
+  /* leaderboard | census | AST board | AST order | trade */
+  grid-template-columns: 2.6fr auto 3.0fr auto auto;
   gap: 0.5rem;
   align-items: stretch;
   min-width: 0;
@@ -534,7 +534,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .status-grid .trade-empire-col { width: 7.5rem; }
 /* 9 chips × 0.8rem + 8 gaps × 0.05rem + 2 × 0.3rem cell padding */
 .status-grid .trade-chip-col   { width: 8.2rem; }
-.status-grid .trade-card-col   { padding-bottom: 0.08rem; }
 .status-grid .trade-chips      { gap: 0.05rem; }
 .status-grid .trade-chip       { width: 0.8rem; height: 1.25rem; font-size: 0.5rem; }
 
@@ -553,11 +552,12 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .status-grid .total-vp   { width: var(--col-total-vp);   min-width: var(--col-total-vp); }
 
 /* Full-width colored empire cells — fixed width so all tables align.
-   Font scales with viewport height to match the row heights above. The
-   inner outline + outer ring give the chip definition against any card
+   Font scales with viewport height to match the row heights above.
+   A subtle inset outline gives the chip definition against any card
    background regardless of its own colour (contrast item 11.4 — empire
-   colours stay as identity, the outline disambiguates them from the
-   surrounding card). */
+   colours stay as identity). The outer ring shadow was tested but
+   removed: combined with the AST.PROGRESS row tints (regress/advance)
+   it read as a "border" and pulled focus away from the row tint itself. */
 .empire-cell {
   font-weight: 600;
   font-size: clamp(0.72rem, 1.2vh, 1.4rem);
@@ -568,7 +568,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   min-width: 7.5rem;
   max-width: 7.5rem;
   border-radius: var(--radius-tight);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 /* Leaderboard at the default breakpoint (700px–2560px): the 6-column table
@@ -662,10 +662,15 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   width: auto !important;
   font-size: 0.65rem !important;
   border-collapse: separate !important;
-  border-spacing: 0 2px !important;
+  /* Match the other status-grid tables so AST.PROGRESS data rows align
+     vertically with leaderboard / census / ast-order rows. */
+  border-spacing: 0 clamp(2px, 0.3vh, 5px) !important;
 }
 .status-ast thead th { font-size: clamp(0.55rem, 0.85vh, 1rem); padding: clamp(0.08rem, 0.25vh, 0.22rem) 0.4rem; }
-.status-ast thead tr { height: clamp(1rem, 2vh, 1.8rem); }
+/* Equalised across all status-grid tables so the first data row aligns
+   with the leaderboard / census / ast-order rows next to it. */
+.status-grid thead tr { height: 1.5rem; }
+.status-ast thead tr { height: 1.5rem; }
 .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
 .status-ast td.empire-cell { padding: clamp(0.05rem, 0.18vh, 0.18rem) 0.4rem; font-size: clamp(0.72rem, 1.2vh, 1.4rem); }
 .status-ast .ab-cell      { width: clamp(1.9rem, 2.4vw, 3rem); height: clamp(1.55rem, 3.3vh, 3.6rem); }
@@ -805,7 +810,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 @media (min-width: 192rem) {
   .status-grid {
-    grid-template-columns: 2.0fr auto auto 3.5fr auto;
+    grid-template-columns: 2.0fr auto 3.5fr auto auto;
     gap: 0.75rem;
   }
 
@@ -1561,6 +1566,9 @@ th.ab-player-col {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   word-break: break-word;
   hyphens: auto;
 }
