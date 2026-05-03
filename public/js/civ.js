@@ -57,8 +57,9 @@
       if (value < 1 || value > 55) { popInput.focus(); return; }
       popInput.value = value;
       submitBtn.disabled = true;
-      await mettPost(`/api/players/${playerId}/census`, { population: value });
+      const res = await mettPost(`/api/players/${playerId}/census`, { population: value });
       submitBtn.disabled = false;
+      if (res.ok) mettFlash(submitBtn.closest('.civ-section'));
     });
     popInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitBtn.click(); });
   }
@@ -83,8 +84,9 @@
       const value = parseInt(cityInput.value, 10);
       if (isNaN(value) || value < 0 || value > 9) return;
       cityBtn.disabled = true;
-      await mettPost(`/api/players/${playerId}/city-count`, { city_count: value });
+      const res = await mettPost(`/api/players/${playerId}/city-count`, { city_count: value });
       cityBtn.disabled = false;
+      if (res.ok) mettFlash(cityBtn.closest('.civ-section'));
     });
   }
 
@@ -106,7 +108,8 @@
       const v1 = Math.max(0, parseInt(adv1?.value ?? '0', 10) || 0);
       const v3 = Math.max(0, parseInt(adv3?.value ?? '0', 10) || 0);
       const v6 = Math.max(0, parseInt(adv6?.value ?? '0', 10) || 0);
-      await mettPost(`/api/players/${playerId}/adv`, { adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 });
+      const res = await mettPost(`/api/players/${playerId}/adv`, { adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 });
+      if (res.ok && adv1) mettFlash(adv1.closest('.civ-section'));
     }
     function submitAdvDebounced() {
       clearTimeout(advTypingTimer);
@@ -262,8 +265,14 @@
     const phaseEl = document.querySelector('.phase-hint');
     if (phaseEl) {
       phaseEl.textContent = citiesPhase
-        ? 'Post-calamity — enter city count after calamities resolve'
-        : 'Pre-trade — enter city count before buying trade cards';
+        ? 'Enter city count after calamities resolve. This is the count used for A.S.T. progression.'
+        : 'Enter city count before buying trade cards. You will re-enter after calamities resolve.';
+    }
+    const phaseBadge = document.querySelector('.phase-badge');
+    if (phaseBadge) {
+      phaseBadge.textContent = citiesPhase
+        ? 'Phase 2 of 2 — post-calamity'
+        : 'Phase 1 of 2 — pre-trade';
     }
     // Status line — sit in the same .census-form as the city input row
     const cityInput = document.getElementById('city-input');

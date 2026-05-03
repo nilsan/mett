@@ -34,4 +34,19 @@
       return { ok: false };
     }
   };
+
+  /**
+   * Briefly highlight an element to confirm a successful submit.
+   * CSS animation defined in style.css under the .mett-flash rule.
+   * Call after a successful POST so the player gets visual feedback that
+   * the value made it to the server.
+   */
+  window.mettFlash = function mettFlash(el) {
+    if (!el) return;
+    el.classList.remove('mett-flash');
+    // Force reflow so re-adding the class restarts the animation
+    // even when the element was already flashing.
+    void el.offsetWidth;
+    el.classList.add('mett-flash');
+  };
 })();

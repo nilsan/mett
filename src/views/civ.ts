@@ -210,6 +210,7 @@ export function renderCivFragment(
           <input type="number" id="pop-input" min="-54" max="55"
             value="${censusDefault}"
             placeholder="1–55"
+            inputmode="numeric"
             class="census-input">
           <button id="submit-census" class="btn-submit">Submit</button>
         </div>
@@ -220,8 +221,8 @@ export function renderCivFragment(
     </section>
 
     <section class="civ-section">
-      <h3>Cities</h3>
-      <p class="phase-hint">${game.cities_phase === 1 ? 'Post-calamity — enter city count after calamities resolve' : 'Pre-trade — enter city count before buying trade cards'}</p>
+      <h3>Cities <span class="phase-badge">${game.cities_phase === 1 ? 'Phase 2 of 2 — post-calamity' : 'Phase 1 of 2 — pre-trade'}</span></h3>
+      <p class="phase-hint">${game.cities_phase === 1 ? 'Enter city count after calamities resolve. This is the count used for A.S.T. progression.' : 'Enter city count before buying trade cards. You will re-enter after calamities resolve.'}</p>
       <div class="census-form">
         ${cityCountSubmitted
           ? `<p class="census-submitted">✓ Cities: <strong>${census!.city_count}</strong></p>`
@@ -246,19 +247,19 @@ export function renderCivFragment(
         <div class="adv-card-row">
           <span class="adv-card-label" id="adv-1vp-label">1 VP</span>
           <button class="adv-btn" data-target="adv-1vp" data-dir="-1" aria-label="Decrease 1 VP advance count">−</button>
-          <input type="number" id="adv-1vp" min="0" value="${player.adv_1vp}" class="adv-card-input" aria-labelledby="adv-1vp-label">
+          <input type="number" id="adv-1vp" min="0" value="${player.adv_1vp}" inputmode="numeric" class="adv-card-input" aria-labelledby="adv-1vp-label">
           <button class="adv-btn" data-target="adv-1vp" data-dir="1" aria-label="Increase 1 VP advance count">+</button>
         </div>
         <div class="adv-card-row">
           <span class="adv-card-label" id="adv-3vp-label">3 VP</span>
           <button class="adv-btn" data-target="adv-3vp" data-dir="-1" aria-label="Decrease 3 VP advance count">−</button>
-          <input type="number" id="adv-3vp" min="0" value="${player.adv_3vp}" class="adv-card-input" aria-labelledby="adv-3vp-label">
+          <input type="number" id="adv-3vp" min="0" value="${player.adv_3vp}" inputmode="numeric" class="adv-card-input" aria-labelledby="adv-3vp-label">
           <button class="adv-btn" data-target="adv-3vp" data-dir="1" aria-label="Increase 3 VP advance count">+</button>
         </div>
         <div class="adv-card-row">
           <span class="adv-card-label" id="adv-6vp-label">6 VP</span>
           <button class="adv-btn" data-target="adv-6vp" data-dir="-1" aria-label="Decrease 6 VP advance count">−</button>
-          <input type="number" id="adv-6vp" min="0" value="${player.adv_6vp}" class="adv-card-input" aria-labelledby="adv-6vp-label">
+          <input type="number" id="adv-6vp" min="0" value="${player.adv_6vp}" inputmode="numeric" class="adv-card-input" aria-labelledby="adv-6vp-label">
           <button class="adv-btn" data-target="adv-6vp" data-dir="1" aria-label="Increase 6 VP advance count">+</button>
         </div>
         <div class="adv-total-row">
