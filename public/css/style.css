@@ -347,21 +347,6 @@ body {
   margin-right: 0.4rem;
 }
 
-.civ-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.375rem;
-  height: 1.375rem;
-  border-radius: 50%;
-  background: var(--mett-surface2);
-  color: var(--mett-muted);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  margin-right: 0.4rem;
-  flex-shrink: 0;
-}
-
 .total-vp { font-weight: 700; text-align: right; }
 
 /* Leaderboard ties */
@@ -495,11 +480,18 @@ body {
      each other (align-items: stretch), but tables INSIDE cards stay
      natural-sized (no flex-grow on tables) so rows don't float. Content
      packs at the top of each card; empty space sits below each table as
-     consistent padding, not as stretched rows. 3.5rem accounts for the
-     header (the version stamp now lives inline there, so no bottom-fixed
-     footer to leave clearance for). */
-  min-height: calc(100vh - 3.5rem);
+     consistent padding, not as stretched rows. 4.7rem accounts for the
+     site-header (~51 px) + status-header bar (~34 px) + main padding
+     (~10 px) ≈ 95 px of chrome above/below the grid. */
+  min-height: calc(100vh - 4.7rem);
+  max-height: calc(100vh - 4.7rem);
+  overflow: hidden;
 }
+/* The status page is a TV display — it must never scroll. Anchor body
+   overflow so any residual rounding or content overshoot is clipped
+   rather than triggering a scrollbar that crops the bottom row. */
+html:has(.status-grid),
+body:has(.status-grid) { overflow: hidden; height: 100%; }
 .status-grid > * { min-width: 0; }
 .status-grid .mett-table { width: 100%; }
 
@@ -523,13 +515,19 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .status-grid .ab-legend-dot    { width: 0.5rem; height: 0.5rem; }
 /* Row height + font scale with viewport HEIGHT (not width) so the table
    uses available vertical space without overflowing — works regardless of
-   aspect ratio (1920×1200, 3440×1440 ultrawide, 4K, etc). Floor matches
-   the previous fixed sizing (1080p stays as before); ceiling caps growth
-   on very tall displays. ~4 vh × 18 rows + thead + padding stays under
-   100vh on every realistic monitor. */
-.status-grid .mett-table       { font-size: clamp(0.72rem, 1.1vh, 1.3rem); border-collapse: separate; border-spacing: 0 clamp(2px, 0.3vh, 5px); }
-.status-grid .mett-table th    { font-size: clamp(0.55rem, 0.85vh, 1rem); padding: clamp(0.08rem, 0.25vh, 0.22rem) 0.4rem; }
-.status-grid .mett-table td    { height: clamp(1.55rem, 3.3vh, 3.6rem); padding: clamp(0.05rem, 0.18vh, 0.18rem) 0.4rem; font-size: inherit; border-bottom: none; }
+   aspect ratio (1920×1200, 3440×1440 ultrawide, 4K, etc). Floors are
+   conservative so 1366×768 still fits 18 rows + chrome inside 100vh;
+   ceilings cap growth on very tall displays. */
+.status-grid .mett-table       { font-size: clamp(0.62rem, 1.1vh, 1.3rem); border-collapse: separate; border-spacing: 0 clamp(2px, 0.3vh, 5px); line-height: 1.1; }
+.status-grid .mett-table th    { font-size: clamp(0.5rem, 0.85vh, 1rem); padding: clamp(0.08rem, 0.25vh, 0.22rem) 0.4rem; }
+.status-grid .mett-table td    { height: clamp(1.1rem, 3.3vh, 3.6rem); padding: clamp(0.05rem, 0.18vh, 0.18rem) 0.4rem; font-size: inherit; border-bottom: none; }
+/* Match the .ab-table tr line-height so the chip cell content
+   (civ-num span + name) computes the same height in every status table.
+   Without this, the .mett-table tr inherits a larger pico line-height,
+   which in turn makes the civ-num span taller in census/ast.progress
+   (where civ-num is visible) than in lb/ast.order (where it's hidden). */
+.status-grid .mett-table tr,
+.status-ast tr { line-height: 1.1; }
 .status-grid .trade-table      { table-layout: fixed; width: calc(7.5rem + 8.2rem); }
 .status-grid .trade-empire-col { width: 7.5rem; }
 /* 9 chips × 0.8rem + 8 gaps × 0.05rem + 2 × 0.3rem cell padding */
@@ -593,6 +591,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   color: #fff;
   font-size: 0.55rem;
   font-weight: 700;
+  line-height: 1;
   min-width: 0.9rem;
   text-align: center;
   border-radius: var(--radius-tight);
@@ -697,8 +696,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   padding: clamp(0.05rem, 0.18vh, 0.18rem) 0.4rem;
 }
 .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
-.status-ast td.empire-cell { font-size: clamp(0.72rem, 1.2vh, 1.4rem); }
-.status-ast .ab-cell      { width: clamp(1.9rem, 2.4vw, 3rem); height: clamp(1.55rem, 3.3vh, 3.6rem); }
+.status-ast td.empire-cell { font-size: clamp(0.62rem, 1.2vh, 1.4rem); }
+.status-ast .ab-cell      { width: clamp(1.9rem, 2.4vw, 3rem); height: clamp(1.1rem, 3.3vh, 3.6rem); }
 .status-ast .ab-level-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
 .status-ast .ab-round-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
 .status-ast .ab-name      { font-size: clamp(0.55rem, 0.85vh, 1rem) !important; }
