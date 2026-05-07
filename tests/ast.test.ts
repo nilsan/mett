@@ -11,7 +11,7 @@ import type { PlayerRow, AstLevelRow } from '../src/db.js';
 function p(overrides: Partial<PlayerRow> = {}): PlayerRow {
   return {
     id: 1, civ_id: 15, name: 'Test',
-    military: 0, wonder: 0,
+    military: 0, wonder: 0, special: 0,
     ast_level: 0, adv_points: 0,
     adv_1vp: 0, adv_3vp: 0, adv_6vp: 0,
     region: 'west', rank_order: 0, late_iron_age_bonus: 0,
