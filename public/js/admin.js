@@ -283,37 +283,23 @@
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
     });
 
-    // Military toggles — update in place, no reload
-    document.querySelectorAll('.mil-toggle').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        const res = await mettPost(`/api/players/${btn.dataset.playerId}/military`, {});
-        if (res.ok) {
-          const on = btn.classList.contains('mil-on');
-          btn.classList.toggle('mil-on', !on);
-          btn.classList.toggle('mil-off', on);
-          btn.title = !on ? 'Has Military — click to remove' : 'No Military — click to grant';
-          btn.setAttribute('aria-pressed', !on ? 'true' : 'false');
-        }
-        btn.disabled = false;
+    // Military / Wonder / Special toggles — fire POST, let WS broadcast own the visual update.
+    // No local optimistic update: the mett:state handler below re-syncs all three buttons
+    // from the authoritative server state, so the click handler only needs to disable the
+    // button (feedback while in-flight) and re-enable it if the request fails.
+    for (const [cls, path] of [
+      ['.mil-toggle', 'military'],
+      ['.won-toggle', 'wonder'],
+      ['.spc-toggle', 'special'],
+    ]) {
+      document.querySelectorAll(cls).forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          const res = await mettPost(`/api/players/${btn.dataset.playerId}/${path}`, {});
+          if (!res.ok) btn.disabled = false;
+        });
       });
-    });
-
-    // Wonder toggles — update in place, no reload
-    document.querySelectorAll('.won-toggle').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        const res = await mettPost(`/api/players/${btn.dataset.playerId}/wonder`, {});
-        if (res.ok) {
-          const on = btn.classList.contains('won-on');
-          btn.classList.toggle('won-on', !on);
-          btn.classList.toggle('won-off', on);
-          btn.title = !on ? 'Has Wonder — click to remove' : 'No Wonder — click to grant';
-          btn.setAttribute('aria-pressed', !on ? 'true' : 'false');
-        }
-        btn.disabled = false;
-      });
-    });
+    }
 
     // AST controls
     document.querySelectorAll('.ast-select').forEach(sel => {
@@ -436,6 +422,29 @@
           }
         });
       }
+
+      // Update per-player mil/won/spc toggles so changes from player pages
+      // are reflected here without a full reload.
+      data.players.forEach(p => {
+        const row = document.querySelector(`tr[data-player-id="${p.id}"]`);
+        if (!row) return;
+        const toggles = [
+          { sel: '.mil-toggle', val: p.military, onTitle: 'Has Military — click to remove',    offTitle: 'No Military — click to grant' },
+          { sel: '.won-toggle', val: p.wonder,   onTitle: 'Has Wonder — click to remove',      offTitle: 'No Wonder — click to grant' },
+          { sel: '.spc-toggle', val: p.special,  onTitle: 'Has special ability — click to remove', offTitle: 'No special ability — click to grant' },
+        ];
+        for (const { sel, val, onTitle, offTitle } of toggles) {
+          const btn = row.querySelector(sel);
+          if (!btn || btn.tagName !== 'BUTTON') continue;
+          const prefix = sel.slice(1, 4); // 'mil', 'won', 'spc'
+          const on = !!val;
+          btn.classList.toggle(`${prefix}-on`, on);
+          btn.classList.toggle(`${prefix}-off`, !on);
+          btn.title = on ? onTitle : offTitle;
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          btn.disabled = false;
+        }
+      });
 
       // Update per-player LIA-star buttons. Granting the bonus to one player
       // clears it from any others, so we refresh every eligible button on

@@ -152,6 +152,14 @@
         if (!res.ok) wonBtn.disabled = false;
       });
     }
+    const spcBtn = document.getElementById('spc-toggle');
+    if (spcBtn) {
+      spcBtn.addEventListener('click', async () => {
+        spcBtn.disabled = true;
+        const res = await mettPost(`/api/players/${playerId}/special`);
+        if (!res.ok) spcBtn.disabled = false;
+      });
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -176,7 +184,7 @@
     const cityCountSubmitted = census && census.city_count != null;
 
     // Re-enable interactive buttons that were optimistically disabled.
-    for (const id of ['mil-toggle', 'won-toggle']) {
+    for (const id of ['mil-toggle', 'won-toggle', 'spc-toggle']) {
       const btn = document.getElementById(id);
       if (btn) btn.disabled = false;
     }
@@ -204,6 +212,14 @@
       wonBtn.textContent = player.wonder
         ? '★ Has Wonder — tap to remove'
         : '✕ No Wonder — tap to grant';
+    }
+    const spcBtn = document.getElementById('spc-toggle');
+    if (spcBtn) {
+      spcBtn.classList.toggle('spc-on', !!player.special);
+      spcBtn.classList.toggle('spc-off', !player.special);
+      spcBtn.textContent = player.special
+        ? '⚡ Special ability — tap to remove'
+        : '✕ No special ability — tap to grant';
     }
   }
 

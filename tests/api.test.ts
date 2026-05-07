@@ -5,7 +5,7 @@
 /**
  * API-level tests:
  *   1. Authorisation middleware — GETs are public, the player-action set
- *      (/census, /city-count, /military, /wonder, /adv) is public, every-
+ *      (/census, /city-count, /military, /wonder, /special, /adv) is public, every-
  *      thing else needs the admin cookie.
  *   2. POST /api/players/:id/rank sibling-clear + auto-resolve.
  *   3. Static civ scenario shapes (WEST/EAST/SETUP_RECOMMENDATIONS).
@@ -20,6 +20,7 @@ import { Hono } from 'hono';
 import { makeMinimalDb as makeDb, MIGRATIONS, REQ_ROWS } from './_helpers.js';
 import { _setTestDb } from '../src/services/db.js';
 import { setAdminPassword } from '../src/db.js';
+import type { Database } from 'bun:sqlite';
 import api from '../src/routes/api.js';
 import pages from '../src/routes/pages.js';
 import { WEST_SCENARIOS, EAST_SCENARIOS, SETUP_RECOMMENDATIONS } from '../src/civs.js';
@@ -92,6 +93,7 @@ describe('API authorisation middleware', () => {
     ['/api/players/1/city-count', { city_count: 3 }],
     ['/api/players/1/military',   {}],
     ['/api/players/1/wonder',     {}],
+    ['/api/players/1/special',    {}],
     ['/api/players/1/adv',        { adv_1vp: 1 }],
   ])('POST %s is public (no cookie, never 401)', async (path, body) => {
     const res = await jsonReq(app, 'POST', path, body);
@@ -254,5 +256,54 @@ describe('civ scenarios', () => {
         expect(rec.civNumbers).toContain(num);
       }
     }
+  });
+});
+
+// ─── 4. Status page: special-dim in AST order column ─────────────────────────
+
+describe('status page: special-dim rendering in AST order', () => {
+  let app: Hono;
+  let db: Database;
+
+  beforeEach(async () => {
+    db = setUpDbForGameTests();
+    _setTestDb(db);
+    setAdminPassword('PASSWORD');
+    app = makeApp();
+    await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 0, players: [
+        { civ_id: 1, name: 'Alpha', region: 'west' },
+        { civ_id: 2, name: 'Beta',  region: 'west' },
+      ]},
+      'mett_admin=PASSWORD');
+  });
+
+  async function getStatusHtml(): Promise<string> {
+    const res = await app.request('/', { headers: { 'HX-Request': 'true' } });
+    return res.text();
+  }
+
+  it('dims non-special players in AST order whenever any player holds special ability', async () => {
+    // Player 1 gets special ability; player 2 does not — dim is phase-independent
+    await jsonReq(app, 'POST', '/api/players/1/special', {});
+
+    const html = await getStatusHtml();
+    // Exactly 1 row should carry the dim class (player 2)
+    const dims = html.match(/class="[^"]*special-dim[^"]*"/g) ?? [];
+    expect(dims.length).toBe(1);
+  });
+
+  it('does not dim any players when no player has special ability', async () => {
+    // No special toggles — no one should be dimmed
+    const html = await getStatusHtml();
+    expect(html).not.toContain('special-dim');
+  });
+
+  it('does not dim any players when all players have special ability', async () => {
+    await jsonReq(app, 'POST', '/api/players/1/special', {});
+    await jsonReq(app, 'POST', '/api/players/2/special', {});
+
+    const html = await getStatusHtml();
+    expect(html).not.toContain('special-dim');
   });
 });

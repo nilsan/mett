@@ -116,6 +116,14 @@ export function toggleWonder(playerId: number): number {
   return next;
 }
 
+export function toggleSpecial(playerId: number): number {
+  const db = getDb();
+  const current = db.query<{ special: number }, [number]>('SELECT special FROM players WHERE id=?').get(playerId);
+  const next = current!.special ? 0 : 1;
+  db.query('UPDATE players SET special=? WHERE id=?').run(next, playerId);
+  return next;
+}
+
 export function setAstLevel(playerId: number, level: number): void {
   const db = getDb();
   db.query('UPDATE players SET ast_level=? WHERE id=?').run(level, playerId);

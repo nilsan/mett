@@ -304,7 +304,7 @@ body {
 
 /* Military & Wonder toggles on civ page */
 .mil-won-row { display: flex; flex-direction: column; gap: 0.5rem; }
-.mil-toggle-civ, .won-toggle-civ {
+.mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ {
   width: 100%;
   padding: 0.5rem 1rem;
   border-radius: 0.25rem;
@@ -317,6 +317,8 @@ body {
 .mil-toggle-civ.mil-off { background: var(--mett-surface2); color: var(--mett-muted); }
 .won-toggle-civ.won-on  { background: #2a2a10; border-color: #aaaa22; color: #dddd44; }
 .won-toggle-civ.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
+.spc-toggle-civ.spc-on  { background: #1a1a30; border-color: #5555cc; color: #8888ff; }
+.spc-toggle-civ.spc-off { background: var(--mett-surface2); color: var(--mett-muted); }
 
 /* Requirement label in AST table */
 .req-label { text-align: center; color: var(--mett-muted); font-size: 0.85rem; width: 2.5rem; }
@@ -1158,63 +1160,14 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   grid-column: 1 / -1;
 }
 
-@media (max-width: 43.75em) {
-  /* Container gutters */
-  main.container-fluid { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
-
-  /* Hero */
-  .civ-hero { padding: 0.35rem 0.5rem; margin-bottom: 0.2rem; }
-  .civ-hero-content { gap: 0.02rem; }
-  .civ-hero h2 { font-size: 1.0rem; gap: 0.3rem; }
-  .civ-player-name { font-size: 0.72rem; }
-  .civ-region-tag { font-size: 0.58rem; padding: 0.08rem 0.25rem; }
-
-  /* Body layout */
-  .civ-body { grid-template-columns: 1fr; gap: 0.2rem; }
-  .civ-section { padding: 0.3rem 0.4rem; }
-  .civ-section h3 { font-size: 0.68rem; margin-bottom: 0.15rem; letter-spacing: 0.04em; }
-
-  /* Census — status line very tight, input row compact */
-  .census-submitted, .census-pending { font-size: 0.7rem; margin-bottom: 0.08rem; }
-  .census-input-row, .adv-input-row { gap: 0.2rem; }
-  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.82rem; padding: 0 0 0 0.4rem; height: 1.65rem; min-height: 0; line-height: 1.65rem; box-sizing: border-box; border-radius: 0.1875rem; }
-  .btn-submit { font-size: 0.74rem; padding: 0 0.5rem; height: 1.65rem; min-height: 0; box-sizing: border-box; }
-  .move-order { font-size: 0.68rem; margin-top: 0.1rem; }
-
-  /* Advances — stacked rows, very tight */
-  .adv-cards { gap: 0.1rem; }
-  .adv-card-row { gap: 0.18rem; margin: 0; }
-  .adv-card-label { font-size: 0.66rem; }
-  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.76rem; padding: 0 0.3rem 0 0; width: 3rem; height: 1.5rem; min-height: 0; line-height: 1.5rem; text-align: right; box-sizing: border-box; border-radius: 0.1875rem; margin: 0 !important; }
-  .adv-btn { width: 1.5rem; height: 1.5rem; min-height: 0; font-size: 0.85rem; }
-  .adv-total-row { margin-top: 0.1rem; padding-top: 0.15rem; gap: 0.2rem; }
-  .adv-total-label { font-size: 0.68rem; }
-  .adv-total-value { font-size: 0.9rem; min-width: 2rem; }
-
-  /* Military */
-  .mil-toggle-civ, .won-toggle-civ { padding: 0.28rem 0.5rem; font-size: 0.78rem; }
-
-  /* AST section */
-  .ast-current { margin-bottom: 0.18rem; gap: 0.3rem; }
-  .ast-level-label { font-size: 0.75rem; }
-  .ast-level-value { font-size: 1.05rem; }
-  .ast-era { font-size: 0.7rem; }
-  .ast-next { padding: 0.28rem 0.4rem; margin-bottom: 0.2rem; }
-  .ast-next h4 { font-size: 0.7rem; margin-bottom: 0.12rem; }
-  .ast-req-text { font-size: 0.78rem; }
-  .ast-mode-note { font-size: 0.64rem; margin-top: 0.1rem; }
-  /* AST strip: 17 nodes (expert mode) must fit in a 412 CSS-px phone
-     viewport without horizontal scroll. */
-  :root { --ast-node-size: 1.3rem; --ast-node-gap: 0.0625rem; }
-  .ast-node { font-size: 0.55rem; }
-  .ast-age-label { font-size: 0.36rem; padding: 0.0625rem 0; margin-bottom: 0.0625rem; }
-}
+/* ─── Civ page base rules — must all come BEFORE any media-query overrides ── */
 
 .civ-section {
   background: var(--mett-surface);
   border: 0.0625rem solid var(--mett-border);
   border-radius: var(--radius-card);
   padding: 0.4rem 0.6rem;
+  margin: 0; /* kill Pico's default section block-spacing */
 }
 
 .civ-section h3 {
@@ -1309,7 +1262,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   cursor: pointer;
   white-space: nowrap;
 }
-
 .btn-submit:hover { filter: brightness(1.15); }
 
 .move-order {
@@ -1326,7 +1278,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   gap: 0.5rem;
   margin-bottom: 0.4rem;
 }
-
 .ast-level-label { color: var(--mett-muted); }
 .ast-level-value { font-size: 1.8rem; font-weight: 900; }
 .ast-era { color: var(--mett-muted); font-size: 0.85rem; }
@@ -1338,33 +1289,99 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   padding: 0.35rem 0.55rem;
   margin-bottom: 0.35rem;
 }
-
 .ast-next h4 { margin: 0 0 0.4rem; font-size: 0.85rem; color: var(--mett-accent); }
 .ast-req-text { margin: 0; font-weight: 600; font-size: 1rem; }
 .ast-mode-note { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--mett-muted); }
 
-.ast-warn-regress {
-  margin: 0;
-  font-weight: 700;
-  color: var(--mett-danger);
-  font-size: 1rem;
-}
-.ast-req-status {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.req-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
+.ast-warn-regress { margin: 0; font-weight: 700; color: var(--mett-danger); font-size: 1rem; }
+.ast-req-status { display: flex; flex-direction: column; gap: 0.3rem; }
+.req-row { display: flex; align-items: baseline; gap: 0.4rem; font-weight: 600; font-size: 0.95rem; }
 .req-ok { color: var(--mett-success); }
 .req-fail { color: var(--mett-danger); }
 .req-unknown { color: var(--mett-muted); }
 .req-have { font-weight: 400; font-size: 0.8rem; color: var(--mett-muted); }
+
+/* ─── Civ page responsive overrides (base rules above, breakpoints below) ── */
+
+/* Mid-range: 1366×768 and similar — compact but readable */
+@media (max-width: 87.5em) {
+  main.container-fluid { padding-bottom: 0.4rem !important; }
+  .civ-hero { padding: 0.28rem 0.65rem; margin-bottom: 0.2rem; }
+  .civ-hero h2 { font-size: 1.2rem; }
+  .civ-player-name { font-size: 0.85rem; }
+  .civ-region-tag { font-size: 0.62rem; padding: 0.1rem 0.3rem; }
+  .civ-section { padding: 0.28rem 0.5rem; }
+  .civ-section h3 { font-size: 0.74rem; margin-bottom: 0.18rem; }
+  .census-submitted, .census-pending { font-size: 0.82rem; margin-bottom: 0.2rem; }
+  .census-input, .adv-input { height: 1.75rem; min-height: 0; line-height: 1.75rem; }
+  .adv-card-input { height: 1.65rem; min-height: 0; line-height: 1.65rem; }
+  .adv-btn { width: 1.65rem; height: 1.65rem; min-height: 0; }
+  .adv-total-row { margin-top: 0.12rem; padding-top: 0.15rem; }
+  .btn-submit { height: 1.75rem; min-height: 0; }
+  .move-order { margin-top: 0.25rem; font-size: 0.8rem; }
+  .ast-current { gap: 0.25rem; margin-bottom: 0.08rem; }
+  .ast-level-value { font-size: 1.35rem; }
+  .ast-next { padding: 0.25rem 0.45rem; margin-bottom: 0.15rem; }
+  .ast-next h4 { font-size: 0.74rem; margin-bottom: 0.08rem; }
+  .ast-req-text { font-size: 0.78rem; }
+  .ast-mode-note { font-size: 0.68rem; margin-top: 0.06rem; }
+  :root { --ast-node-size: 1.5rem; --ast-node-gap: 0.09rem; }
+}
+
+/* Mobile phones ≤700px — single column, very compact */
+@media (max-width: 43.75em) {
+  main.container-fluid { padding-left: 0.25rem !important; padding-right: 0.25rem !important; padding-bottom: 0.2rem !important; padding-top: 0.4rem !important; }
+  .mett-tagline { display: none; }
+
+  /* Hero */
+  .civ-hero { padding: 0.25rem 0.45rem; margin-bottom: 0.12rem; }
+  .civ-hero-content { gap: 0.02rem; }
+  .civ-hero h2 { font-size: 0.95rem; gap: 0.25rem; }
+  .civ-player-name { font-size: 0.7rem; }
+  .civ-region-tag { font-size: 0.56rem; padding: 0.06rem 0.2rem; }
+
+  /* Body layout — single column, tight gap */
+  .civ-body { grid-template-columns: 1fr; gap: 0.12rem; }
+  .civ-section { padding: 0.22rem 0.35rem; }
+  .civ-section h3 { font-size: 0.64rem; margin-bottom: 0.1rem; letter-spacing: 0.04em; }
+
+  /* Census */
+  .census-submitted, .census-pending { font-size: 0.68rem; margin-bottom: 0.05rem; }
+  .census-input-row, .adv-input-row { gap: 0.18rem; }
+  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.8rem; padding: 0 0 0 0.35rem; height: 1.55rem; min-height: 0; line-height: 1.55rem; box-sizing: border-box; border-radius: 0.1875rem; }
+  .btn-submit { font-size: 0.72rem; padding: 0 0.45rem; height: 1.55rem; min-height: 0; box-sizing: border-box; }
+  .move-order { font-size: 0.64rem; margin-top: 0.06rem; }
+
+  /* Advances */
+  .adv-cards { gap: 0.06rem; }
+  .adv-card-row { gap: 0.15rem; margin: 0; }
+  .adv-card-label { font-size: 0.62rem; }
+  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.74rem; padding: 0 0.25rem 0 0; width: 2.8rem; height: 1.4rem; min-height: 0; line-height: 1.4rem; text-align: right; box-sizing: border-box; border-radius: 0.1875rem; margin: 0 !important; }
+  .adv-btn { width: 1.4rem; height: 1.4rem; min-height: 0; font-size: 0.78rem; }
+  .adv-total-row { margin-top: 0.06rem; padding-top: 0.08rem; gap: 0.18rem; }
+  .adv-total-label { font-size: 0.64rem; }
+  .adv-total-value { font-size: 0.85rem; min-width: 1.8rem; }
+
+  /* Military, Wonder & Special — 3-column row */
+  .mil-won-row { flex-direction: row; gap: 0.2rem; }
+  .mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ { flex: 1; min-width: 0; padding: 0.2rem 0.2rem; font-size: 0.68rem; }
+
+  /* AST section */
+  .ast-current { margin-bottom: 0.1rem; gap: 0.2rem; }
+  .ast-level-label { font-size: 0.7rem; }
+  .ast-level-value { font-size: 0.95rem; }
+  .ast-era { font-size: 0.66rem; }
+  .ast-next { padding: 0.18rem 0.3rem; margin-bottom: 0.12rem; }
+  .ast-next h4 { font-size: 0.66rem; margin-bottom: 0.08rem; }
+  .ast-req-text { font-size: 0.72rem; }
+  .ast-mode-note { font-size: 0.6rem; margin-top: 0.06rem; }
+  /* AST strip: 17 nodes (expert) must fit ≈412px without h-scroll */
+  :root { --ast-node-size: 1.3rem; --ast-node-gap: 0.0625rem; }
+  .ast-node { font-size: 0.55rem; }
+  .ast-age-label { font-size: 0.36rem; padding: 0.0625rem 0; margin-bottom: 0.0625rem; }
+}
+
+/* Rules with no responsive override — fine after the breakpoints */
 .ast-next.req-all-ok { border-color: var(--mett-success); }
 .ast-next.req-not-met { border-color: var(--mett-danger); }
 
@@ -2083,7 +2100,7 @@ th.ab-player-col {
 }
 
 .mil-won-cell { display: flex; flex-direction: row; gap: 0.25rem; align-items: center; }
-.mil-toggle, .won-toggle {
+.mil-toggle, .won-toggle, .spc-toggle {
   border: 0.0625rem solid var(--mett-border);
   border-radius: 0.1875rem;
   padding: 0.12rem 0.35rem;
@@ -2108,6 +2125,11 @@ th.ab-player-col {
 .mil-toggle.mil-off { background: var(--mett-surface2); color: var(--mett-muted); }
 .won-toggle.won-on  { background: #2a2a10; border-color: #aaaa22; color: #dddd44; }
 .won-toggle.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
+.spc-toggle.spc-on  { background: #1a1a30; border-color: #5555cc; color: #8888ff; }
+.spc-toggle.spc-off { background: var(--mett-surface2); color: var(--mett-muted); }
+
+/* Special-ability dimming: non-holders in the AST order column (active whenever any player holds the ability) */
+.ast-order-table tr.special-dim td { opacity: 0.15; }
 
 .ast-ctrl {
   display: flex;

@@ -31,6 +31,7 @@ export const MIGRATIONS: readonly string[] = [
   'ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE game ADD COLUMN admin_password TEXT',
   'ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE players ADD COLUMN special INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE ast_levels ADD COLUMN basic_req_json TEXT',
   'ALTER TABLE ast_levels ADD COLUMN expert_req_json TEXT',
 ];

@@ -10,6 +10,7 @@ import { renderCiv, renderCivFragment } from '../views/civ.js';
 import { renderMain } from '../views/main.js';
 import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, setAdminPassword, verifyAdminPassword, isUsingDefaultPassword } from '../db.js';
 import { CIVS } from '../civs.js';
+import pkg from '../../package.json' with { type: 'json' };
 
 const COOKIE_NAME = 'mett_admin';
 
@@ -33,7 +34,7 @@ pages.get('/', (c) => {
   const state = getFullState();
   const isFragment = !!c.req.header('HX-Request');
   if (isFragment) return c.html(renderMain(state));
-  const html = layout('Mega Empires Turn Tracker', renderMain(state) + '\n<script src="/js/main.js"></script>', 'main');
+  const html = layout('Mega Empires Turn Tracker', renderMain(state) + `\n<script src="/js/main.js?v=${pkg.version}"></script>`, 'main');
   return c.html(html);
 });
 

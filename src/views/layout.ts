@@ -3,6 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import { VERSION_STRING } from '../version.js';
+import pkg from '../../package.json' with { type: 'json' };
+
+const V = `?v=${pkg.version}`;
 
 export function layout(title: string, body: string, activeSlug?: string): string {
   return /* html */`<!DOCTYPE html>
@@ -16,7 +19,7 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <meta property="og:description" content="Real-time census, leaderboard and A.S.T. tracker for Mega Empires board game sessions.">
   <meta property="og:site_name" content="me[tt]">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css${V}">
 </head>
 <body>
   <header class="site-header container-fluid">
@@ -29,9 +32,9 @@ export function layout(title: string, body: string, activeSlug?: string): string
     ${body}
   </main>
   <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
-  <script src="/js/toast.js"></script>
-  <script src="/js/api.js"></script>
-  <script src="/js/ws-client.js"></script>
+  <script src="/js/toast.js${V}"></script>
+  <script src="/js/api.js${V}"></script>
+  <script src="/js/ws-client.js${V}"></script>
 </body>
 </html>`;
 }

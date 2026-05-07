@@ -15,7 +15,7 @@ export const DB_PATH = process.env.DATABASE_PATH ?? join(import.meta.dir, '..', 
 /** Canonical PlayerRow shape — joins civs to expose civ_number/name/slug/colors alongside the player row. */
 export const PLAYER_SELECT = `
   SELECT
-    p.id, p.civ_id, p.name, p.military, p.wonder, p.ast_level, p.adv_points,
+    p.id, p.civ_id, p.name, p.military, p.wonder, p.special, p.ast_level, p.adv_points,
     p.adv_1vp, p.adv_3vp, p.adv_6vp, p.region, p.rank_order, p.late_iron_age_bonus,
     c.number AS civ_number, c.name AS civ_name, c.slug AS civ_slug,
     c.color AS civ_color, c.text_color AS civ_text_color
@@ -94,6 +94,7 @@ export function getDb(): Database {
   migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE game ADD COLUMN admin_password TEXT');
   migrate('ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0');
+  migrate('ALTER TABLE players ADD COLUMN special INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE ast_levels ADD COLUMN basic_req_json TEXT');
   migrate('ALTER TABLE ast_levels ADD COLUMN expert_req_json TEXT');
 

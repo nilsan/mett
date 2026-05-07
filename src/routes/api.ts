@@ -13,7 +13,7 @@ import { AST_LEVELS, LIA_THRESHOLD, MAX_POPULATION, MAX_CITIES } from '../models
 const api = new Hono();
 
 // Player-facing POST endpoints — no auth required (players submit from their own civ page)
-const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/adv']);
+const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv']);
 
 // Protect all mutating API endpoints — read-only GETs and player actions are public
 api.use('*', async (c, next) => {
@@ -153,6 +153,13 @@ api.post('/players/:id/wonder', (c) => {
   const next = db.toggleWonder(playerId);
   broadcastState(playerId);
   return c.json({ ok: true, wonder: next });
+});
+
+api.post('/players/:id/special', (c) => {
+  const playerId = Number(c.req.param('id'));
+  const next = db.toggleSpecial(playerId);
+  broadcastState(playerId);
+  return c.json({ ok: true, special: next });
 });
 
 api.post('/players/:id/ast', async (c) => {

@@ -6,6 +6,8 @@ import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
 import { sortCensusOrder } from './main.js';
 import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
+import pkg from '../../package.json' with { type: 'json' };
+const V = `?v=${pkg.version}`;
 import { getAdvanceRequirement, advancesOfTier, type AstRequirement } from '../models/ast.js';
 
 
@@ -270,13 +272,16 @@ export function renderCivFragment(
     </section>
 
     <section class="civ-section">
-      <h3>Military &amp; Wonder</h3>
+      <h3>Military, Wonder &amp; Special</h3>
       <div class="mil-won-row">
         <button id="mil-toggle" class="mil-toggle-civ ${player.military ? 'mil-on' : 'mil-off'}">
           ${player.military ? '⚔ Has Military — tap to remove' : '✕ No Military — tap to grant'}
         </button>
         <button id="won-toggle" class="won-toggle-civ ${player.wonder ? 'won-on' : 'won-off'}">
           ${player.wonder ? '★ Has Wonder — tap to remove' : '✕ No Wonder — tap to grant'}
+        </button>
+        <button id="spc-toggle" class="spc-toggle-civ ${player.special ? 'spc-on' : 'spc-off'}">
+          ${player.special ? '⚡ Special ability — tap to remove' : '✕ No special ability — tap to grant'}
         </button>
       </div>
     </section>
@@ -342,7 +347,7 @@ export function renderCiv(
   const player = state.players.find(p => p.civ_slug === slug)!;
   return `<script>window.PLAYER_ID = ${player.id};</script>
 ${fragment}
-<script src="/js/civ.js"></script>
+<script src="/js/civ.js${V}"></script>
 `;
 }
 

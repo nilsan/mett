@@ -6,6 +6,8 @@ import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import type { CivRefRow, RoundSummary, RoundSummaryPlayer } from '../db.js';
 import { playerTotalVp, compareScores, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
 import { empireCell } from './empire.js';
+import pkg from '../../package.json' with { type: 'json' };
+const V = `?v=${pkg.version}`;
 import { LIA_THRESHOLD } from '../models/ast.js';
 
 function summaryChip(p: RoundSummaryPlayer, levelSuffix = false): string {
@@ -190,7 +192,7 @@ function renderSetup(allCivs: CivRefRow[], query = '', defaultPassword = false):
   ${defaultPasswordNag(defaultPassword)}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
-<script src="/js/admin.js"></script>
+<script src="/js/admin.js${V}"></script>
 `;
 }
 
@@ -296,7 +298,7 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
   ${defaultPasswordNag(defaultPassword)}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
-<script src="/js/admin.js"></script>
+<script src="/js/admin.js${V}"></script>
 `;
 }
 
@@ -350,7 +352,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           <span class="${c?.city_count != null ? 'census-submitted' : 'census-pending'} status-icon-fixed" aria-hidden="true">${c?.city_count != null ? '✓' : '?'}</span>
         </div>
       </td>
-      <td data-label="Mil / Won">
+      <td data-label="Mil / Won / Spc">
         <div class="mil-won-cell">
           <button class="mil-toggle icon-toggle ${p.military ? 'mil-on' : 'mil-off'}" data-player-id="${p.id}"
             aria-label="${p.military ? `Remove Military from ${p.name}` : `Grant Military to ${p.name}`}"
@@ -360,6 +362,10 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
             aria-label="${p.wonder ? `Remove Wonder from ${p.name}` : `Grant Wonder to ${p.name}`}"
             aria-pressed="${p.wonder ? 'true' : 'false'}"
             title="${p.wonder ? 'Has Wonder — click to remove' : 'No Wonder — click to grant'}"><span aria-hidden="true">★</span></button>
+          <button class="spc-toggle icon-toggle ${p.special ? 'spc-on' : 'spc-off'}" data-player-id="${p.id}"
+            aria-label="${p.special ? `Remove special ability from ${p.name}` : `Grant special ability to ${p.name}`}"
+            aria-pressed="${p.special ? 'true' : 'false'}"
+            title="${p.special ? 'Has special ability — click to remove' : 'No special ability — click to grant'}"><span aria-hidden="true">⚡</span></button>
         </div>
       </td>
       <td data-label="Adv VP" class="adv-pts-cell">${p.adv_points}</td>
@@ -467,6 +473,6 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
 <script>
   window.CURRENT_ROUND = ${game.current_round};
 </script>
-<script src="/js/admin.js"></script>
+<script src="/js/admin.js${V}"></script>
 `;
 }

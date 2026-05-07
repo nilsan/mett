@@ -131,9 +131,12 @@ export function renderMain(state: FullState): string {
   const astOrderSorted = [...pwc].sort((a, b) =>
     b.ast_level !== a.ast_level ? b.ast_level - a.ast_level : a.civ_number - b.civ_number
   );
+  const anySpecial = astOrderSorted.some(p => p.special);
   const astOrderRows = astOrderSorted.map((p, i) => {
     const groupStart = i > 0 && astOrderSorted[i - 1]!.ast_level !== p.ast_level;
-    return `<tr${groupStart ? ' class="ast-order-group-start"' : ''}>${empireCell(p)}</tr>`;
+    const dim = anySpecial && !p.special;
+    const classes = [groupStart ? 'ast-order-group-start' : '', dim ? 'special-dim' : ''].filter(Boolean).join(' ');
+    return `<tr${classes ? ` class="${classes}"` : ''}>${empireCell(p)}</tr>`;
   }).join('');
 
   // ── AST board ───────────────────────────────────────────────────────────

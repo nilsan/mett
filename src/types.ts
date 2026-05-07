@@ -35,6 +35,7 @@ export interface PlayerRow {
   name: string;
   military: number;
   wonder: number;
+  special: number;
   ast_level: number;
   adv_points: number;
   adv_1vp: number;
