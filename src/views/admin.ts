@@ -447,7 +447,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           <th>Player Name</th>
           <th>Census</th>
           <th title="Cities on board">Cities</th>
-          <th>Mil / Won</th>
+          <th>Mil / Won / Spc</th>
           <th>Adv VP</th>
           <th>A.S.T. Position</th>
           <th title="Late Iron Age bonus (5 VP) — first to reach LIA alone">★</th>
