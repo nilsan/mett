@@ -205,7 +205,7 @@ export function renderMain(state: FullState): string {
     : !allCitiesSubmitted   ? 2   // post-calamity city entry
     :                         3;  // all cities in — AST + advances
 
-  const phases = ['Census', 'Trade', 'Cities', 'AST'];
+  const phases = ['Census', 'Trade', 'Calamities', 'AST'];
   const phaseSteps = phases.map((name, i) => {
     const cls = i < phaseIndex ? 'phase-done' : i === phaseIndex ? 'phase-active' : 'phase-future';
     return `<li class="phase-step ${cls}">${name}</li>`;
@@ -215,7 +215,7 @@ export function renderMain(state: FullState): string {
 <div id="main-content" hx-get="/" hx-trigger="mett:state from:window" hx-swap="outerHTML">
 <div class="mett-header status-header">
   <div class="phase-strip">
-    <span class="phase-info">${statusLabel}${game.active ? `<span class="mode-badge">${expert ? 'Expert' : 'Basic'}</span>` : ''}</span>
+    <span class="phase-info">${statusLabel}</span>
     ${game.active ? `<ol class="phase-steps" aria-label="Game phase">${phaseSteps}</ol>` : ''}
   </div>
 </div>

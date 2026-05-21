@@ -7,7 +7,7 @@ import pkg from '../../package.json' with { type: 'json' };
 
 const V = `?v=${pkg.version}`;
 
-export function layout(title: string, body: string, activeSlug?: string): string {
+export function layout(title: string, body: string, activeSlug?: string, headerBadge = ''): string {
   return /* html */`<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -25,6 +25,7 @@ export function layout(title: string, body: string, activeSlug?: string): string
   <header class="site-header container-fluid">
     <a href="/" class="mett-wordmark">me<span class="mw-bracket">[</span>tt<span class="mw-bracket">]</span></a>
     <span class="mett-tagline">MEGA EMPIRES TURN TRACKER</span>
+    ${headerBadge}
     <span class="mett-version" aria-hidden="true">${VERSION_STRING}</span>
     <a href="/admin" class="admin-gear" title="Admin" aria-label="Admin"><span aria-hidden="true">⚙</span></a>
   </header>

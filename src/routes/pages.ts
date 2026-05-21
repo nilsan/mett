@@ -34,7 +34,9 @@ pages.get('/', (c) => {
   const state = getFullState();
   const isFragment = !!c.req.header('HX-Request');
   if (isFragment) return c.html(renderMain(state));
-  const html = layout('Mega Empires Turn Tracker', renderMain(state) + `\n<script src="/js/main.js?v=${pkg.version}"></script>`, 'main');
+  const { game } = state;
+  const modeBadge = game.active ? `<span class="mode-badge">${game.expert ? 'Expert' : 'Basic'}</span>` : '';
+  const html = layout('Mega Empires Turn Tracker', renderMain(state) + `\n<script src="/js/main.js?v=${pkg.version}"></script>`, 'main', modeBadge);
   return c.html(html);
 });
 
