@@ -162,6 +162,68 @@ body {
   align-items: center;
 }
 
+/* ─── Phase strip ─────────────────────────────────────────────────────────── */
+
+.phase-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.phase-info {
+  color: var(--mett-muted);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.phase-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.phase-step {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  color: var(--mett-muted);
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+
+.phase-step.phase-done {
+  opacity: 0.4;
+}
+
+.phase-step.phase-active {
+  opacity: 1;
+  color: #fff;
+  background: var(--mett-accent);
+  border-radius: 0.25rem;
+}
+
+.phase-step.phase-future {
+  opacity: 0.3;
+}
+
+.phase-sep {
+  list-style: none;
+  font-size: 0.65rem;
+  color: var(--mett-muted);
+  opacity: 0.3;
+  padding: 0 0.1rem;
+  user-select: none;
+}
+
 /* ─── Badges ──────────────────────────────────────────────────────────────── */
 
 .mode-badge,
@@ -497,9 +559,10 @@ body:has(.status-grid) { overflow: hidden; height: 100%; }
 .status-grid > * { min-width: 0; }
 .status-grid .mett-table { width: 100%; }
 
-/* Compact game status bar on s3 */
+/* Compact phase strip on status page */
 .status-header { margin: 0 0 0.2rem; }
-.status-header .game-status { font-size: 0.75rem; }
+.status-header .phase-info { font-size: 0.7rem; }
+.status-header .phase-step { font-size: 0.65rem; padding: 0.15rem 0.45rem; }
 
 /* Trim Pico's vertical padding on the home page so 18 empires + the AST
    legend fit a 1080p viewport without scrolling. Other pages keep Pico's
@@ -1788,33 +1851,12 @@ th.ab-player-col {
 .round-summary .rs-final     { color: var(--mett-warning); font-weight: 600; font-size: 0.85rem; }
 .round-summary .rs-end       { color: var(--mett-danger); font-weight: 700; font-size: 0.85rem; }
 .round-summary .rs-quiet     { color: var(--mett-muted); font-style: italic; font-size: 0.78rem; }
-/* Tight chips inside the summary so 18 empire names fit on one or two
-   lines comfortably. Level (→ N) lives as a small dark badge INSIDE
-   the chip on the right, after the empire name — keeps the chip a
-   single self-contained pill. Civ number is dropped (colour + name is
-   enough here). All chips share the same width so they line up neatly
-   when stacked across multiple rows. */
 .round-summary .rs-chip {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.3rem;
-  padding: 0.04rem 0.3rem;
+  padding: 0.04rem 0.4rem;
   font-size: 0.78rem;
   margin: 0;
-  /* Wide enough to fit "Carthage" or "Dravidia" + the 2-digit level
-     badge without crowding. */
-  width: 6rem;
-}
-.round-summary .rs-level-badge {
-  background: rgba(0,0,0,0.3);
-  color: #fff;
-  border-radius: var(--radius-tight);
-  padding: 0 0.3rem;
-  font-size: 0.66rem;
-  font-weight: 700;
-  line-height: 1.4;
-  flex-shrink: 0;
 }
 
 .mode-toggle-row {
@@ -2079,8 +2121,7 @@ th.ab-player-col {
   .round-summary h3 { display: none; }
   .round-summary { padding: 0.2rem 0.5rem; }
   .round-summary .rs-line { padding: 0.04rem 0; gap: 0.2rem; }
-  .round-summary .rs-chip { width: 5.5rem; font-size: 0.72rem; padding: 0.02rem 0.25rem; }
-  .round-summary .rs-level-badge { font-size: 0.6rem; padding: 0 0.25rem; }
+  .round-summary .rs-chip { font-size: 0.72rem; padding: 0.02rem 0.3rem; }
 }
 .admin-table th { width: 14.28%; }
 

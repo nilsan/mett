@@ -35,15 +35,15 @@ function roundSummaryPanelHtml(summaries: RoundSummary[]): string {
   const lines: string[] = [];
 
   if (last.advanced.length) {
-    const chips = last.advanced.map(p => summaryChip(p, true)).join(' ');
+    const chips = last.advanced.map(p => summaryChip(p)).join(' ');
     lines.push(`<div class="rs-line rs-advanced"><span class="rs-icon">↑</span>${chips}</div>`);
   }
   if (last.regressed.length) {
-    const chips = last.regressed.map(p => summaryChip(p, true)).join(' ');
+    const chips = last.regressed.map(p => summaryChip(p)).join(' ');
     lines.push(`<div class="rs-line rs-regressed"><span class="rs-icon">↓</span>${chips}</div>`);
   }
   if (last.stayed.length) {
-    const chips = last.stayed.map(p => summaryChip(p, true)).join(' ');
+    const chips = last.stayed.map(p => summaryChip(p)).join(' ');
     lines.push(`<div class="rs-line rs-stayed"><span class="rs-icon">=</span>${chips}</div>`);
   }
   if (last.liaBonusGranted) {

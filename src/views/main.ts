@@ -195,13 +195,28 @@ export function renderMain(state: FullState): string {
 
   const statusLabel = game.active ? `Round ${game.current_round}` : players.length > 0 ? 'Game over' : 'No active game';
 
+  // Derive the active phase index (0-3) from game state flags.
+  // Census auto-reveals when the last player submits, so there is no
+  // separate "waiting for reveal" state visible on the status page.
+  // 0=Census  1=Trade  2=Cities  3=AST & Advances
+  const phaseIndex = !game.active ? -1
+    : !revealed             ? 0   // census submission in progress
+    : !citiesPhase          ? 1   // trading + calamity
+    : !allCitiesSubmitted   ? 2   // post-calamity city entry
+    :                         3;  // all cities in — AST + advances
+
+  const phases = ['Census', 'Trade', 'Cities', 'AST'];
+  const phaseSteps = phases.map((name, i) => {
+    const cls = i < phaseIndex ? 'phase-done' : i === phaseIndex ? 'phase-active' : 'phase-future';
+    return `<li class="phase-step ${cls}">${name}</li>`;
+  }).join('<li class="phase-sep" aria-hidden="true">›</li>');
+
   return /* html */`
 <div id="main-content" hx-get="/" hx-trigger="mett:state from:window" hx-swap="outerHTML">
 <div class="mett-header status-header">
-  <div class="game-status">
-    ${statusLabel}
-    ${game.active ? `<span class="mode-badge">${expert ? 'Expert' : 'Basic'}</span>` : ''}
-    ${game.active && revealed ? '<span class="revealed-badge">Census Revealed</span>' : ''}
+  <div class="phase-strip">
+    <span class="phase-info">${statusLabel}${game.active ? `<span class="mode-badge">${expert ? 'Expert' : 'Basic'}</span>` : ''}</span>
+    ${game.active ? `<ol class="phase-steps" aria-label="Game phase">${phaseSteps}</ol>` : ''}
   </div>
 </div>
 
