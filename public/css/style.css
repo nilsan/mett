@@ -535,27 +535,34 @@ body {
 
 .status-grid {
   display: grid;
-  /* leaderboard | census | AST board | AST order | trade */
-  grid-template-columns: 2.6fr auto 3.0fr auto auto;
   gap: 0.5rem;
   align-items: stretch;
   min-width: 0;
-  /* Fill the viewport vertically on desktop sizes — cards stretch to match
-     each other (align-items: stretch), but tables INSIDE cards stay
-     natural-sized (no flex-grow on tables) so rows don't float. Content
-     packs at the top of each card; empty space sits below each table as
-     consistent padding, not as stretched rows. 4.7rem accounts for the
-     site-header (~51 px) + status-header bar (~34 px) + main padding
-     (~10 px) ≈ 95 px of chrome above/below the grid. */
-  min-height: calc(100vh - 4.7rem);
-  max-height: calc(100vh - 4.7rem);
-  overflow: hidden;
 }
-/* The status page is a TV display — it must never scroll. Anchor body
-   overflow so any residual rounding or content overshoot is clipped
-   rather than triggering a scrollbar that crops the bottom row. */
-html:has(.status-grid),
-body:has(.status-grid) { overflow: hidden; height: 100%; }
+
+/* Mobile: single-column, natural height, scrollable */
+@media (max-width: 43.75em) {
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Desktop/TV: 5-column, viewport-locked, no scroll */
+@media (min-width: 43.76em) {
+  .status-grid {
+    /* leaderboard | census | AST board | AST order | trade */
+    grid-template-columns: 2.6fr auto 3.0fr auto auto;
+    /* Fill the viewport vertically — cards stretch to match each other
+       (align-items: stretch), but tables stay natural-sized. 4.7rem
+       accounts for site-header + status-header + main padding ≈ 95px. */
+    min-height: calc(100vh - 4.7rem);
+    max-height: calc(100vh - 4.7rem);
+    overflow: hidden;
+  }
+  /* Anchor body so residual rounding doesn't trigger a scrollbar. */
+  html:has(.status-grid),
+  body:has(.status-grid) { overflow: hidden; height: 100%; }
+}
 .status-grid > * { min-width: 0; }
 .status-grid .mett-table { width: 100%; }
 
