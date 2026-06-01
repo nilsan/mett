@@ -348,7 +348,7 @@
     const lb = computeLbInfo(player, state);
     const finalRank = (game.active === 0 && game.started_at) ? lb.pos : null;
     const lbValue = (lb.tied && !lb.resolved ? '=' : '') + lb.pos + ordinalSuffix(lb.pos);
-    const totalVp = playerTotalVp(player, cityCount);
+    const totalVp = playerTotalVp(player, game.active ? null : cityCount);
 
     const lia = player.late_iron_age_bonus
       ? `<div class="ast-current lia-bonus-row"><span class="ast-level-label">LIA bonus:</span> <span class="lia-bonus-chip">★ +5 VP at game end</span></div>`

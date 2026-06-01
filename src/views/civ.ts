@@ -23,12 +23,12 @@ function getCivAgeBands(civNumber: number, expert: boolean) {
   const liaSpan   = expert ? 2 : 1;
   return [
     { label: '',          span: 1,        cls: 'age-start'   },
-    { label: 'Stone',     span: stoneSpan, cls: 'age-stone'   },
-    { label: 'E. Bronze', span: ebaSpan,  cls: 'age-ebronze' },
-    { label: 'M. Bronze', span: mbaSpan,  cls: 'age-mbronze' },
-    { label: 'L. Bronze', span: 3,        cls: 'age-lbronze' },
-    { label: 'E. Iron',   span: 1,        cls: 'age-eiron'   },
-    { label: 'L. Iron',   span: liaSpan,  cls: 'age-liron'   },
+    { label: 'Stone Age',         span: stoneSpan, cls: 'age-stone'   },
+    { label: 'Early Bronze Age',  span: ebaSpan,   cls: 'age-ebronze' },
+    { label: 'Middle Bronze Age', span: mbaSpan,   cls: 'age-mbronze' },
+    { label: 'Late Bronze Age',   span: 3,         cls: 'age-lbronze' },
+    { label: 'Early Iron Age',    span: 1,         cls: 'age-eiron'   },
+    { label: 'Late Iron Age',     span: liaSpan,   cls: 'age-liron'   },
   ];
 }
 
@@ -295,7 +295,7 @@ export function renderCivFragment(
       </div>
       <div class="ast-current">
         <span class="ast-level-label">Total VP:</span>
-        <span class="ast-level-value">${playerTotalVp(player, census?.city_count)}</span>
+        <span class="ast-level-value">${playerTotalVp(player, game.active ? null : census?.city_count)}</span>
       </div>
       ${player.late_iron_age_bonus ? `<div class="ast-current lia-bonus-row"><span class="ast-level-label">LIA bonus:</span> <span class="lia-bonus-chip">★ +5 VP at game end</span></div>` : ''}
       ${nextLevel ? (() => {

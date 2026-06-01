@@ -103,11 +103,14 @@ export function renderMain(state: FullState): string {
   }
 
   // ── Leaderboard ─────────────────────────────────────────────────────────
+  // City VP (1 per city) is only scored at end of game — during play it is excluded.
+  const lbCityVp = (p: PlayerWithCensus) => game.active ? 0 : (p.city_count ?? 0);
+
   const leaderboard = [...pwc].sort((a, b) =>
-    compareScores(makeScoreEntry(a, a.city_count ?? 0), makeScoreEntry(b, b.city_count ?? 0))
+    compareScores(makeScoreEntry(a, lbCityVp(a)), makeScoreEntry(b, lbCityVp(b)))
   );
 
-  const lbScores = leaderboard.map(p => ({ ...makeScoreEntry(p, p.city_count ?? 0), rank_order: p.rank_order }));
+  const lbScores = leaderboard.map(p => ({ ...makeScoreEntry(p, lbCityVp(p)), rank_order: p.rank_order }));
   const lbMeta = computeTieGroupMeta(lbScores);
 
   const lbRows = leaderboard.map((p, i) => {
@@ -123,7 +126,7 @@ export function renderMain(state: FullState): string {
       <td class="player-name-col">${p.name}</td>
       <td class="adv-pts">${p.adv_points}</td>
       <td class="ast-pts">${p.ast_level}</td>
-      <td class="total-vp">${playerTotalVp(p, p.city_count)}${p.late_iron_age_bonus ? ' <span class="lia-bonus-chip" title="Late Iron Age bonus: +5 VP">★</span>' : ''}</td>
+      <td class="total-vp">${playerTotalVp(p, lbCityVp(p))}${p.late_iron_age_bonus ? ' <span class="lia-bonus-chip" title="Late Iron Age bonus: +5 VP">★</span>' : ''}</td>
     </tr>`;
   }).join('');
 

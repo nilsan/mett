@@ -118,16 +118,16 @@ export interface AgeBand {
 export function getAgeBands(expert: boolean): AgeBand[] {
   return [
     { name: 'Start',             shortName: '',          expertReq: '',                                basicReq: '',                                levels: [0],             cls: 'age-start'   },
-    { name: 'Stone Age',         shortName: 'Stone',     expertReq: 'No requirements',                 basicReq: 'No requirements',                 levels: [5, 10, 15, 20], cls: 'age-stone'   },
-    { name: 'Early Bronze Age',  shortName: 'E. Bronze', expertReq: '3 Cities',                        basicReq: '2 Cities',                        levels: [25, 30, 35],    cls: 'age-ebronze' },
-    { name: 'Middle Bronze Age', shortName: 'M. Bronze', expertReq: '3 Cities + 5 VP in Advances',     basicReq: '3 Cities + 3 Advances',           levels: [40, 45, 50],    cls: 'age-mbronze' },
-    { name: 'Late Bronze Age',   shortName: 'L. Bronze', expertReq: '4 Cities + 12 Advances',          basicReq: '3 Cities + 3 Adv (≥100 VP each)', levels: [55, 60, 65],    cls: 'age-lbronze' },
+    { name: 'Stone Age',         shortName: 'S.A.',      expertReq: 'No requirements',                 basicReq: 'No requirements',                 levels: [5, 10, 15, 20], cls: 'age-stone'   },
+    { name: 'Early Bronze Age',  shortName: 'E.B.',      expertReq: '3 Cities',                        basicReq: '2 Cities',                        levels: [25, 30, 35],    cls: 'age-ebronze' },
+    { name: 'Middle Bronze Age', shortName: 'M.B.',      expertReq: '3 Cities + 5 VP in Advances',     basicReq: '3 Cities + 3 Advances',           levels: [40, 45, 50],    cls: 'age-mbronze' },
+    { name: 'Late Bronze Age',   shortName: 'L.B.',      expertReq: '4 Cities + 12 Advances',          basicReq: '3 Cities + 3 Adv (≥100 VP each)', levels: [55, 60, 65],    cls: 'age-lbronze' },
     ...(expert ? [
       { name: 'Early Iron Age',  shortName: 'E.I.',      expertReq: '5 Cities + 10 Adv ≤100 + 38 VP', basicReq: '',                                levels: [70],            cls: 'age-eiron'   },
-      { name: 'Late Iron Age',   shortName: 'L. Iron',   expertReq: '6 Cities + 17 Adv ≤100 + 56 VP', basicReq: '',                                levels: [75, 80],        cls: 'age-liron'   },
+      { name: 'Late Iron Age',   shortName: 'L.I.',      expertReq: '6 Cities + 17 Adv ≤100 + 56 VP', basicReq: '',                                levels: [75, 80],        cls: 'age-liron'   },
     ] : [
       { name: 'Early Iron Age',  shortName: 'E.I.',      expertReq: '',                                basicReq: '4 Cities + 2 Adv ≥200 VP each',  levels: [70],            cls: 'age-eiron'   },
-      { name: 'Late Iron Age',   shortName: 'L. Iron',   expertReq: '',                                basicReq: '5 Cities + 3 Adv ≥200 VP each',  levels: [75],            cls: 'age-liron'   },
+      { name: 'Late Iron Age',   shortName: 'L.I.',      expertReq: '',                                basicReq: '5 Cities + 3 Adv ≥200 VP each',  levels: [75],            cls: 'age-liron'   },
     ]),
   ] as AgeBand[];
 }

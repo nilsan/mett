@@ -794,17 +794,17 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
      the chip itself sits on top with its own empire colour, so the
      chip's visual rhythm with neighbouring rows stays intact.
    - A glyph appended after the empire name inside the chip
-     (⚠ for regress, ↑ for advance), travelling with the chip
+     (← for regress, → for advance), travelling with the chip
      without changing its dimensions. */
 .status-ast tr.will-regress { background: rgba(204, 51, 51, 0.22); }
 .status-ast tr.will-regress td.empire-cell::after {
-  content: ' ↓';
+  content: ' ←';
   margin-left: 0.35rem;
   font-weight: 700;
 }
 .status-ast tr.will-advance { background: rgba(196, 147, 63, 0.22); }
 .status-ast tr.will-advance td.empire-cell::after {
-  content: ' ↑';
+  content: ' →';
   margin-left: 0.35rem;
   font-weight: 700;
 }
