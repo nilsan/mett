@@ -14,7 +14,7 @@ import { makeDb, addPlayer, setAstLevel, setAdvances, submitCensus, getPlayer, g
 import { autoAdvanceAst } from '../src/models/ast.js';
 import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp, computeTieGroupMeta, advanceRound, advanceRoundWithSummary, getRoundSummaries, computeRoundSummary, type RoundSnapshot } from '../src/models/game.js';
 import { _setTestDb } from '../src/services/db.js';
-import { sortCensusOrder } from '../src/views/main.js';
+import { sortCensusOrder } from '../src/models/game.js';
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 

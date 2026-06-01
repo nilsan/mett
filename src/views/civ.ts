@@ -4,8 +4,7 @@
 
 import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
-import { sortCensusOrder } from './main.js';
-import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
+import { sortCensusOrder, playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
 import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
 import { getAdvanceRequirement, advancesOfTier, type AstRequirement } from '../models/ast.js';
