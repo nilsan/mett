@@ -4,7 +4,7 @@
 
 import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { AST_LEVELS, getAgeBands, civBandClass, isAgeEnd } from '../models/ast.js';
-import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
+import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry, computeTieGroupMeta, sortCensusOrder } from '../models/game.js';
 import { empireCell } from './empire.js';
 
 export { empireCell };
@@ -12,25 +12,6 @@ export { empireCell };
 interface PlayerWithCensus extends PlayerRow {
   census: CensusRow | null;
   city_count: number | null;
-}
-
-/**
- * Sort order for the revealed census table and per-player move-order indicator.
- * Non-military civs first (highest population first), military civs last (highest population first).
- * Ties broken by civ number ascending.
- */
-export function sortCensusOrder<T extends {
-  military: number;
-  civ_number: number;
-  census?: { population?: number | null } | null;
-}>(players: T[]): T[] {
-  return [...players].sort((a, b) => {
-    if (a.military !== b.military) return a.military - b.military;
-    const pa = a.census?.population ?? -Infinity;
-    const pb = b.census?.population ?? -Infinity;
-    if (pa !== pb) return pb - pa;
-    return a.civ_number - b.civ_number;
-  });
 }
 
 function cardChips(cityCount: number, wonder = false): string {
