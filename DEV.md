@@ -16,11 +16,11 @@ For the user-facing guide see [README.md](README.md). For which game rules are i
 | Password hashing | **node:crypto scrypt** | OWASP-recommended; sync; no extra dep |
 | CSS | **Pico CSS + custom** | Dark-mode baseline out of the box; small footprint (~10 KB) |
 | Frontend JS | **Vanilla JS + HTMX** | No framework needed at this scale; HTMX for first-paint fragments |
-| Browser tests | **Playwright** | Auto-wait, browser bundled, TypeScript-native (replaced Selenium) |
+| Browser tests | **Playwright** | Auto-wait, browser bundled, TypeScript-native |
 | Container | **Docker + Docker Compose** | Volume-mounted SQLite for persistence |
 | TLS | **Caddy** | Automatic Let's Encrypt certificates, bundled in compose |
-| CI | **GitHub Actions** | bun test + tsc + ansible-lint + yamllint + hadolint on every push |
-| Deployment | **Ansible** | Idempotent `docker compose pull` from GHCR + recreate, automatic post-deploy smoke test (no git pull on remote — image-only swap) |
+| CI | **GitHub Actions** | bun test + tsc + yamllint + hadolint on every push |
+| Deployment | **Docker Compose** | `docker compose pull` from GHCR + recreate; pin via `METT_VERSION` (no git pull on remote — image-only swap). Multi-instance Ansible automation lives in the private `mett-deploy` repo. |
 
 ---
 
@@ -71,7 +71,7 @@ mett/
 │   └── Caddyfile           One reverse-proxy block (demo.mett.games by default)
 ├── .github/
 │   └── workflows/
-│       ├── test.yml        CI: bun test + tsc + ansible-lint + yamllint + hadolint
+│       ├── test.yml        CI: bun test + tsc + yamllint + hadolint
 │       └── build.yml       Builds + pushes ghcr.io/nilsan/mett:latest on push to main
 ├── playwright.config.ts    Browser-test config (testDir tests/browser/)
 ├── .yamllint               Project-wide yamllint config (line-length 140)
@@ -86,7 +86,6 @@ mett/
     ├── api.test.ts         Auth middleware classification, /rank tie resolution,
     │                       static civ scenario shape
     ├── ws.test.ts          broadcastState payload contract + per-player routing
-    ├── simulate.py         Python end-to-end against a live server (legacy)
     └── browser/            Playwright specs (require running dev server)
         ├── layout.spec.ts          1080p / 4K layout regression
         └── civ-live-update.spec.ts Civ-page live update preserves focus
@@ -297,20 +296,6 @@ Specs live under `tests/browser/`:
 - `civ-live-update.spec.ts` — proves the civ page's live update preserves focus on a typed input, and that `#civ-content` is not swapped on state events.
 
 For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun -e` with the Playwright API directly — see `CLAUDE.md` for the pattern.
-
-### End-to-end simulation (Python, legacy)
-
-Requires the dev server. Predates the Bun/Playwright suites; kept around for full-game smoke testing.
-
-```bash
-python3 tests/simulate.py
-```
-
-Runs 3 complete games over the HTTP API in ~30 s, exercising census flow, move order, A.S.T. progression, Wonder logic, LIA bonuses, final scoring. Useful when touching game-logic primitives. Admin password override:
-
-```bash
-METT_ADMIN_PASSWORD=secret python3 tests/simulate.py
-```
 
 ### Continuous integration
 
