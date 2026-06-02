@@ -41,7 +41,7 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
    ```bash
    bun run test:browser    # runs `playwright test` via the package script
    ```
-   The dev server must already be running on :3000.
+   Self-contained: Playwright starts its own me[tt] instance on :3100 with a throwaway DB (`data/mett-test.db`) and auto-seeds an 18-player game before each test. It does **not** use — or disturb — the `:3000` dev server.
 
 **Notes:**
 - Playwright auto-waits for selectors; explicit `time.sleep` is not needed (use `page.waitForLoadState("networkidle")` after navigation if you need a settle moment).
@@ -56,7 +56,7 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
 
 ```bash
 bun run test            # unit + integration via bun test (tests/*.test.ts glob)
-bun run test:browser    # Playwright; requires a running dev server on :3000
+bun run test:browser    # Playwright; self-managed instance on :3100 (does not touch :3000)
 ```
 
 `bun run test` runs `tests/ast.test.ts`, `tests/game.test.ts`, `tests/password.test.ts`, `tests/auth.test.ts`, `tests/api.test.ts` and `tests/ws.test.ts`. All must pass before any commit. The browser suite is separate and run on demand.

@@ -86,7 +86,7 @@ mett/
     ├── api.test.ts         Auth middleware classification, /rank tie resolution,
     │                       static civ scenario shape
     ├── ws.test.ts          broadcastState payload contract + per-player routing
-    └── browser/            Playwright specs (require running dev server)
+    └── browser/            Playwright specs (self-managed :3100 instance)
         ├── layout.spec.ts          1080p / 4K layout regression
         └── civ-live-update.spec.ts Civ-page live update preserves focus
 ```
@@ -262,7 +262,7 @@ Environment variables:
 
 ## Tests
 
-Test workflow has three layers: fast unit/integration in Bun (always), browser checks in Playwright (on demand against the dev server), and a legacy Python simulator (when changing game logic).
+Test workflow has two layers: fast unit/integration in Bun (always), and browser checks in Playwright (on demand; self-managed test instance on `:3100`).
 
 ### Unit and integration tests (Bun)
 
@@ -284,7 +284,7 @@ All six files must pass before committing. The full suite (~163 tests) runs in ~
 
 ### Browser tests (Playwright)
 
-Require the dev server running on `:3000`.
+Self-contained — no dev server needed. Playwright's `webServer` config boots a dedicated me[tt] instance on `:3100` with a throwaway DB (`data/mett-test.db`, gitignored), and an auto-applied fixture seeds a fresh 18-player Expert game before every test via `/api/debug/simulate`. Your `:3000` dev session is never touched. Locally an existing `:3100` instance is reused; CI always starts fresh.
 
 ```bash
 bun run test:browser  # bunx playwright test
@@ -308,7 +308,7 @@ For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun
 | `yamllint` | over `.github/workflows/`, `docker/docker-compose.yml` | YAML formatting / structure |
 | `hadolint` | `hadolint-action@v3.1.0` on `docker/Dockerfile` | Dockerfile best practices |
 
-Concurrency group cancels in-flight runs when a new push lands on the same ref. Five-minute timeout per job. Browser tests stay local-only — they need a live server.
+Concurrency group cancels in-flight runs when a new push lands on the same ref. Five-minute timeout per job. Browser tests are run on demand, not in CI (the Playwright `webServer` would let them run there, but that's not wired up yet).
 
 `.yamllint` at the repo root relaxes line-length to 140 and keeps the rest of yamllint's defaults, including the `truthy` check that makes us quote `"on":` in workflow files.
 

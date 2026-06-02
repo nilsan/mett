@@ -3,15 +3,19 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /// <reference lib="dom" />
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
-// Regression test for todo 10.1: at 1080p the main display must show all 18
-// empires across every section without vertical scrolling.
+// The status display must fit a full 18-empire game without vertical scrolling
+// on the TV targets. The auto-seed fixture guarantees exactly 18 players, so the
+// "all 18 fit" claim is enforced — not coincidentally true for a smaller game.
 test.describe('main display layout', () => {
-  test('1920×1080: 0 px overflow, version stamp visible', async ({ page }) => {
+  test('1920×1080: all 18 empires fit with 0 px overflow, version stamp visible', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+
+    // Web-first assertion auto-waits for render; also pins the precondition
+    // that this is genuinely an 18-player layout.
+    await expect(page.locator('.ast-order-section tbody tr')).toHaveCount(18);
 
     const { vh, sh } = await page.evaluate(() => ({
       vh: window.innerHeight,
@@ -22,10 +26,11 @@ test.describe('main display layout', () => {
     await expect(page.locator('.mett-version')).toBeVisible();
   });
 
-  test('3840×2160 (4K): no overflow', async ({ page }) => {
+  test('3840×2160 (4K): all 18 empires fit, no overflow', async ({ page }) => {
     await page.setViewportSize({ width: 3840, height: 2160 });
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('.ast-order-section tbody tr')).toHaveCount(18);
 
     const overflow = await page.evaluate(() =>
       document.documentElement.scrollHeight - window.innerHeight,
