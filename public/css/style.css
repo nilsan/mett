@@ -330,6 +330,8 @@ body {
 .census-table .empire-col { width: 100%; }
 .empire-col-inner { display: flex; align-items: center; overflow: hidden; min-width: 0; }
 .empire-col-inner .civ-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lb-table td, .census-table td { font-weight: 700; }
+
 .census-table .city-col {
   width: 2.125rem;
   text-align: center;
@@ -357,7 +359,7 @@ body {
   vertical-align: middle;
 }
 
-.census-pop { font-weight: 700; text-align: right; font-size: 1rem; white-space: nowrap; }
+.census-pop { text-align: right; font-size: 1rem; white-space: nowrap; }
 .pending-pop { color: var(--mett-warning); font-size: 0.85rem; }
 .submitted-hidden { color: #4a8a5a; font-size: 0.85rem; }   /* muted green ✓ */
 .not-submitted    { color: var(--mett-warning); font-size: 0.85rem; }
@@ -411,7 +413,7 @@ body {
   margin-right: 0.4rem;
 }
 
-.total-vp { font-weight: 700; text-align: right; }
+.total-vp { text-align: right; }
 
 /* Leaderboard ties */
 .rank-tie { color: var(--mett-warning); font-weight: 900; font-size: 1rem; }
@@ -470,7 +472,7 @@ body {
 /* Player name in go-empire — visible by default, block on mobile for card layout */
 .go-player-name { display: none; font-size: 0.78rem; color: var(--mett-muted); margin-top: 0.1rem; }
 .adv-pts { text-align: right; }
-.ast-pts { text-align: right; font-weight: 600; }
+.ast-pts { text-align: right; }
 .ast-req { color: var(--mett-muted); font-size: 0.82rem; }
 .status-col { text-align: center; width: 2.5rem; }
 .status-icon { font-size: 1rem; }
