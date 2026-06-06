@@ -12,7 +12,7 @@ import { Database } from 'bun:sqlite';
 
 import { makeDb, addPlayer, setAstLevel, setAdvances, submitCensus, getPlayer, getGame } from './_helpers.js';
 import { autoAdvanceAst } from '../src/models/ast.js';
-import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp, computeTieGroupMeta, advanceRound, advanceRoundWithSummary, getRoundSummaries, computeRoundSummary, type RoundSnapshot } from '../src/models/game.js';
+import { checkAndSetLateIronAgeBonus, checkAndSetFinalRound, playerTotalVp, computeTieGroupMeta, compareScores, sameScoreGroup, advanceRound, advanceRoundWithSummary, getRoundSummaries, computeRoundSummary, type RoundSnapshot } from '../src/models/game.js';
 import { _setTestDb } from '../src/services/db.js';
 import { sortCensusOrder } from '../src/models/game.js';
 
@@ -487,6 +487,48 @@ describe('computeTieGroupMeta', () => {
   it('group members share the same groupPositions array reference', () => {
     const meta = computeTieGroupMeta([e(30, 0, 1), e(30, 0, 2)]);
     expect(meta[0]!.groupPositions).toBe(meta[1]!.groupPositions);
+  });
+});
+
+describe('final tiebreak policy — live play ranks on Total VP alone', () => {
+  // Models the real game that surfaced the bug: three players all at Total 38
+  // (AST 35 + 3 ADV). Celt's 3 ADV points are three 1-VP advances (adv_3vp=0);
+  // Hellas and Iberia each hold one 3-VP advance (adv_3vp=1). The 1/3/6-VP
+  // breakdown is hidden info and must not reorder them during active play.
+  const celt   = { total: 38, ast_level: 35, adv_6vp: 0, adv_3vp: 0, rank_order: 0, civ_number: 5 };
+  const hellas = { total: 38, ast_level: 35, adv_6vp: 0, adv_3vp: 1, rank_order: 0, civ_number: 15 };
+  const iberia = { total: 38, ast_level: 35, adv_6vp: 0, adv_3vp: 1, rank_order: 0, civ_number: 13 };
+
+  it('game over (final=true): advance-card breakdown breaks the tie', () => {
+    expect(sameScoreGroup(celt, hellas, true)).toBe(false);   // adv_3vp differs
+    expect(compareScores(celt, hellas, true)).toBeGreaterThan(0); // Celt sorts after Hellas
+    expect(sameScoreGroup(hellas, iberia, true)).toBe(true);  // identical breakdown → tied
+  });
+
+  it('active play (final=false): equal Total VP is always a tie', () => {
+    expect(sameScoreGroup(celt, hellas, false)).toBe(true);
+    expect(sameScoreGroup(celt, iberia, false)).toBe(true);
+    // Different total still separates them.
+    expect(sameScoreGroup(celt, { ...celt, total: 39 }, false)).toBe(false);
+  });
+
+  it('active play: equal totals ignore AST split too (rank on visible Total only)', () => {
+    const astHeavy = { total: 38, ast_level: 40, adv_6vp: 0, adv_3vp: 0, rank_order: 0, civ_number: 2 };
+    const advHeavy = { total: 38, ast_level: 30, adv_6vp: 1, adv_3vp: 0, rank_order: 0, civ_number: 7 };
+    expect(sameScoreGroup(astHeavy, advHeavy, false)).toBe(true);
+    expect(sameScoreGroup(astHeavy, advHeavy, true)).toBe(false); // game over splits by AST
+  });
+
+  it('computeTieGroupMeta(final=false): all three equal-total players share rank', () => {
+    // Sorted desc; with final=false the breakdown is ignored so all are one group.
+    const entries = [celt, hellas, iberia].map(p => ({ ...p }));
+    const live = computeTieGroupMeta(entries, false);
+    expect(live.every(m => m.tied)).toBe(true);
+    expect(live.map(m => m.displayRank)).toEqual([1, 1, 1]); // unresolved tie → group start
+    // At game over the same set splits: the two 3-VP holders tie, Celt drops out.
+    const over = computeTieGroupMeta([hellas, iberia, celt], true);
+    expect(over.map(m => m.tied)).toEqual([true, true, false]);
+    expect(over.map(m => m.displayRank)).toEqual([1, 1, 3]);
   });
 });
 

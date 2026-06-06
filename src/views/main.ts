@@ -87,12 +87,15 @@ export function renderMain(state: FullState): string {
   // City VP (1 per city) is only scored at end of game — during play it is excluded.
   const lbCityVp = (p: PlayerWithCensus) => game.active ? 0 : (p.city_count ?? 0);
 
+  // During active play, rank by Total VP alone (final=false) — the advance-card
+  // breakdown tiebreakers only apply at game over.
+  const finalRanking = !game.active;
   const leaderboard = [...pwc].sort((a, b) =>
-    compareScores(makeScoreEntry(a, lbCityVp(a)), makeScoreEntry(b, lbCityVp(b)))
+    compareScores(makeScoreEntry(a, lbCityVp(a)), makeScoreEntry(b, lbCityVp(b)), finalRanking)
   );
 
   const lbScores = leaderboard.map(p => ({ ...makeScoreEntry(p, lbCityVp(p)), rank_order: p.rank_order }));
-  const lbMeta = computeTieGroupMeta(lbScores);
+  const lbMeta = computeTieGroupMeta(lbScores, finalRanking);
 
   const lbRows = leaderboard.map((p, i) => {
     const { displayRank, tied, groupStart, resolved } = lbMeta[i]!;

@@ -153,17 +153,20 @@ export function renderCivFragment(
 
   const regionLabel = player.region === 'west' ? 'West block' : 'East block';
 
-  // Leaderboard position — same algorithm as status page
+  // Leaderboard position — same algorithm as status page. City VP and the
+  // advance-card tiebreakers are excluded during active play (final=false).
+  const finalRanking = !game.active;
   const censusMap = new Map(state.census.map(c => [c.player_id, c.city_count ?? 0]));
+  const lbCityVp = (p: { id: number }) => game.active ? 0 : (censusMap.get(p.id) ?? 0);
   const leaderboardSorted = [...state.players].sort((a, b) =>
-    compareScores(makeScoreEntry(a, censusMap.get(a.id) ?? 0), makeScoreEntry(b, censusMap.get(b.id) ?? 0))
+    compareScores(makeScoreEntry(a, lbCityVp(a)), makeScoreEntry(b, lbCityVp(b)), finalRanking)
   );
   const playerIdx = leaderboardSorted.findIndex(p => p.id === player.id);
-  const playerScore = makeScoreEntry(leaderboardSorted[playerIdx]!, censusMap.get(leaderboardSorted[playerIdx]!.id) ?? 0);
+  const playerScore = makeScoreEntry(leaderboardSorted[playerIdx]!, lbCityVp(leaderboardSorted[playerIdx]!));
   let groupStart = playerIdx;
-  while (groupStart > 0 && sameScoreGroup(makeScoreEntry(leaderboardSorted[groupStart - 1]!, censusMap.get(leaderboardSorted[groupStart - 1]!.id) ?? 0), playerScore)) groupStart--;
+  while (groupStart > 0 && sameScoreGroup(makeScoreEntry(leaderboardSorted[groupStart - 1]!, lbCityVp(leaderboardSorted[groupStart - 1]!)), playerScore, finalRanking)) groupStart--;
   let groupEnd = playerIdx;
-  while (groupEnd + 1 < leaderboardSorted.length && sameScoreGroup(playerScore, makeScoreEntry(leaderboardSorted[groupEnd + 1]!, censusMap.get(leaderboardSorted[groupEnd + 1]!.id) ?? 0))) groupEnd++;
+  while (groupEnd + 1 < leaderboardSorted.length && sameScoreGroup(playerScore, makeScoreEntry(leaderboardSorted[groupEnd + 1]!, lbCityVp(leaderboardSorted[groupEnd + 1]!)), finalRanking)) groupEnd++;
   const lbTied = groupEnd > playerIdx || playerIdx > groupStart;
   const lbResolved = lbTied && leaderboardSorted.slice(groupStart, groupEnd + 1).every(p => p.rank_order !== 0);
   const lbPos = lbResolved ? playerIdx + 1 : groupStart + 1;

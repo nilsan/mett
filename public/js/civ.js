@@ -13,19 +13,25 @@
       civ_number: p.civ_number
     };
   }
-  function compareScores(a, b) {
+  function compareScores(a, b, final = true) {
     if (b.total !== a.total)
       return b.total - a.total;
-    if (b.ast_level !== a.ast_level)
-      return b.ast_level - a.ast_level;
-    if (b.adv_6vp !== a.adv_6vp)
-      return b.adv_6vp - a.adv_6vp;
-    if (b.adv_3vp !== a.adv_3vp)
-      return b.adv_3vp - a.adv_3vp;
+    if (final) {
+      if (b.ast_level !== a.ast_level)
+        return b.ast_level - a.ast_level;
+      if (b.adv_6vp !== a.adv_6vp)
+        return b.adv_6vp - a.adv_6vp;
+      if (b.adv_3vp !== a.adv_3vp)
+        return b.adv_3vp - a.adv_3vp;
+    }
     return (a.rank_order || a.civ_number) - (b.rank_order || b.civ_number);
   }
-  function sameScoreGroup(a, b) {
-    return a.total === b.total && a.ast_level === b.ast_level && a.adv_6vp === b.adv_6vp && a.adv_3vp === b.adv_3vp;
+  function sameScoreGroup(a, b, final = true) {
+    if (a.total !== b.total)
+      return false;
+    if (!final)
+      return true;
+    return a.ast_level === b.ast_level && a.adv_6vp === b.adv_6vp && a.adv_3vp === b.adv_3vp;
   }
   function sortCensusOrder(players) {
     return [...players].sort((a, b) => {
@@ -390,17 +396,18 @@
     }, computeLbInfo = function(player, state) {
       const game = state.game;
       const censusByPlayer = new Map(state.census.map((c) => [c.player_id, c.city_count ?? 0]));
+      const finalRanking = !game.active;
       const cityVp = (p) => game.active ? 0 : censusByPlayer.get(p.id) ?? 0;
-      const sorted = [...state.players].sort((a, b) => compareScores(makeScoreEntry(a, cityVp(a)), makeScoreEntry(b, cityVp(b))));
+      const sorted = [...state.players].sort((a, b) => compareScores(makeScoreEntry(a, cityVp(a)), makeScoreEntry(b, cityVp(b)), finalRanking));
       const idx = sorted.findIndex((p) => p.id === player.id);
       if (idx === -1)
         return { pos: 1, tied: false, resolved: false };
       const myScore = makeScoreEntry(player, cityVp(player));
       let groupStart = idx;
-      while (groupStart > 0 && sameScoreGroup(makeScoreEntry(sorted[groupStart - 1], cityVp(sorted[groupStart - 1])), myScore))
+      while (groupStart > 0 && sameScoreGroup(makeScoreEntry(sorted[groupStart - 1], cityVp(sorted[groupStart - 1])), myScore, finalRanking))
         groupStart--;
       let groupEnd = idx;
-      while (groupEnd + 1 < sorted.length && sameScoreGroup(myScore, makeScoreEntry(sorted[groupEnd + 1], cityVp(sorted[groupEnd + 1]))))
+      while (groupEnd + 1 < sorted.length && sameScoreGroup(myScore, makeScoreEntry(sorted[groupEnd + 1], cityVp(sorted[groupEnd + 1])), finalRanking))
         groupEnd++;
       const tied = groupEnd > idx || idx > groupStart;
       const resolved = tied && sorted.slice(groupStart, groupEnd + 1).every((p) => p.rank_order !== 0);

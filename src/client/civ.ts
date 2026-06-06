@@ -349,18 +349,20 @@ if (civEl) {
   function computeLbInfo(player: PlayerRow, state: FullState): LbInfo {
     const game = state.game;
     const censusByPlayer = new Map(state.census.map(c => [c.player_id, c.city_count ?? 0]));
-    // Cities don't count toward VP during an active game
+    // During active play, cities and the advance-card tiebreakers are excluded —
+    // rank by Total VP alone (final=false).
+    const finalRanking = !game.active;
     const cityVp = (p: PlayerRow) => game.active ? 0 : (censusByPlayer.get(p.id) ?? 0);
     const sorted = [...state.players].sort((a, b) =>
-      compareScores(makeScoreEntry(a, cityVp(a)), makeScoreEntry(b, cityVp(b)))
+      compareScores(makeScoreEntry(a, cityVp(a)), makeScoreEntry(b, cityVp(b)), finalRanking)
     );
     const idx = sorted.findIndex(p => p.id === player.id);
     if (idx === -1) return { pos: 1, tied: false, resolved: false };
     const myScore = makeScoreEntry(player, cityVp(player));
     let groupStart = idx;
-    while (groupStart > 0 && sameScoreGroup(makeScoreEntry(sorted[groupStart - 1]!, cityVp(sorted[groupStart - 1]!)), myScore)) groupStart--;
+    while (groupStart > 0 && sameScoreGroup(makeScoreEntry(sorted[groupStart - 1]!, cityVp(sorted[groupStart - 1]!)), myScore, finalRanking)) groupStart--;
     let groupEnd = idx;
-    while (groupEnd + 1 < sorted.length && sameScoreGroup(myScore, makeScoreEntry(sorted[groupEnd + 1]!, cityVp(sorted[groupEnd + 1]!)))) groupEnd++;
+    while (groupEnd + 1 < sorted.length && sameScoreGroup(myScore, makeScoreEntry(sorted[groupEnd + 1]!, cityVp(sorted[groupEnd + 1]!)), finalRanking)) groupEnd++;
     const tied = groupEnd > idx || idx > groupStart;
     const resolved = tied && sorted.slice(groupStart, groupEnd + 1).every(p => p.rank_order !== 0);
     const pos = resolved ? idx + 1 : groupStart + 1;
