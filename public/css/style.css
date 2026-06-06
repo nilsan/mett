@@ -11,8 +11,8 @@
   --mett-surface: #181c1c;
   --mett-surface2: #212727;
   --mett-border: #2e3636;
-  --mett-text: #e8e3d8;
-  --mett-muted: #7a7568;
+  --mett-text: #f1ede3;     /* brighter warm white — higher contrast on the dark bg */
+  --mett-muted: #9e9889;    /* lifted from #7a7568 so secondary text is readable (~7:1) */
   --mett-accent: #c4933f;   /* antique gold */
   --mett-logo-bracket: var(--mett-accent); /* gold bracket in wordmark */
   --mett-danger: #cc3333;
@@ -1277,8 +1277,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 /* Advance card inputs */
 .adv-cards { display: flex; flex-direction: column; gap: 0.25rem; }
-.adv-card-row { display: flex; align-items: center; gap: 0.3rem; }
-.adv-card-label { flex: 1; font-size: 0.82rem; color: var(--mett-muted); white-space: nowrap; }
+.adv-card-row { display: flex; align-items: center; gap: 0.5rem; }   /* match .census-input-row so −/input/+ line up with the city row */
+.adv-card-label { flex: 0 0 auto; font-size: 0.82rem; color: var(--mett-muted); white-space: nowrap; }  /* label now sits on the right, under the city Submit */
 .adv-btn {
   width: 1.4rem;
   height: 1.4rem;
@@ -1299,7 +1299,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .adv-card-input {
   --pico-form-element-spacing-vertical: 0.18rem;
   --pico-form-element-spacing-horizontal: 0.35rem;
-  width: 4rem;
+  flex: 1;
+  max-width: 10rem;            /* match .census-input so it aligns with the city select */
   text-align: right;
   background: var(--mett-surface2);
   border: 0.0625rem solid var(--mett-border);
@@ -1420,23 +1421,23 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   /* Census */
   .census-submitted, .census-pending { font-size: 0.68rem; margin-bottom: 0.05rem; }
   .census-input-row, .adv-input-row { gap: 0.18rem; }
-  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.8rem; padding: 0 0 0 0.35rem; height: 1.55rem; min-height: 0; line-height: 1.55rem; box-sizing: border-box; border-radius: 0.1875rem; }
-  .btn-submit { font-size: 0.72rem; padding: 0 0.45rem; height: 1.55rem; min-height: 0; box-sizing: border-box; }
+  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.9rem; padding: 0 0 0 0.45rem; height: 2.3rem; min-height: 0; line-height: 2.3rem; box-sizing: border-box; border-radius: 0.1875rem; }
+  .btn-submit { font-size: 0.88rem; padding: 0 0.85rem; height: 2.3rem; min-height: 0; box-sizing: border-box; }
   .move-order { font-size: 0.64rem; margin-top: 0.06rem; }
 
   /* Advances */
   .adv-cards { gap: 0.06rem; }
-  .adv-card-row { gap: 0.15rem; margin: 0; }
-  .adv-card-label { font-size: 0.62rem; }
-  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.74rem; padding: 0 0.25rem 0 0; width: 2.8rem; height: 1.4rem; min-height: 0; line-height: 1.4rem; text-align: right; box-sizing: border-box; border-radius: 0.1875rem; margin: 0 !important; }
-  .adv-btn { width: 1.4rem; height: 1.4rem; min-height: 0; font-size: 0.78rem; }
+  .adv-card-row { gap: 0.18rem; margin: 0; }   /* match .census-input-row phone gap so columns line up */
+  .adv-card-label { font-size: 0.74rem; }
+  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.9rem; padding: 0 0.35rem 0 0; flex: 1; max-width: 10rem; width: auto; height: 2.3rem; min-height: 0; line-height: 2.3rem; text-align: right; box-sizing: border-box; border-radius: 0.1875rem; margin: 0 !important; }
+  .adv-btn { width: 2.3rem; height: 2.3rem; min-height: 0; font-size: 1.1rem; }
   .adv-total-row { margin-top: 0.06rem; padding-top: 0.08rem; gap: 0.18rem; }
   .adv-total-label { font-size: 0.64rem; }
   .adv-total-value { font-size: 0.85rem; min-width: 1.8rem; }
 
   /* Military, Wonder & Special — 3-column row */
   .mil-won-row { flex-direction: row; gap: 0.2rem; }
-  .mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ { flex: 1; min-width: 0; padding: 0.2rem 0.2rem; font-size: 0.68rem; }
+  .mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ { flex: 1; min-width: 0; padding: 0.6rem 0.3rem; font-size: 0.82rem; }
 
   /* AST section */
   .ast-current { margin-bottom: 0.1rem; gap: 0.2rem; }
@@ -1451,6 +1452,27 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   :root { --ast-node-size: 1.3rem; --ast-node-gap: 0.0625rem; }
   .ast-node { font-size: 0.55rem; }
   .ast-age-label { font-size: 0.36rem; padding: 0.0625rem 0; margin-bottom: 0.0625rem; }
+
+  /* City + VP rows + the SUM row share one grid so every column lines up.
+     Wide non-square steppers (numbers are always small), a narrow input,
+     and a last column (1fr) where Submit, the N-VP labels and the SUM value
+     all sit left-aligned — i.e. directly below the Submit button. */
+  .city-count-row,
+  .adv-card-row,
+  .adv-total-row {
+    display: grid;
+    grid-template-columns: 3.2rem 4.5rem 3.2rem 1fr;
+    gap: 0.3rem;
+    align-items: center;
+  }
+  .city-count-row > .adv-btn,
+  .adv-card-row > .adv-btn { width: 100%; height: 2.3rem; }
+  .city-count-row > .census-input,
+  .adv-card-row > .adv-card-input { width: 100%; max-width: none; }
+  .city-count-row > .btn-submit { justify-self: start; }
+  .adv-card-label { text-align: left; font-size: 0.95rem; }   /* under the Submit button, not far right */
+  .adv-total-label { grid-column: 1 / 4; }                    /* "SUM" on the left */
+  .adv-total-value { grid-column: 4; text-align: left; min-width: 0; }  /* aligns under Submit, with the N-VP labels */
 }
 
 /* Rules with no responsive override — fine after the breakpoints */
