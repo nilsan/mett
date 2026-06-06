@@ -210,7 +210,7 @@ export function renderCivFragment(
           ? `<p class="census-submitted">✓ Submitted: <strong>${census!.population}</strong></p>`
           : '<p class="census-pending">Not yet submitted</p>'
         }
-        <div class="census-input-row">
+        <div class="census-input-row census-pop-row">
           <input type="number" id="pop-input" min="-54" max="55"
             value="${censusDefault}"
             placeholder="1–55"
