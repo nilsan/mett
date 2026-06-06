@@ -73,3 +73,28 @@ test.describe('civ page: live update preserves user input', () => {
     await expect(page.locator('#mil-toggle')).toHaveClass(/mil-(on|off)/);
   });
 });
+
+// Regression: the "Round N Census" heading is rendered once by the server and
+// must be patched on every state_update — otherwise it stays on the previous
+// round until a manual reload (reported live on mett.games 2026-06-06).
+test.describe('civ page: round number stays in sync without reload', () => {
+  test('census round heading updates when the round changes', async ({ page, request }) => {
+    const ws = await gotoCiv(page, 'minoa');
+
+    const heading = page.locator('#census-round');
+    const before = Number(await heading.textContent());
+    const target = (before || 1) + 2; // an explicitly different round
+
+    // /debug/set-round changes current_round and broadcasts globally.
+    const frame = nextStateFrame(ws);
+    const res = await request.post('/api/debug/set-round', {
+      headers: { cookie: 'mett_admin=PASSWORD' },
+      data: { round: target },
+    });
+    expect(res.ok()).toBe(true);
+    await frame;
+
+    // Heading must reflect the new round with no page reload.
+    await expect(heading).toHaveText(String(target));
+  });
+});

@@ -200,7 +200,7 @@ export function renderCivFragment(
   <div class="civ-body">
 
     <section class="civ-section">
-      <h3>Round ${game.current_round} Census</h3>
+      <h3>Round <span id="census-round">${game.current_round}</span> Census</h3>
       ${game.active ? `
       <div class="census-form" id="census-form">
         ${submitted

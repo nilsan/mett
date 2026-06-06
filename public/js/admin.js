@@ -330,12 +330,15 @@
       });
     });
 
-    // Census inputs (on blur / enter) — override browser form restoration from server value
+    // Census inputs — override browser form restoration from server value.
+    // Commit on both `change` and `blur`: `change` fires on the native up/down
+    // spinner (and Enter / keyboard), which never blurs the field, so a blur-only
+    // handler would silently drop spinner edits. The `original` guard dedupes the
+    // change→blur double-fire when typing then tabbing out.
     document.querySelectorAll('input.census-admin-input').forEach(inp => {
       inp.value = inp.dataset.serverValue ?? '';  // force server value, bypass browser restore
       let original = inp.value;
-      inp.addEventListener('focus', () => { original = inp.value; });
-      inp.addEventListener('blur', async () => {
+      async function commit() {
         const raw = inp.value.trim();
         if (raw === original.trim()) return;
         if (raw === '') { inp.value = original; return; }
@@ -346,7 +349,10 @@
         inp.value = val;
         original = String(val);
         await mettPost(`/api/players/${inp.dataset.playerId}/census`, { population: val });
-      });
+      }
+      inp.addEventListener('focus', () => { original = inp.value; });
+      inp.addEventListener('change', commit);
+      inp.addEventListener('blur', commit);
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
     });
 

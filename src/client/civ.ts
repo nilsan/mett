@@ -174,6 +174,11 @@ if (civEl) {
       if (btn) btn.disabled = false;
     }
 
+    // The round-number heading is rendered once by the server; without this it
+    // would stay on the previous round until a manual page reload.
+    const roundEl = document.getElementById('census-round');
+    if (roundEl) roundEl.textContent = String(game.current_round);
+
     syncMilWon(player);
     syncCensus(player, census, submitted, revealed, state);
     syncCity(census, cityCountSubmitted, citiesPhase);
