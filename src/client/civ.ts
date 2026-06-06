@@ -515,10 +515,10 @@ if (civEl) {
         .filter(el => el.classList.contains('ast-age-label'))
         .map(el => el.outerHTML)
         .join('');
-      const cols = (existing as HTMLElement).style.gridTemplateColumns || `repeat(${N},var(--ast-node-size))`;
+      const cols = (existing as HTMLElement).style.gridTemplateColumns || `repeat(${N},minmax(0,1fr))`;
       return `<div class="ast-bar-wrap"><div class="ast-progress-grid" style="grid-template-columns:${cols}">${labels}${nodes}</div></div>`;
     }
-    return `<div class="ast-bar-wrap"><div class="ast-progress-grid" style="grid-template-columns:repeat(${N},var(--ast-node-size))">${nodes}</div></div>`;
+    return `<div class="ast-bar-wrap"><div class="ast-progress-grid" style="grid-template-columns:repeat(${N},minmax(0,1fr))">${nodes}</div></div>`;
   }
 
   function escapeHtml(s: string): string {

@@ -120,7 +120,7 @@ function astBar(levels: AstLevelRow[], currentLevel: number, expert: boolean, ci
   }).join('');
 
   return `<div class="ast-bar-wrap">
-    <div class="ast-progress-grid" style="grid-template-columns:repeat(${N},var(--ast-node-size))">
+    <div class="ast-progress-grid" style="grid-template-columns:repeat(${N},minmax(0,1fr))">
       ${labelDivs}
       ${nodeDivs}
     </div>

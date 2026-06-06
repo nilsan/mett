@@ -1467,7 +1467,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .ast-progress-grid {
   display: grid;
   gap: var(--ast-node-gap);
-  width: max-content;
+  width: 100%;                 /* fill the section — no wasted space on the right */
 }
 
 .ast-age-label {
@@ -1476,16 +1476,23 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   text-transform: uppercase;
   letter-spacing: 0.04em;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
+  white-space: normal;         /* wrap rather than clip — 1-cell ages go to 2 lines */
+  overflow-wrap: normal;       /* break at spaces only, never mid-word ("EARLY/IRON/AGE") */
+  word-break: normal;
+  line-height: 1.05;
+  align-self: stretch;         /* every band fills the row → all boxes equally tall */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;   /* text sits at the bottom, next to the cells */
+  align-items: center;
+  min-width: 0;
   border-radius: 0.1875rem 0.1875rem 0 0;
-  padding: 0.125rem 0;
+  padding: 0.125rem 0.1rem;
   margin-bottom: 0.125rem;
 }
 
 .ast-node {
-  width: var(--ast-node-size);
+  min-width: 0;                /* cells stretch to fill their 1fr column (wider than tall) */
   height: var(--ast-node-size);
   display: flex;
   align-items: center;
