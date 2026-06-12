@@ -36,6 +36,12 @@ mett/
 │   ├── types.ts            Shared TypeScript types (FullState, AstStatus, …)
 │   ├── version.ts          Reads package.json + BUILD_SHA env → footer string
 │   ├── ws.ts               WebSocket clients set + broadcast/sendInitialState
+│   ├── client/
+│   │   └── civ.ts          Empire-page client source — compiled to
+│   │                       public/js/civ.js via `bun run build:client`
+│   ├── shared/
+│   │   ├── ast-pure.ts     Pure AST helpers shared by server + client bundle
+│   │   └── scoring.ts      Pure scoring/sort helpers shared by server + client
 │   ├── models/
 │   │   ├── ast.ts          AST requirement parsing, advancement, tier helpers
 │   │   └── game.ts         advanceRound, scoring, computeTieGroupMeta
@@ -61,8 +67,10 @@ mett/
 │       ├── api.js          Shared mettPost helper (JSON + toast on error)
 │       ├── main.js         Main page JS (HTMX swap entry-point)
 │       ├── admin.js        Admin page JS (in-place updates from mett:state)
-│       └── civ.js          Empire page JS (full client-side render from
-│                           WS state — no HTMX swap, preserves focus)
+│       └── civ.js          GENERATED — committed build artifact of
+│                           src/client/civ.ts (`bun run build:client`).
+│                           Never edit directly; tests/client-build.test.ts
+│                           fails the suite if it drifts from its source
 ├── db/
 │   └── schema.sql          Schema + seed data (civs and A.S.T. levels)
 ├── docker/
@@ -86,8 +94,13 @@ mett/
     ├── api.test.ts         Auth middleware classification, /rank tie resolution,
     │                       static civ scenario shape
     ├── ws.test.ts          broadcastState payload contract + per-player routing
+    ├── client-build.test.ts Rebuilds src/client/civ.ts and byte-compares the
+    │                       committed public/js/civ.js (drift guard)
     └── browser/            Playwright specs (self-managed :3100 instance)
+        ├── fixtures.ts             Auto-seed fixture (fresh 18-player game)
         ├── layout.spec.ts          1080p / 4K layout regression
+        ├── admin.spec.ts           Admin page behaviour
+        ├── civ-ast-strip.spec.ts   Civ-page A.S.T. strip layout
         └── civ-live-update.spec.ts Civ-page live update preserves focus
 ```
 
@@ -213,7 +226,7 @@ Every mutating endpoint broadcasts a `state_update` WebSocket event after writin
 |---|---|---|
 | `/` (status display) | Server-rendered | HTMX swap of `#main-content` on every `mett:state` |
 | `/admin` | Server-rendered | In-place DOM patch on `mett:state` (sub-prog bar, AST status dots, census/city icons, LIA stars, mil/won classes). Five reloads remain by design — round transitions and setup ↔ active page-shape changes |
-| `/<slug>` (player) | Server-rendered (`renderCivFragment`) | **Full client-side render from WS state** in `civ.js`'s `renderFromState()`. No HTMX swap → focused inputs and scroll position are preserved. Pure helpers (`compareScores`, `playerTotalVp`, `getCivAstProfile`, etc.) are mirrored in JS to keep the leaderboard sort and requirement-row formatting identical to the server |
+| `/<slug>` (player) | Server-rendered (`renderCivFragment`) | **Full client-side render from WS state** in `civ.js`'s `renderFromState()`. No HTMX swap → focused inputs and scroll position are preserved. The client is TypeScript (`src/client/civ.ts`, compiled to `public/js/civ.js` by `bun run build:client`) and imports the same pure helpers (`compareScores`, `playerTotalVp`, `getCivAstProfile`, etc.) from `src/shared/` as the server, so the leaderboard sort and requirement-row formatting are identical by construction |
 
 ---
 
@@ -279,8 +292,9 @@ Everything in `tests/*.test.ts` runs against an in-memory SQLite DB (`_setTestDb
 - `tests/password.test.ts` — `hashPassword` / `verifyPassword` / `isLegacyPlaintext` round-trips.
 - `tests/api.test.ts` — API auth middleware classification (GET-bypass, public-action whitelist, admin-only POSTs return 401), `POST /api/players/:id/rank` sibling-clear + auto-resolve, `WEST_SCENARIOS`/`EAST_SCENARIOS`/`SETUP_RECOMMENDATIONS` shape.
 - `tests/ws.test.ts` — `broadcastState` payload contract (`game`/`players`/`census`/`astLevels`/`astStatus`/`targetPlayerId`) and per-player routing (targeted broadcast skips civ-page sockets owned by other players; non-civ sockets and the targeted player's own tabs always receive).
+- `tests/client-build.test.ts` — rebuilds `src/client/civ.ts` and byte-compares the committed `public/js/civ.js`, so a forgotten `bun run build:client` fails the suite instead of shipping a stale player page.
 
-All six files must pass before committing. The full suite (~163 tests) runs in ~2.5 s; the cost is dominated by scrypt operations in `auth.test.ts` — that's intentional.
+All seven files must pass before committing. The full suite (~163 tests) runs in ~2.5 s; the cost is dominated by scrypt operations in `auth.test.ts` — that's intentional.
 
 ### Browser tests (Playwright)
 
@@ -293,6 +307,8 @@ bun run test:browser  # bunx playwright test
 Specs live under `tests/browser/`:
 
 - `layout.spec.ts` — at 1080 p and 4 K, asserts the main display fits without overflow and shows 18 leaderboard rows.
+- `admin.spec.ts` — admin page behaviour.
+- `civ-ast-strip.spec.ts` — civ-page A.S.T. strip layout.
 - `civ-live-update.spec.ts` — proves the civ page's live update preserves focus on a typed input, and that `#civ-content` is not swapped on state events.
 
 For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun -e` with the Playwright API directly — see `CLAUDE.md` for the pattern.

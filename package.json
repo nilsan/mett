@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "test": "bun test tests/api.test.ts tests/ast.test.ts tests/auth.test.ts tests/game.test.ts tests/password.test.ts tests/ws.test.ts",
+    "test": "bun test tests/api.test.ts tests/ast.test.ts tests/auth.test.ts tests/client-build.test.ts tests/game.test.ts tests/password.test.ts tests/ws.test.ts",
     "test:browser": "playwright test",
     "screenshots": "bun run scripts/screenshots.ts",
     "build:client": "bun build src/client/civ.ts --outfile public/js/civ.js --format iife --target browser"

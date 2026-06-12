@@ -59,7 +59,9 @@ bun run test            # unit + integration via bun test (tests/*.test.ts glob)
 bun run test:browser    # Playwright; self-managed instance on :3100 (does not touch :3000)
 ```
 
-`bun run test` runs `tests/ast.test.ts`, `tests/game.test.ts`, `tests/password.test.ts`, `tests/auth.test.ts`, `tests/api.test.ts` and `tests/ws.test.ts`. All must pass before any commit. The browser suite is separate and run on demand.
+`bun run test` runs `tests/ast.test.ts`, `tests/game.test.ts`, `tests/password.test.ts`, `tests/auth.test.ts`, `tests/api.test.ts`, `tests/ws.test.ts` and `tests/client-build.test.ts`. All must pass before any commit. The browser suite is separate and run on demand.
+
+**Client bundle:** `public/js/civ.js` is a committed build artifact generated from `src/client/civ.ts`. After editing anything under `src/client/`, run `bun run build:client` and commit the regenerated bundle — `tests/client-build.test.ts` fails the suite if they drift.
 
 ## Task List & todo.md
 

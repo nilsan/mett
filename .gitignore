@@ -13,7 +13,10 @@ node_modules/
 
 # IDE
 .idea/
-.claude/
+
+# Claude Code — skills under .claude/commands/ are tracked;
+# personal permission grants stay local
+.claude/settings.local.json
 
 # METT runtime / local dev
 data/
