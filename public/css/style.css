@@ -1421,23 +1421,23 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   /* Census */
   .census-submitted, .census-pending { font-size: 0.68rem; margin-bottom: 0.05rem; }
   .census-input-row, .adv-input-row { gap: 0.18rem; }
-  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.9rem; padding: 0 0 0 0.45rem; height: 2.3rem; min-height: 0; line-height: 2.3rem; box-sizing: border-box; border-radius: 0.1875rem; }
-  .btn-submit { font-size: 0.88rem; padding: 0 0.85rem; height: 2.3rem; min-height: 0; box-sizing: border-box; }
+  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.95rem; padding: 0 0 0 0.45rem; height: 2.6rem; min-height: 0; line-height: 2.6rem; box-sizing: border-box; border-radius: 0.1875rem; }
+  .btn-submit { font-size: 0.92rem; padding: 0 0.85rem; height: 2.6rem; min-height: 0; box-sizing: border-box; }
   .move-order { font-size: 0.64rem; margin-top: 0.06rem; }
 
   /* Advances */
   .adv-cards { gap: 0.06rem; }
   .adv-card-row { gap: 0.18rem; margin: 0; }   /* match .census-input-row phone gap so columns line up */
   .adv-card-label { font-size: 0.74rem; }
-  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.9rem; padding: 0 0.35rem 0 0; flex: 1; max-width: 10rem; width: auto; height: 2.3rem; min-height: 0; line-height: 2.3rem; text-align: right; box-sizing: border-box; border-radius: 0.1875rem; margin: 0 !important; }
-  .adv-btn { width: 2.3rem; height: 2.3rem; min-height: 0; font-size: 1.1rem; }
+  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.95rem; padding: 0 0.35rem 0 0; flex: 1; max-width: 10rem; width: auto; height: 2.6rem; min-height: 0; line-height: 2.6rem; text-align: right; box-sizing: border-box; border-radius: 0.1875rem; margin: 0 !important; }
+  .adv-btn { width: 2.6rem; height: 2.6rem; min-height: 0; font-size: 1.2rem; }
   .adv-total-row { margin-top: 0.06rem; padding-top: 0.08rem; gap: 0.18rem; }
   .adv-total-label { font-size: 0.64rem; }
   .adv-total-value { font-size: 0.85rem; min-width: 1.8rem; }
 
   /* Military, Wonder & Special — 3-column row */
   .mil-won-row { flex-direction: row; gap: 0.2rem; }
-  .mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ { flex: 1; min-width: 0; padding: 0.6rem 0.3rem; font-size: 0.82rem; }
+  .mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ { flex: 1; min-width: 0; padding: 0.85rem 0.3rem; font-size: 0.85rem; }
 
   /* AST section */
   .ast-current { margin-bottom: 0.1rem; gap: 0.2rem; }
@@ -1462,19 +1462,24 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .adv-card-row,
   .adv-total-row {
     display: grid;
-    grid-template-columns: 3.2rem 4.5rem 3.2rem 1fr;
-    gap: 0.3rem;
+    /* fr columns spend the full row width — no fixed caps leaving dead space,
+       and fr shrinks to fit so the row never overflows horizontally even at
+       large OS font. Submit + the steppers stretch to fill, like the
+       mil/won/spc row's flex:1 buttons. Submit gets the largest share. */
+    grid-template-columns: 1fr 1.3fr 1fr 2fr;
+    gap: min(0.3rem, 1.2vw);
     align-items: center;
   }
+  .btn-submit { padding: 0 0.5rem; }
   /* Population row: wide input across the −/select/+ columns, Submit in the
      last column so it sits directly under the city Submit. */
   .census-pop-row > .census-input { grid-column: 1 / 4; width: 100%; max-width: none; }
-  .census-pop-row > .btn-submit { grid-column: 4; justify-self: start; }
+  .census-pop-row > .btn-submit { grid-column: 4; justify-self: stretch; }
   .city-count-row > .adv-btn,
-  .adv-card-row > .adv-btn { width: 100%; height: 2.3rem; }
+  .adv-card-row > .adv-btn { width: 100%; height: 2.6rem; }
   .city-count-row > .census-input,
   .adv-card-row > .adv-card-input { width: 100%; max-width: none; }
-  .city-count-row > .btn-submit { justify-self: start; }
+  .city-count-row > .btn-submit { justify-self: stretch; }
   .adv-card-label { text-align: left; font-size: 0.95rem; }   /* under the Submit button, not far right */
   .adv-total-label { grid-column: 1 / 4; }                    /* "SUM" on the left */
   .adv-total-value { grid-column: 4; text-align: left; min-width: 0; }  /* aligns under Submit, with the N-VP labels */
@@ -1483,6 +1488,13 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 /* Rules with no responsive override — fine after the breakpoints */
 .ast-next.req-all-ok { border-color: var(--mett-success); }
 .ast-next.req-not-met { border-color: var(--mett-danger); }
+
+/* The player page must NEVER scroll sideways on a phone. Clip any stray
+   horizontal overflow (real-device font rounding, or a wrapped AST age-label
+   painting past the viewport edge) while leaving vertical scroll intact —
+   mirrors the status page's overflow safety net. */
+html:has(.civ-page),
+body:has(.civ-page) { overflow-x: hidden; }
 
 .ast-bar-wrap {
   overflow-x: auto;
@@ -2485,3 +2497,64 @@ button.secondary {
   white-space: nowrap;
 }
 #mett-toast.visible { opacity: 1; }
+
+/* ── Short-viewport compaction for the player page ────────────────────────
+   The civ page must fit without scroll even on short screens: 375×667
+   phones and 1366×768 laptops both overflowed the width-only breakpoints.
+   Height-scoped so taller viewports (390×844, 411×731 portrait, 1080p+)
+   keep the roomier layout. Header rules are scoped with :has(.civ-page)
+   because the status/admin layouts are height-tuned around the default
+   header. */
+
+/* Short landscape: laptops (1366×768) and tablets/phones in landscape */
+@media (min-width: 43.76em) and (max-height: 50em) {
+  body:has(.civ-page) .site-header { padding: 0.25rem 0.75rem 0.15rem; }
+  .civ-hero { padding: 0.18rem 0.65rem; margin-bottom: 0.15rem; }
+  .civ-hero h2 { font-size: 1.05rem; }
+  .civ-body { gap: 0.25rem; }
+  .civ-section { padding: 0.2rem 0.5rem; }
+  .ast-level-value { font-size: 1.05rem; }
+  .ast-current { margin-bottom: 0.05rem; }
+  .ast-next { padding: 0.18rem 0.45rem; margin-bottom: 0.1rem; }
+  .ast-req-status { gap: 0.15rem; }
+  .req-row { font-size: 0.82rem; gap: 0.3rem; }
+  .req-have { font-size: 0.72rem; }
+  .ast-bar-wrap { margin-top: 0.25rem; }
+}
+
+/* Short phones — squeeze below the ≤700px-wide baseline. The em threshold
+   deliberately scales with the user's font-size preference: at default fonts
+   it only catches genuinely short screens (≤760px, e.g. 375×667 — every
+   modern Pixel/iPhone is ≥812 and keeps the roomy layout), but with the OS
+   font size turned up (e.g. Pixel "Large" ≈ 1.3×) a 412×915 Pixel 8 measures
+   ≤49em and gets the compact layout, which is what lets the bigger text
+   still fit without scrolling. At ≥1.5× scaling the page scrolls vertically
+   by design — fighting a strong accessibility preference with density would
+   defeat its purpose. */
+@media (max-width: 43.75em) and (max-height: 49em) {
+  body:has(.civ-page) .site-header { padding: 0.2rem 0.75rem 0.1rem; }
+  body:has(.civ-page) .mett-wordmark { font-size: 0.9rem; }
+  main.container-fluid { padding-top: 0.2rem !important; }
+  .civ-hero { padding: 0.12rem 0.45rem; margin-bottom: 0.08rem; }
+  .civ-hero h2 { font-size: 0.82rem; }
+  .civ-body { gap: 0.04rem; }
+  .civ-section { padding: 0.07rem 0.35rem; }
+  .phase-hint { font-size: 0.62rem; margin-bottom: 0.08rem; }
+  .census-input, .adv-input { height: 1.9rem; line-height: 1.9rem; }
+  .btn-submit { height: 1.9rem; }
+  .adv-card-input { height: 1.9rem; line-height: 1.9rem; }
+  .adv-btn { height: 1.9rem; }
+  .city-count-row > .adv-btn,
+  .adv-card-row > .adv-btn { height: 1.9rem; }
+  .mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ { padding: 0.3rem; }
+  .ast-current { margin-bottom: 0.04rem; }
+  .ast-level-value { font-size: 0.85rem; }
+  .ast-next { padding: 0.12rem 0.3rem; margin-bottom: 0.08rem; }
+  .ast-next h4 { margin-bottom: 0.04rem; }
+  .ast-req-status { gap: 0.12rem; }
+  .req-row { font-size: 0.78rem; gap: 0.25rem; }
+  .req-have { font-size: 0.68rem; }
+  .ast-bar-wrap { margin-top: 0.12rem; }
+  :root { --ast-node-size: 1.15rem; }
+  .ast-node { font-size: 0.5rem; }
+}

@@ -99,6 +99,7 @@ mett/
     └── browser/            Playwright specs (self-managed :3100 instance)
         ├── fixtures.ts             Auto-seed fixture (fresh 18-player game)
         ├── layout.spec.ts          1080p / 4K layout regression
+        ├── civ-viewport.spec.ts    Civ page fits phones/laptops + font scaling
         ├── admin.spec.ts           Admin page behaviour
         ├── civ-ast-strip.spec.ts   Civ-page A.S.T. strip layout
         └── civ-live-update.spec.ts Civ-page live update preserves focus
@@ -307,6 +308,7 @@ bun run test:browser  # bunx playwright test
 Specs live under `tests/browser/`:
 
 - `layout.spec.ts` — at 1080 p and 4 K, asserts the main display fits without overflow and shows 18 leaderboard rows.
+- `civ-viewport.spec.ts` — civ page fits without overflow across the modern phone fleet (375×667 legacy through 440×956) and 1366×768, plus OS font-scaling cases via CDP: Pixel 8 at 1.3× must fit entirely; at 2.0× vertical scroll is allowed but horizontal never is.
 - `admin.spec.ts` — admin page behaviour.
 - `civ-ast-strip.spec.ts` — civ-page A.S.T. strip layout.
 - `civ-live-update.spec.ts` — proves the civ page's live update preserves focus on a typed input, and that `#civ-content` is not swapped on state events.
