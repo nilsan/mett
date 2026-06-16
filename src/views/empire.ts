@@ -12,6 +12,7 @@ import type { TextColor } from '../types.js';
 
 export type EmpireCellVariant =
   | 'cell'              // <td class="empire-cell">          status tables
+  | 'cell-with-player'  // …with player name as a 2nd line   leaderboard (phone only)
   | 'cell-ab'           // <td class="ab-civ-label …">       AST board row label
   | 'badge'             // <span class="civ-badge …">        inline admin badge
   | 'badge-with-player' // …with player display name nested  game-over rank rows
@@ -31,6 +32,11 @@ export function empireCell(p: EmpireCellInput, variant: EmpireCellVariant = 'cel
   switch (variant) {
     case 'cell':
       return `<td class="empire-cell" style="${style}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</td>`;
+    case 'cell-with-player':
+      // Player name renders as a 2nd line inside the cell only on phone (CSS
+      // .lb-badge-name: display:none by default, block ≤700px where the
+      // separate Player column is hidden). Larger screens are unaffected.
+      return `<td class="empire-cell" style="${style}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}<span class="lb-badge-name">${p.name ?? ''}</span></td>`;
     case 'cell-ab':
       return `<td class="ab-civ-label empire-cell" style="${style}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</td>`;
     case 'badge':

@@ -106,7 +106,7 @@ export function renderMain(state: FullState): string {
     const rowClass = [unresolved ? 'lb-tied' : '', groupStart && i > 0 ? 'lb-group-start' : ''].filter(Boolean).join(' ');
     return `<tr${rowClass ? ` class="${rowClass}"` : ''}>
       ${rankCell}
-      ${empireCell(p)}
+      ${empireCell(p, 'cell-with-player')}
       <td class="player-name-col">${p.name}</td>
       <td class="adv-pts">${p.adv_points}</td>
       <td class="ast-pts">${p.ast_level}</td>
