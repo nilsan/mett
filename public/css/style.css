@@ -552,8 +552,8 @@ body {
 /* Desktop/TV: 5-column, viewport-locked, no scroll */
 @media (min-width: 43.76em) {
   .status-grid {
-    /* leaderboard | census | AST board | AST order | trade */
-    grid-template-columns: 2.6fr auto 3.0fr auto auto;
+    /* census | trade | AST board | AST order | leaderboard */
+    grid-template-columns: auto auto 3.0fr auto 2.6fr;
     /* Fill the viewport vertically — cards stretch to match each other
        (align-items: stretch), but tables stay natural-sized. 4.7rem
        accounts for site-header + status-header + main padding ≈ 95px. */

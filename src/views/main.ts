@@ -209,21 +209,6 @@ export function renderMain(state: FullState): string {
 
 <div class="status-grid" id="main-tables">
   <section class="table-section">
-    <h3>Leaderboard</h3>
-    <table class="mett-table lb-table">
-      <thead><tr>
-        <th class="rank">#</th>
-        <th>Empire</th>
-        <th class="player-name-col">Player</th>
-        <th title="Advance Victory Points">ADV</th>
-        <th title="A.S.T. Position">AST</th>
-        <th title="Total Victory Points">TOTAL</th>
-      </tr></thead>
-      <tbody>${lbRows || '<tr><td colspan="6">No players</td></tr>'}</tbody>
-    </table>
-  </section>
-
-  <section class="table-section">
     <h3>Census — Round ${game.current_round}</h3>
     <table class="mett-table census-table">
       <thead><tr>
@@ -235,6 +220,24 @@ export function renderMain(state: FullState): string {
       <tbody>${censusRows || '<tr><td colspan="4">No players</td></tr>'}</tbody>
     </table>
     <p class="table-hint">${allCensusSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.census?.population != null).length} / ${players.length} submitted`}</p>
+  </section>
+
+  <section class="table-section">
+    <h3>Trade Cards</h3>
+    ${citiesPhase
+      ? `<p class="trade-locked-msg">Trading complete</p>`
+      : `${westTrade.length > 0 ? `<table class="mett-table trade-table">
+      <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
+      ${westTrade.length > 0 && eastTrade.length > 0 ? `<thead><tr><th colspan="2">West</th></tr></thead>` : ''}
+      <tbody>${tradeRegionRows(westTrade)}</tbody>
+    </table>` : ''}
+    ${eastTrade.length > 0 ? `<table class="mett-table trade-table${westTrade.length > 0 ? ' trade-east' : ''}">
+      <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
+      ${westTrade.length > 0 && eastTrade.length > 0 ? `<thead><tr><th colspan="2">East</th></tr></thead>` : ''}
+      <tbody>${tradeRegionRows(eastTrade)}</tbody>
+    </table>` : ''}
+    <p class="table-hint">${allCitiesSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted`}</p>`
+    }
   </section>
 
   <section class="table-section ast-section">
@@ -274,21 +277,18 @@ export function renderMain(state: FullState): string {
   </section>
 
   <section class="table-section">
-    <h3>Trade Cards</h3>
-    ${citiesPhase
-      ? `<p class="trade-locked-msg">Trading complete</p>`
-      : `${westTrade.length > 0 ? `<table class="mett-table trade-table">
-      <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
-      ${westTrade.length > 0 && eastTrade.length > 0 ? `<thead><tr><th colspan="2">West</th></tr></thead>` : ''}
-      <tbody>${tradeRegionRows(westTrade)}</tbody>
-    </table>` : ''}
-    ${eastTrade.length > 0 ? `<table class="mett-table trade-table${westTrade.length > 0 ? ' trade-east' : ''}">
-      <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
-      ${westTrade.length > 0 && eastTrade.length > 0 ? `<thead><tr><th colspan="2">East</th></tr></thead>` : ''}
-      <tbody>${tradeRegionRows(eastTrade)}</tbody>
-    </table>` : ''}
-    <p class="table-hint">${allCitiesSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted`}</p>`
-    }
+    <h3>Leaderboard</h3>
+    <table class="mett-table lb-table">
+      <thead><tr>
+        <th class="rank">#</th>
+        <th>Empire</th>
+        <th class="player-name-col">Player</th>
+        <th title="Advance Victory Points">ADV</th>
+        <th title="A.S.T. Position">AST</th>
+        <th title="Total Victory Points">TOTAL</th>
+      </tr></thead>
+      <tbody>${lbRows || '<tr><td colspan="6">No players</td></tr>'}</tbody>
+    </table>
   </section>
 </div>
 </div><!-- #main-content -->
