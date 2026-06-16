@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import type { FullState, PlayerRow, CensusRow } from '../db.js';
-import { AST_LEVELS, getAgeBands, civBandClass, isAgeEnd } from '../models/ast.js';
+import { AST_LEVELS, getAgeBands, civBandClass, isAgeEnd, reqLegendItems } from '../models/ast.js';
 import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry, computeTieGroupMeta, sortCensusOrder } from '../models/game.js';
 import { empireCell } from './empire.js';
 
@@ -139,9 +139,7 @@ export function renderMain(state: FullState): string {
     </th>`
   ).join('');
 
-  const reqLegend = AGE_BANDS.filter(b => b.cls !== 'age-start' && b.name).map(b =>
-    `<li><span class="ab-legend-dot ${b.cls}"></span><strong>${b.name}:</strong> ${expert ? b.expertReq : b.basicReq}</li>`
-  ).join('');
+  const reqLegend = reqLegendItems(expert);
 
   const defaultAgeEnds = new Set([20, 35, 50, 65, 70, expert ? 80 : 75]);
   const levelHeaders = boardLevels.map(l =>

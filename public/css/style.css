@@ -1407,15 +1407,15 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .mett-tagline { display: none; }
 
   /* Hero */
-  .civ-hero { padding: 0.25rem 0.45rem; margin-bottom: 0.12rem; }
+  .civ-hero { padding: 0.25rem 0.45rem; margin-bottom: 0.3rem; }
   .civ-hero-content { gap: 0.02rem; }
   .civ-hero h2 { font-size: 0.95rem; gap: 0.25rem; }
   .civ-player-name { font-size: 0.7rem; }
   .civ-region-tag { font-size: 0.56rem; padding: 0.06rem 0.2rem; }
 
-  /* Body layout — single column, tight gap */
-  .civ-body { grid-template-columns: 1fr; gap: 0.12rem; }
-  .civ-section { padding: 0.22rem 0.35rem; }
+  /* Body layout — single column with air between sections */
+  .civ-body { grid-template-columns: 1fr; gap: 0.3rem; }
+  .civ-section { padding: 0.3rem 0.45rem; }
   .civ-section h3 { font-size: 0.64rem; margin-bottom: 0.1rem; letter-spacing: 0.04em; }
 
   /* Census */
@@ -1806,6 +1806,10 @@ th.ab-player-col {
 }
 
 .ab-legend li { display: flex; align-items: center; gap: 0.35rem; }
+
+/* Requirement legend on the player page — always visible below the AST strip,
+   one era per line. The player page is allowed to scroll vertically. */
+.ast-req-legend { flex-direction: column; font-size: 0.62rem; gap: 0.12rem; padding: 0.3rem 0.5rem 0.5rem; }
 
 .ab-legend-dot {
   display: inline-block;
@@ -2535,10 +2539,10 @@ button.secondary {
   body:has(.civ-page) .site-header { padding: 0.2rem 0.75rem 0.1rem; }
   body:has(.civ-page) .mett-wordmark { font-size: 0.9rem; }
   main.container-fluid { padding-top: 0.2rem !important; }
-  .civ-hero { padding: 0.12rem 0.45rem; margin-bottom: 0.08rem; }
+  .civ-hero { padding: 0.25rem 0.6rem; margin-bottom: 0.3rem; }
   .civ-hero h2 { font-size: 0.82rem; }
-  .civ-body { gap: 0.04rem; }
-  .civ-section { padding: 0.07rem 0.35rem; }
+  .civ-body { gap: 0.3rem; }
+  .civ-section { padding: 0.3rem 0.45rem; }
   .phase-hint { font-size: 0.62rem; margin-bottom: 0.08rem; }
   .census-input, .adv-input { height: 1.9rem; line-height: 1.9rem; }
   .btn-submit { height: 1.9rem; }

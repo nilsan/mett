@@ -7,7 +7,7 @@ import { getCivAstProfile } from '../civs.js';
 import { sortCensusOrder, playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
 import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
-import { getAdvanceRequirement, advancesOfTier, type AstRequirement } from '../models/ast.js';
+import { getAdvanceRequirement, advancesOfTier, reqLegendItems, type AstRequirement } from '../models/ast.js';
 
 
 function getCivAgeBands(civNumber: number, expert: boolean) {
@@ -333,6 +333,7 @@ export function renderCivFragment(
       })()}
       ${astBar(levels, player.ast_level, expert, player.civ_number)}
     </section>
+    <ul class="ab-legend ast-req-legend">${reqLegendItems(expert)}</ul>
 
   </div><!-- .civ-body -->
 </div><!-- .civ-page -->

@@ -62,6 +62,15 @@ export function getAgeBands(expert: boolean): AgeBand[] {
   ] as AgeBand[];
 }
 
+/** Requirement-legend `<li>` items for the A.S.T. board, one per era. Shared by
+ *  the status page and the player page so the two never drift. */
+export function reqLegendItems(expert: boolean): string {
+  return getAgeBands(expert)
+    .filter(b => b.cls !== 'age-start' && b.name)
+    .map(b => `<li><span class="ab-legend-dot ${b.cls}"></span><strong>${b.name}:</strong> ${expert ? b.expertReq : b.basicReq}</li>`)
+    .join('');
+}
+
 /** CSS age-band class for a single player cell on the AST board. */
 export function civBandClass(civNumber: number, level: number, expert: boolean): string {
   if (level === 0) return 'age-start';
