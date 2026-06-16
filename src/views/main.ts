@@ -168,7 +168,10 @@ export function renderMain(state: FullState): string {
       : willAdvance ? 'Will advance next round — ' : '';
     const cells = boardLevels.map(l => {
       const here = p.ast_level === l;
-      return `<td class="ab-cell ${civBandClass(p.civ_number, l, expert)}${here ? ' ab-here' : ''}${l === 0 ? ' ab-start-col' : ''}${isAgeEnd(p.civ_number, l, expert) ? ' ab-age-end' : ''}">` +
+      const band = civBandClass(p.civ_number, l, expert);
+      // Late Iron Age cells take the empire's own colour (the "finish line").
+      const lironStyle = band === 'age-liron' ? ` style="background:${p.civ_color}"` : '';
+      return `<td class="ab-cell ${band}${here ? ' ab-here' : ''}${l === 0 ? ' ab-start-col' : ''}${isAgeEnd(p.civ_number, l, expert) ? ' ab-age-end' : ''}"${lironStyle}>` +
         (here ? `<span class="ab-magnet" style="background:${p.civ_color};color:${p.civ_text_color}" title="${titlePrefix}${p.civ_name}">${l === 0 ? 'S' : l}</span>` : '') +
         `</td>`;
     }).join('');
@@ -242,6 +245,10 @@ export function renderMain(state: FullState): string {
     <h3>A.S.T. Progress</h3>
     <div class="ab-scroll">
       <table class="ab-table status-ast">
+        <colgroup>
+          <col class="ab-label-col">
+          ${boardLevels.map(() => '<col class="ab-data-col">').join('')}
+        </colgroup>
         <thead>
           <tr>
             <th class="ab-civ-label ab-corner"></th>

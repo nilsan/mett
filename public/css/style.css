@@ -552,8 +552,11 @@ body {
 /* Desktop/TV: 5-column, viewport-locked, no scroll */
 @media (min-width: 43.76em) {
   .status-grid {
-    /* census | trade | AST board | AST order | leaderboard */
-    grid-template-columns: auto auto 3.0fr auto 2.6fr;
+    /* census | trade | AST board | AST order | leaderboard.
+       AST board gets the larger fr share (3.3 vs 2.3) so its 17 equal-width
+       cells are wide enough for the position chips; the leaderboard still
+       fits its content at this split. */
+    grid-template-columns: auto auto 3.3fr auto 2.3fr;
     /* Fill the viewport vertically — cards stretch to match each other
        (align-items: stretch), but tables stay natural-sized. 4.7rem
        accounts for site-header + status-header + main padding ≈ 95px. */
@@ -736,7 +739,9 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    Row pitch matches other status-grid tables (height + border-spacing) so all
    18 empires line up across columns within a 1080p viewport. */
 .ab-table.status-ast {
-  width: auto !important;
+  /* Fill the AST grid cell so the fixed layout can split the data columns
+     evenly; auto-width let the table content-size and then compress unevenly. */
+  width: 100% !important;
   font-size: 0.65rem !important;
   border-collapse: separate !important;
   /* Match the other status-grid tables so AST.PROGRESS data rows align
@@ -771,13 +776,35 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 }
 .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
 .status-ast td.empire-cell { font-size: clamp(0.62rem, 1.2vh, 1.4rem); }
+/* colgroup pins every data column to one width (table-layout:fixed honours the
+   <col> over the colspan'd band headers) so all A.S.T. cells are equal width. */
+.status-ast .ab-label-col { width: 7.5rem; }
+/* No width on the data cols: table-layout:fixed splits the leftover table
+   width equally across all of them, so every A.S.T. cell is exactly equal. */
+.status-ast .ab-data-col  { width: auto; }
 .status-ast .ab-cell      { width: clamp(1.9rem, 2.4vw, 3rem); height: clamp(1.1rem, 3.3vh, 3.6rem); }
+/* Phone: the desktop board fills its grid cell and equal-splits the columns,
+   but a ~390px phone cell would crush the 17 cells to ~14px. On mobile let the
+   board content-size to readable fixed-width cells and scroll horizontally
+   inside its .ab-scroll card instead. Placed after the base rules so it wins
+   the cascade on mobile (same specificity, later source order). */
+@media (max-width: 43.75em) {
+  .ab-table.status-ast { width: max-content !important; }
+  .status-ast .ab-data-col { width: clamp(1.9rem, 2.4vw, 3rem); }
+}
 .status-ast .ab-level-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
 .status-ast .ab-round-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
 .status-ast .ab-name      { font-size: clamp(0.55rem, 0.85vh, 1rem) !important; }
 .status-ast .ab-magnet {
   width: 1.1rem;
-  height: 1.1rem;
+  /* Never wider than the (equal) cell; aspect-ratio drives height off the
+     (possibly capped) width so the chip stays circular and can't overflow.
+     height:auto is required to beat the global `.ab-magnet { height }` rule,
+     which would otherwise pin an explicit height and turn the chip into an oval. */
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  box-sizing: border-box;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -798,13 +825,12 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    - A glyph appended after the empire name inside the chip
      (← for regress, → for advance), travelling with the chip
      without changing its dimensions. */
-.status-ast tr.will-regress { background: rgba(204, 51, 51, 0.22); }
+/* No row tint — the ←/→ arrows below indicate regress/advance. */
 .status-ast tr.will-regress td.empire-cell::after {
   content: ' ←';
   margin-left: 0.35rem;
   font-weight: 700;
 }
-.status-ast tr.will-advance { background: rgba(196, 147, 63, 0.22); }
 .status-ast tr.will-advance td.empire-cell::after {
   content: ' →';
   margin-left: 0.35rem;
@@ -901,7 +927,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
   /* AST board: row heights + fonts handled by viewport-height clamp() above. */
   .status-ast .ab-civ-label { width: 7.5rem; min-width: 7.5rem; }
-  .status-ast .ab-magnet    { width: 1.5rem; height: 1.5rem; font-size: clamp(0.62rem, 1vh, 1.05rem); }
+  .status-ast .ab-magnet    { width: 1.5rem; font-size: clamp(0.62rem, 1vh, 1.05rem); }
 }
 
 /* ─── S3 4K layout — 3072px CSS px (4K @ 1.25×) ───────────────────────────── */
@@ -949,7 +975,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
   /* AST board: row heights + fonts handled by viewport-height clamp() above. */
   .status-ast .ab-civ-label { width: 9rem; min-width: 9rem; }
-  .status-ast .ab-magnet    { width: 1.8rem; height: 1.8rem; font-size: clamp(0.72rem, 1vh, 1.05rem); }
+  .status-ast .ab-magnet    { width: 1.8rem; font-size: clamp(0.72rem, 1vh, 1.05rem); }
 }
 
 /* ─── Main 3-column layout ────────────────────────────────────────────────── */
@@ -1759,18 +1785,20 @@ th.ab-player-col {
   vertical-align: middle;
 }
 
-.ab-cell.age-start   { background: rgba(30,30,30,0.30); }
-.ab-cell.age-stone   { background: rgba(90,76,52,0.35); }
-.ab-cell.age-ebronze { background: rgba(110,72,20,0.35); }
-.ab-cell.age-mbronze { background: rgba(80,48,10,0.40); }
-.ab-cell.age-lbronze { background: rgba(56,32,6,0.45); }
-.ab-cell.age-eiron   { background: rgba(72,56,0,0.40); }
-.ab-cell.age-liron   { background: rgba(90,36,4,0.40); }
+/* Distinct, higher-contrast age tints: a light-tan → deepening-bronze ramp,
+   then a cool steel for Early Iron, so adjacent ages read apart at a glance.
+   Late Iron Age has no tint here — its cell background is the empire's own
+   colour, set inline in main.ts (the "finish line"). */
+.ab-cell.age-start   { background: rgba(255,255,255,0.04); }
+.ab-cell.age-stone   { background: rgba(170,156,132,0.30); }
+.ab-cell.age-ebronze { background: rgba(224,164,74,0.52); }   /* bright amber */
+.ab-cell.age-mbronze { background: rgba(170,96,34,0.58); }    /* orange bronze */
+.ab-cell.age-lbronze { background: rgba(104,52,16,0.70); }    /* dark red-brown */
+.ab-cell.age-eiron   { background: rgba(96,114,144,0.48); }
 
-/* Thick right border marks the end of each age band per empire row */
-.ab-age-end {
-  border-right: 0.125rem solid rgba(255,255,255,0.22) !important;
-}
+/* Age borders removed — the colour contrast separates the ages now. The Start
+   column keeps its divider (see .ab-start-col). */
+.ab-age-end { /* intentionally empty */ }
 
 /* Start column — level 0, where all empires sit at game start */
 .ab-start-col {
@@ -1818,6 +1846,15 @@ th.ab-player-col {
   border-radius: 0.125rem;
   flex-shrink: 0;
 }
+
+/* Legend dots match the board's age palette. Late Iron Age is per-empire
+   (each cell is that empire's colour), so its swatch is multi-coloured. */
+.ab-legend-dot.age-stone   { background: #9c9072; }
+.ab-legend-dot.age-ebronze { background: #e0a448; }
+.ab-legend-dot.age-mbronze { background: #a85e22; }
+.ab-legend-dot.age-lbronze { background: #5a2e0e; }
+.ab-legend-dot.age-eiron   { background: #6a7d9e; }
+.ab-legend-dot.age-liron   { background: conic-gradient(from 45deg, #e0533a, #e0b13a, #4caf50, #3a9ad0, #9b59d0, #e0533a); }
 
 .ab-slowstart-note {
   font-size: 0.68rem;
