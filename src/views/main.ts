@@ -165,6 +165,17 @@ export function renderMain(state: FullState): string {
     const titlePrefix = willRegress
       ? 'Will regress next round — '
       : willAdvance ? 'Will advance next round — ' : '';
+    // Movement indicator in the start column (before S.A.), not in the empire
+    // box: green → advance, orange = no change, red ← regress. Hidden until
+    // every empire has reached round 2 (game is on round 2+), since there is
+    // no movement to show in round 1.
+    const moveKind = willAdvance ? 'advance' : willRegress ? 'regress' : 'stay';
+    const moveGlyph = willAdvance ? '→' : willRegress ? '←' : '=';
+    const moveTitle = willAdvance ? 'Will advance next round' : willRegress ? 'Will regress next round' : 'Will not advance';
+    const showMove = game.current_round >= 2 && (willAdvance || willRegress || status === 'stay');
+    const moveInd = showMove
+      ? `<span class="ab-move ab-move-${moveKind}" title="${moveTitle} — ${p.civ_name}">${moveGlyph}</span>`
+      : '';
     const cells = boardLevels.map(l => {
       const here = p.ast_level === l;
       const band = civBandClass(p.civ_number, l, expert);
@@ -172,6 +183,7 @@ export function renderMain(state: FullState): string {
       const lironStyle = band === 'age-liron' ? ` style="background:${p.civ_color}"` : '';
       return `<td class="ab-cell ${band}${here ? ' ab-here' : ''}${l === 0 ? ' ab-start-col' : ''}${isAgeEnd(p.civ_number, l, expert) ? ' ab-age-end' : ''}"${lironStyle}>` +
         (here ? `<span class="ab-magnet" style="background:${p.civ_color};color:${p.civ_text_color}" title="${titlePrefix}${p.civ_name}">${l === 0 ? 'S' : l}</span>` : '') +
+        (l === 0 && !here ? moveInd : '') +
         `</td>`;
     }).join('');
     return `<tr${rowClass ? ` class="${rowClass}"` : ''}>
@@ -241,7 +253,7 @@ export function renderMain(state: FullState): string {
   </section>
 
   <section class="table-section ast-section">
-    <h3>A.S.T. Progress</h3>
+    <h3>Archaeological Succession Timeline</h3>
     <div class="ab-scroll">
       <table class="ab-table status-ast">
         <colgroup>
@@ -273,7 +285,7 @@ export function renderMain(state: FullState): string {
   </section>
 
   <section class="table-section ast-order-section">
-    <h3>A.S.T. Ranking</h3>
+    <h3>A.S.T. Progress</h3>
     <table class="mett-table ast-order-table">
       <thead><tr><th>&nbsp;</th></tr></thead>
       <tbody>${astOrderRows || '<tr><td style="opacity:0.4">—</td></tr>'}</tbody>

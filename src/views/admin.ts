@@ -325,6 +325,8 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
 
     const astStatus = state.astStatus[p.id] ?? 'unknown';
     const dotTitle = astStatus === 'advance' ? 'Will advance' : astStatus === 'regress' ? 'Will regress' : astStatus === 'stay' ? 'Requirements not met' : 'Post-calamity city count unknown';
+    // Movement indicator: green → advance, orange = no change, red ← regress.
+    const astGlyph = astStatus === 'advance' ? '→' : astStatus === 'regress' ? '←' : astStatus === 'stay' ? '=' : '·';
 
     return `<tr data-player-id="${p.id}">
       <td data-label="Empire">
@@ -372,9 +374,8 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
       <td data-label="A.S.T.">
         <div class="ast-ctrl">
           <select class="ast-select" data-player-id="${p.id}" data-server-value="${p.ast_level}">${astOptions}</select>
-          <div class="ast-status-dots">
-            <span class="ast-status-dot ast-status-${astStatus}" title="${dotTitle}"></span>
-            <span class="ast-status-dot ${astStatus === 'regress' ? 'ast-status-regress' : 'ast-status-hidden'}" title="${dotTitle}"></span>
+          <div class="ast-status-ind">
+            <span class="ast-move ast-move-${astStatus}" title="${dotTitle}">${astGlyph}</span>
           </div>
         </div>
       </td>

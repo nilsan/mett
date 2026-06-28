@@ -410,21 +410,20 @@
       if (prepBtn) prepBtn.disabled = !allCitiesReady;
       if (advBtn) advBtn.disabled = !allCitiesReady;
 
-      // Update per-player AST status dots
+      // Update per-player AST movement indicator (green → advance,
+      // orange = no change, red ← regress, · unknown).
       if (data.astStatus) {
         data.players.forEach(p => {
           const row = document.querySelector(`tr[data-player-id="${p.id}"]`);
           if (!row) return;
           const status = data.astStatus[p.id] ?? 'unknown';
           const title = status === 'advance' ? 'Will advance' : status === 'regress' ? 'Will regress' : status === 'stay' ? 'Requirements not met' : 'Post-calamity city count unknown';
-          const [dot1, dot2] = row.querySelectorAll('.ast-status-dot');
-          if (dot1) {
-            dot1.className = `ast-status-dot ast-status-${status}`;
-            dot1.title = title;
-          }
-          if (dot2) {
-            dot2.className = `ast-status-dot ${status === 'regress' ? 'ast-status-regress' : 'ast-status-hidden'}`;
-            dot2.title = title;
+          const glyph = status === 'advance' ? '→' : status === 'regress' ? '←' : status === 'stay' ? '=' : '·';
+          const move = row.querySelector('.ast-move');
+          if (move) {
+            move.className = `ast-move ast-move-${status}`;
+            move.title = title;
+            move.textContent = glyph;
           }
         });
       }

@@ -833,17 +833,19 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    - A glyph appended after the empire name inside the chip
      (← for regress, → for advance), travelling with the chip
      without changing its dimensions. */
-/* No row tint — the ←/→ arrows below indicate regress/advance. */
-.status-ast tr.will-regress .empire-civ::after {
-  content: ' ←';
-  margin-left: 0.35rem;
+/* No row tint, and no arrow inside the empire box — the advance/regress
+   indicator lives in the start column (.ab-move), coloured to match admin. */
+.ab-move {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
+  line-height: 1;
+  font-size: clamp(0.8rem, 1.8vh, 2rem);
 }
-.status-ast tr.will-advance .empire-civ::after {
-  content: ' →';
-  margin-left: 0.35rem;
-  font-weight: 700;
-}
+.ab-move-advance { color: var(--mett-success); }
+.ab-move-stay    { color: var(--mett-warning); }
+.ab-move-regress { color: var(--mett-danger); }
 
 /* ─── S3 phone layout — single column, normal density ────────────────────── */
 
@@ -978,8 +980,12 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   /* Trade separator: re-center in 6px gap */
   .status-grid .trade-table .trade-group-start td::before { top: -3px; }
 
-  /* AST board: row heights + fonts handled by viewport-height clamp() above. */
+  /* AST board: row heights + fonts handled by viewport-height clamp() above.
+     The colgroup col wins under table-layout:fixed, so it must widen to 9rem
+     here too — otherwise the row label stays 7.5rem and the larger 4K font
+     truncates 8-char civ names (Carthage, Dravidia). */
   .status-ast .ab-civ-label { width: 9rem; min-width: 9rem; }
+  .status-ast .ab-label-col { width: 9rem; }
   .status-ast .ab-magnet    { width: 1.8rem; font-size: clamp(0.72rem, 1vh, 1.05rem); }
 }
 
@@ -2276,24 +2282,24 @@ th.ab-player-col {
   align-items: center;
   gap: 0.25rem;
 }
-.ast-status-dots {
+/* Admin AST movement indicator: green → advance, orange = no change,
+   red ← regress. Fixed-width container keeps the select arrows aligned. */
+.ast-status-ind {
   display: flex;
   align-items: center;
-  gap: 0.1875rem;
+  justify-content: center;
   width: 1.1875rem;
   flex-shrink: 0;
 }
-.ast-status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  flex-shrink: 0;
+.ast-move {
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1;
 }
-.ast-status-advance  { background: var(--mett-success); }
-.ast-status-stay     { background: var(--mett-warning); }
-.ast-status-regress  { background: var(--mett-danger); }
-.ast-status-unknown  { background: var(--mett-border); }
-.ast-status-hidden   { background: transparent; }
+.ast-move-advance { color: var(--mett-success); }
+.ast-move-stay    { color: var(--mett-warning); }
+.ast-move-regress { color: var(--mett-danger); }
+.ast-move-unknown { color: var(--mett-border); }
 
 .ast-btn {
   width: 1.4rem;
