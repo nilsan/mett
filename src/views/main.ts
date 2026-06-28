@@ -229,12 +229,12 @@ export function renderMain(state: FullState): string {
       ? `<p class="trade-locked-msg">Trading complete</p>`
       : `${westTrade.length > 0 ? `<table class="mett-table trade-table">
       <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
-      ${westTrade.length > 0 && eastTrade.length > 0 ? `<thead><tr><th colspan="2">West</th></tr></thead>` : ''}
+      <thead><tr><th colspan="2">${eastTrade.length > 0 ? 'West' : '&nbsp;'}</th></tr></thead>
       <tbody>${tradeRegionRows(westTrade)}</tbody>
     </table>` : ''}
     ${eastTrade.length > 0 ? `<table class="mett-table trade-table${westTrade.length > 0 ? ' trade-east' : ''}">
       <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
-      ${westTrade.length > 0 && eastTrade.length > 0 ? `<thead><tr><th colspan="2">East</th></tr></thead>` : ''}
+      <thead><tr><th colspan="2">${westTrade.length > 0 ? 'East' : '&nbsp;'}</th></tr></thead>
       <tbody>${tradeRegionRows(eastTrade)}</tbody>
     </table>` : ''}
     <p class="table-hint">${allCitiesSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted`}</p>`
