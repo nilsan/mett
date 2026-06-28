@@ -289,7 +289,6 @@ export function renderCivFragment(
     </section>
 
     <section class="civ-section ast-section">
-      <h3>A.S.T. Progress</h3>
       <div class="ast-current">
         <span class="ast-level-label">Leaderboard position:</span>
         <span class="ast-level-value">${lbTied && !lbResolved ? '=' : ''}${lbPos}${ordinal(lbPos)}</span>

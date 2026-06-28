@@ -236,9 +236,7 @@ export function renderMain(state: FullState): string {
 
   <section class="table-section">
     <h3>Trade Cards</h3>
-    ${citiesPhase
-      ? `<p class="trade-locked-msg">Trading complete</p>`
-      : `${westTrade.length > 0 ? `<table class="mett-table trade-table">
+    ${westTrade.length > 0 ? `<table class="mett-table trade-table">
       <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
       <thead><tr><th colspan="2">${eastTrade.length > 0 ? 'West' : '&nbsp;'}</th></tr></thead>
       <tbody>${tradeRegionRows(westTrade)}</tbody>
@@ -248,8 +246,15 @@ export function renderMain(state: FullState): string {
       <thead><tr><th colspan="2">${westTrade.length > 0 ? 'East' : '&nbsp;'}</th></tr></thead>
       <tbody>${tradeRegionRows(eastTrade)}</tbody>
     </table>` : ''}
-    <p class="table-hint">${allCitiesSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted`}</p>`
-    }
+    <p class="table-hint">${allCitiesSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted`}</p>
+  </section>
+
+  <section class="table-section ast-order-section">
+    <h3>A.S.T. Progress</h3>
+    <table class="mett-table ast-order-table">
+      <thead><tr><th>&nbsp;</th></tr></thead>
+      <tbody>${astOrderRows || '<tr><td style="opacity:0.4">—</td></tr>'}</tbody>
+    </table>
   </section>
 
   <section class="table-section ast-section">
@@ -282,14 +287,6 @@ export function renderMain(state: FullState): string {
       </table>
     </div>
     <ul class="ab-legend">${reqLegend}</ul>
-  </section>
-
-  <section class="table-section ast-order-section">
-    <h3>A.S.T. Progress</h3>
-    <table class="mett-table ast-order-table">
-      <thead><tr><th>&nbsp;</th></tr></thead>
-      <tbody>${astOrderRows || '<tr><td style="opacity:0.4">—</td></tr>'}</tbody>
-    </table>
   </section>
 
   <section class="table-section">

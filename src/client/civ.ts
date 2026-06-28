@@ -337,11 +337,8 @@ if (civEl) {
   ): void {
     const sec = document.querySelector('.ast-section');
     if (!sec) return;
-    const h3 = sec.querySelector('h3');
-    if (!h3) return;
-    const html = buildAstSectionInner(player, census, game, state, expert);
-    while (h3.nextSibling) h3.nextSibling.remove();
-    h3.insertAdjacentHTML('afterend', html);
+    // The section has no heading (removed by request); rebuild its whole body.
+    sec.innerHTML = buildAstSectionInner(player, census, game, state, expert);
   }
 
   interface LbInfo { pos: number; tied: boolean; resolved: boolean; }

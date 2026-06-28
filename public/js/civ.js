@@ -386,13 +386,7 @@
       const sec = document.querySelector(".ast-section");
       if (!sec)
         return;
-      const h3 = sec.querySelector("h3");
-      if (!h3)
-        return;
-      const html = buildAstSectionInner(player, census, game, state, expert);
-      while (h3.nextSibling)
-        h3.nextSibling.remove();
-      h3.insertAdjacentHTML("afterend", html);
+      sec.innerHTML = buildAstSectionInner(player, census, game, state, expert);
     }, computeLbInfo = function(player, state) {
       const game = state.game;
       const censusByPlayer = new Map(state.census.map((c) => [c.player_id, c.city_count ?? 0]));
