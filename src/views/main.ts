@@ -106,8 +106,7 @@ export function renderMain(state: FullState): string {
     const rowClass = [unresolved ? 'lb-tied' : '', groupStart && i > 0 ? 'lb-group-start' : ''].filter(Boolean).join(' ');
     return `<tr${rowClass ? ` class="${rowClass}"` : ''}>
       ${rankCell}
-      ${empireCell(p, 'cell-with-player')}
-      <td class="player-name-col">${p.name}</td>
+      ${empireCell(p)}
       <td class="adv-pts">${p.adv_points}</td>
       <td class="ast-pts">${p.ast_level}</td>
       <td class="total-vp">${playerTotalVp(p, lbCityVp(p))}${p.late_iron_age_bonus ? ' <span class="lia-bonus-chip" title="Late Iron Age bonus: +5 VP">★</span>' : ''}</td>
@@ -287,12 +286,11 @@ export function renderMain(state: FullState): string {
       <thead><tr>
         <th class="rank">#</th>
         <th>Empire</th>
-        <th class="player-name-col">Player</th>
         <th title="Advance Victory Points">ADV</th>
         <th title="A.S.T. Position">AST</th>
         <th title="Total Victory Points">TOTAL</th>
       </tr></thead>
-      <tbody>${lbRows || '<tr><td colspan="6">No players</td></tr>'}</tbody>
+      <tbody>${lbRows || '<tr><td colspan="5">No players</td></tr>'}</tbody>
     </table>
   </section>
 </div>

@@ -12,7 +12,6 @@ import type { TextColor } from '../types.js';
 
 export type EmpireCellVariant =
   | 'cell'              // <td class="empire-cell">          status tables
-  | 'cell-with-player'  // …with player name as a 2nd line   leaderboard (phone only)
   | 'cell-ab'           // <td class="ab-civ-label …">       AST board row label
   | 'badge'             // <span class="civ-badge …">        inline admin badge
   | 'badge-with-player' // …with player display name nested  game-over rank rows
@@ -23,22 +22,27 @@ interface EmpireCellInput {
   civ_name: string;
   civ_color: string;
   civ_text_color: TextColor;
-  /** Player's display name. Only consumed by `badge-with-player`. */
+  /** Player's display name. Rendered as a 2nd line in the status-table cells. */
   name?: string;
+}
+
+/**
+ * Two-line cell body: civ name on line 1 (with the seat-number badge), the
+ * player's display name on a dimmer 2nd line. Used by every status table so
+ * the player name is visible in-cell without a dedicated column.
+ */
+function cellBody(p: EmpireCellInput): string {
+  return `<span class="empire-civ"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</span>` +
+    `<span class="empire-player-name">${p.name ?? ''}</span>`;
 }
 
 export function empireCell(p: EmpireCellInput, variant: EmpireCellVariant = 'cell'): string {
   const style = `background:${p.civ_color};color:${p.civ_text_color}`;
   switch (variant) {
     case 'cell':
-      return `<td class="empire-cell" style="${style}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</td>`;
-    case 'cell-with-player':
-      // Player name renders as a 2nd line inside the cell only on phone (CSS
-      // .lb-badge-name: display:none by default, block ≤700px where the
-      // separate Player column is hidden). Larger screens are unaffected.
-      return `<td class="empire-cell" style="${style}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}<span class="lb-badge-name">${p.name ?? ''}</span></td>`;
+      return `<td class="empire-cell" style="${style}">${cellBody(p)}</td>`;
     case 'cell-ab':
-      return `<td class="ab-civ-label empire-cell" style="${style}"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</td>`;
+      return `<td class="ab-civ-label empire-cell" style="${style}">${cellBody(p)}</td>`;
     case 'badge':
       return `<span class="civ-badge civ-badge-with-num" style="${style}"><span class="civ-num-in-badge">${p.civ_number}</span>${p.civ_name}</span>`;
     case 'badge-with-player':
