@@ -307,11 +307,34 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
   const expert = game.expert === 1;
   const AST_LEVELS = state.astLevels.map(l => l.level);
   const isFinalRound = game.is_final_round === 1;
+  const revealed = game.census_revealed === 1;
   const citiesPhase = game.cities_phase === 1; // false=pre-trade, true=post-calamity
   const n = players.length;
   const censusCount = census.filter(c => c.population != null).length;
   const citiesCount = census.filter(c => c.city_count != null).length;
   const allCitiesReady = n > 0 && citiesCount === n;
+
+  // Three player-input phases, mirrored from the status strip:
+  //   0 Census  ·  1 Pre-Trade (first city count)  ·  2 Post-Calamity (recount)
+  const adminPhase = !revealed ? 0 : !citiesPhase ? 1 : 2;
+  const PHASE_NAMES = ['Census', 'Trade', 'Calamities'];
+  const phaseSteps = PHASE_NAMES.map((name, i) => {
+    const cls = i < adminPhase ? 'phase-done' : i === adminPhase ? 'phase-active' : 'phase-future';
+    return `<li class="phase-step ${cls}">${name}</li>`;
+  }).join('<li class="phase-sep" aria-hidden="true">›</li>');
+  // Progress + the single "next" action for the current phase.
+  const phaseProgressLabel = adminPhase === 0 ? 'Census' : adminPhase === 1 ? 'Cities (pre-trade)' : 'Cities (post-calamity)';
+  const phaseProgressCount = adminPhase === 0 ? censusCount : citiesCount;
+  const phaseButton = adminPhase === 0
+    ? '' // Census reveals automatically once every population is in — no manual action.
+    : adminPhase === 1
+      ? `<button id="prepare-ast" class="btn-primary"${allCitiesReady ? '' : ' disabled'}>Trading done → recount</button>`
+      : `<button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled'}>${isFinalRound ? 'End Game' : `Advance to Round ${game.current_round + 1}`}</button>`;
+  const phaseHint = adminPhase === 0
+    ? 'Empires submit population; the move order reveals automatically once all are in.'
+    : adminPhase === 1
+      ? 'Empires submit pre-trade city count (this opens the trade table). Click when trading is done.'
+      : 'Empires re-enter city count after calamities. Click to resolve advances and start the next round.';
 
   const censusByPlayer = new Map(census.map(c => [c.player_id, c]));
   const prevCensusByPlayer = new Map(prevCensus.map(c => [c.player_id, c]));
@@ -404,34 +427,16 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
 
   ${isFinalRound ? '<div class="final-round-banner">⚑ Final Round — clicking End Game will close the game and reveal final scores.</div>' : ''}
 
-  <section class="admin-section round-section">
-    <div class="submission-progress">
-      <div class="sub-prog-item${censusCount === n ? ' sub-prog-done' : ''}">
-        <span class="sub-prog-label">Census</span>
-        <span class="sub-prog-count">${censusCount}/${n}</span>
-      </div>
-      <div class="sub-prog-item${citiesCount === n ? ' sub-prog-done' : ''}">
-        <span class="sub-prog-label">Cities ${citiesPhase ? '(post-calamity)' : '(pre-trade)'}</span>
-        <span class="sub-prog-count">${citiesCount}/${n}</span>
-      </div>
-    </div>
+  <section class="admin-section round-section" data-phase="${adminPhase}">
+    <ol class="phase-steps admin-phase-steps" aria-label="Round phase">${phaseSteps}</ol>
     <div class="round-controls">
-      ${citiesPhase
-        ? `<button id="advance-round" class="${isFinalRound ? 'btn-danger' : 'btn-primary'}"${allCitiesReady ? '' : ' disabled'}>
-          ${isFinalRound ? 'End Game' : `Advance to Round ${game.current_round + 1}`}
-        </button>`
-        : `<button id="prepare-ast" class="btn-primary"${allCitiesReady ? '' : ' disabled'}>Trading done →</button>`
-      }
-      <span class="round-hint">
-        ${citiesPhase
-          ? 'Each empire re-enters city count after calamities. Click Advance when all are submitted.'
-          : 'Each empire submits pre-trade city count. Click the button above after trading is done.'
-        }
-      </span>
+      <span class="round-phase-progress">${phaseProgressLabel} <span id="round-progress-count">${phaseProgressCount}/${n}</span> submitted</span>
+      ${phaseButton}
+      <span class="round-hint">${phaseHint}</span>
     </div>
     <div id="sim-controls" style="display:none">
-      <button id="debug-census" class="btn-danger">⚄ Random Census</button>
-      <button id="debug-cities" class="btn-danger">⚄ Random Cities</button>
+      <button id="debug-census" class="btn-danger"${adminPhase === 0 ? '' : ' disabled'} title="${adminPhase === 0 ? 'Fill random populations' : 'Only during the Census phase'}">⚄ Random Census</button>
+      <button id="debug-cities" class="btn-danger"${adminPhase >= 1 ? '' : ' disabled'} title="${adminPhase >= 1 ? 'Fill random city counts' : 'Only after census is revealed'}">⚄ Random Cities</button>
       <button id="debug-advances" class="btn-danger">⚄ Simulate Advances</button>
       ${game.current_round > 1
         ? `<button id="debug-prev-round" class="btn-danger" title="Undo the last round-advance — primarily for misclick recovery">← Round ${game.current_round - 1}</button>`

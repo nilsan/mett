@@ -46,7 +46,10 @@ export function renderMain(state: FullState): string {
     const submitted = p.census?.population != null;
     const milCell = p.military ? `<td class="mil-col"><span class="mil-dot"></span></td>` : `<td class="mil-col"></td>`;
     let popCell: string;
-    if (!submitted)     popCell = `<td class="census-pop not-submitted">?</td>`;
+    // Post-calamity: the census (population) was only needed earlier this round
+    // for the move order — it isn't relevant again until next round's census.
+    if (citiesPhase)    popCell = `<td class="census-pop cell-na">—</td>`;
+    else if (!submitted)popCell = `<td class="census-pop not-submitted">?</td>`;
     else if (revealed)  popCell = `<td class="census-pop">${p.census!.population}</td>`;
     else                popCell = `<td class="census-pop submitted-hidden">✓</td>`;
     const cityCell = p.city_count != null
@@ -56,7 +59,11 @@ export function renderMain(state: FullState): string {
   }).join('');
 
   // ── Trade cards (West and East as separate tables) ───────────────────────
-  const tradeSorted = allCitiesSubmitted
+  // Order by trade-card count only while trade cards are actually live (trade
+  // phase, all first city counts in). In every other state — census, pre-trade
+  // collection, and the post-calamity recount — keep plain empire-number order,
+  // since the count there feeds the A.S.T., not the trade hand.
+  const tradeSorted = (!citiesPhase && allCitiesSubmitted)
     ? [...pwc].sort((a, b) => {
         const ca = a.city_count ?? Infinity, cb = b.city_count ?? Infinity;
         return ca !== cb ? ca - cb : a.civ_number - b.civ_number;
@@ -69,7 +76,11 @@ export function renderMain(state: FullState): string {
   function tradeRegionRows(list: PlayerWithCensus[]): string {
     return list.map((p, i) => {
       let cardCell: string;
-      if (!allCitiesSubmitted) {
+      if (citiesPhase) {
+        // Post-calamity: trading is over and the count now being entered feeds
+        // the A.S.T., not the trade hand — so don't recompute trade-card chips.
+        cardCell = `<td class="trade-card-col trade-no-cards">—</td>`;
+      } else if (!allCitiesSubmitted) {
         cardCell = p.city_count != null
           ? `<td class="trade-card-col submitted-hidden">✓</td>`
           : `<td class="trade-card-col not-submitted">?</td>`;
@@ -78,7 +89,8 @@ export function renderMain(state: FullState): string {
           ? `<td class="trade-card-col">${cardChips(p.city_count, p.wonder === 1)}</td>`
           : `<td class="trade-card-col not-submitted">?</td>`;
       }
-      const groupStart = allCitiesSubmitted && i > 0 && list[i - 1]!.city_count !== p.city_count;
+      // Trade-card count groupings only make sense while trade cards are live.
+      const groupStart = !citiesPhase && allCitiesSubmitted && i > 0 && list[i - 1]!.city_count !== p.city_count;
       return `<tr${groupStart ? ' class="trade-group-start"' : ''}>${empireCell(p)}${cardCell}</tr>`;
     }).join('');
   }
@@ -166,13 +178,14 @@ export function renderMain(state: FullState): string {
       ? 'Will regress next round — '
       : willAdvance ? 'Will advance next round — ' : '';
     // Movement indicator in the start column (before S.A.), not in the empire
-    // box: green → advance, orange = no change, red ← regress. Hidden until
-    // every empire has reached round 2 (game is on round 2+), since there is
-    // no movement to show in round 1.
+    // box: green → advance, orange = no change, red ← regress. Only meaningful
+    // once calamities are resolved and the second (post-calamity) city count is
+    // in — i.e. the Calamities phase (cities_phase=1). Before that (after only
+    // the first city count) the prediction is premature, so it stays hidden.
     const moveKind = willAdvance ? 'advance' : willRegress ? 'regress' : 'stay';
     const moveGlyph = willAdvance ? '→' : willRegress ? '←' : '=';
     const moveTitle = willAdvance ? 'Will advance next round' : willRegress ? 'Will regress next round' : 'Will not advance';
-    const showMove = game.current_round >= 2 && (willAdvance || willRegress || status === 'stay');
+    const showMove = game.current_round >= 2 && citiesPhase && (willAdvance || willRegress || status === 'stay');
     const moveInd = showMove
       ? `<span class="ab-move ab-move-${moveKind}" title="${moveTitle} — ${p.civ_name}">${moveGlyph}</span>`
       : '';
@@ -194,17 +207,18 @@ export function renderMain(state: FullState): string {
 
   const statusLabel = game.active ? `Round ${game.current_round}` : players.length > 0 ? 'Game over' : 'No active game';
 
-  // Derive the active phase index (0-3) from game state flags.
-  // Census auto-reveals when the last player submits, so there is no
-  // separate "waiting for reveal" state visible on the status page.
-  // 0=Census  1=Trade  2=Cities  3=AST & Advances
+  // The round has three player-input phases, keyed to (census_revealed,
+  // cities_phase). Everything else (trading, calamities, AST advances) happens
+  // on the physical board between these inputs.
+  //   0 Census        — submit population (sets the move order)
+  //   1 Pre-Trade     — first city count; opens the trade table, then trading
+  //   2 Post-Calamity — re-enter city count after calamities; feeds the advances
   const phaseIndex = !game.active ? -1
-    : !revealed             ? 0   // census submission in progress
-    : !citiesPhase          ? 1   // trading + calamity
-    : !allCitiesSubmitted   ? 2   // post-calamity city entry
-    :                         3;  // all cities in — AST + advances
+    : !revealed    ? 0
+    : !citiesPhase ? 1
+    :                2;
 
-  const phases = ['Census', 'Trade', 'Calamities', 'AST'];
+  const phases = ['Census', 'Trade', 'Calamities'];
   const phaseSteps = phases.map((name, i) => {
     const cls = i < phaseIndex ? 'phase-done' : i === phaseIndex ? 'phase-active' : 'phase-future';
     return `<li class="phase-step ${cls}">${name}</li>`;
@@ -250,7 +264,7 @@ export function renderMain(state: FullState): string {
   </section>
 
   <section class="table-section ast-order-section">
-    <h3>A.S.T. Progress</h3>
+    <h3>A.S.T. Progress Order</h3>
     <table class="mett-table ast-order-table">
       <thead><tr><th>&nbsp;</th></tr></thead>
       <tbody>${astOrderRows || '<tr><td style="opacity:0.4">—</td></tr>'}</tbody>
@@ -292,12 +306,19 @@ export function renderMain(state: FullState): string {
   <section class="table-section">
     <h3>Leaderboard</h3>
     <table class="mett-table lb-table">
+      <colgroup>
+        <col class="lb-rank-col">
+        <col class="lb-empire-col">
+        <col class="lb-adv-col">
+        <col class="lb-ast-col">
+        <col class="lb-total-col">
+      </colgroup>
       <thead><tr>
         <th class="rank">#</th>
         <th>Empire</th>
-        <th title="Advance Victory Points">ADV</th>
-        <th title="A.S.T. Position">AST</th>
-        <th title="Total Victory Points">TOTAL</th>
+        <th class="adv-pts" title="Advance Victory Points">ADV</th>
+        <th class="ast-pts" title="A.S.T. Position">AST</th>
+        <th class="total-vp" title="Total Victory Points">TOTAL</th>
       </tr></thead>
       <tbody>${lbRows || '<tr><td colspan="5">No players</td></tr>'}</tbody>
     </table>

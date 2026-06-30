@@ -386,25 +386,21 @@
       const n = data.players.length;
       const censusCount = data.census.filter(c => c.population != null).length;
       const citiesCount = data.census.filter(c => c.city_count != null).length;
+      const revealed = data.game.census_revealed === 1;
       const citiesPhase = data.game.cities_phase === 1;
       const allCitiesReady = n > 0 && citiesCount === n;
 
-      // Update submission progress bar
-      const progItems = document.querySelectorAll('.sub-prog-item');
-      if (progItems[0]) {
-        const cnt = progItems[0].querySelector('.sub-prog-count');
-        if (cnt) cnt.textContent = `${censusCount}/${n}`;
-        progItems[0].classList.toggle('sub-prog-done', censusCount === n);
-      }
-      if (progItems[1]) {
-        const cnt = progItems[1].querySelector('.sub-prog-count');
-        const lbl = progItems[1].querySelector('.sub-prog-label');
-        if (cnt) cnt.textContent = `${citiesCount}/${n}`;
-        if (lbl) lbl.textContent = `Cities ${citiesPhase ? '(post-calamity)' : '(pre-trade)'}`;
-        progItems[1].classList.toggle('sub-prog-done', citiesCount === n);
-      }
+      // If the phase changed under us (e.g. census auto-revealed when the last
+      // population came in), reload so the stepper + action button re-render for
+      // the new phase. GM-initiated transitions already reload.
+      const serverPhase = !revealed ? 0 : !citiesPhase ? 1 : 2;
+      const sec = document.querySelector('.round-section');
+      if (sec && Number(sec.dataset.phase) !== serverPhase) { location.reload(); return; }
 
-      // Enable/disable whichever action button is currently rendered
+      // Same phase — just refresh the current-phase submission count + button.
+      const progEl = document.getElementById('round-progress-count');
+      if (progEl) progEl.textContent = `${serverPhase === 0 ? censusCount : citiesCount}/${n}`;
+
       const prepBtn = document.getElementById('prepare-ast');
       const advBtn = document.getElementById('advance-round');
       if (prepBtn) prepBtn.disabled = !allCitiesReady;
@@ -476,11 +472,18 @@
         const row = document.querySelector(`tr[data-player-id="${c.player_id}"]`);
         if (!row) return;
 
+        // Always reflect server submission state in the ✓/? icon, even when the
+        // field still has focus — a <select> keeps focus after a change, so
+        // gating the icon on activeElement made the checkmark intermittently
+        // miss. Only the field *value* is guarded, to avoid clobbering an edit
+        // the GM is still making.
         const censusInput = row.querySelector('.census-admin-input');
-        if (censusInput && document.activeElement !== censusInput) {
+        if (censusInput) {
           const pop = c.population;
-          censusInput.value = pop != null ? pop : '';
-          censusInput.dataset.serverValue = pop != null ? String(pop) : '';
+          if (document.activeElement !== censusInput) {
+            censusInput.value = pop != null ? pop : '';
+            censusInput.dataset.serverValue = pop != null ? String(pop) : '';
+          }
           const icon = censusInput.closest('.ast-ctrl')?.querySelector('.status-icon-fixed');
           if (icon) {
             icon.textContent = pop != null ? '✓' : '?';
@@ -489,10 +492,12 @@
         }
 
         const citySelect = row.querySelector('.city-admin-select');
-        if (citySelect && document.activeElement !== citySelect) {
+        if (citySelect) {
           const count = c.city_count;
-          if (count != null) citySelect.value = String(count);
-          citySelect.dataset.serverValue = count != null ? String(count) : '';
+          if (document.activeElement !== citySelect) {
+            if (count != null) citySelect.value = String(count);
+            citySelect.dataset.serverValue = count != null ? String(count) : '';
+          }
           const icon = citySelect.closest('.ast-ctrl')?.querySelector('.status-icon-fixed');
           if (icon) {
             icon.textContent = count != null ? '✓' : '?';
