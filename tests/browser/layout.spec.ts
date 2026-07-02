@@ -36,5 +36,16 @@ test.describe('main display layout', () => {
       document.documentElement.scrollHeight - window.innerHeight,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+
+    // The AST age-band legend must stay within the viewport. Because the status
+    // grid uses overflow:hidden, content pushed past the fold is clipped WITHOUT
+    // growing scrollHeight — so the overflow check above can't see it. Taller 4K
+    // rows once shoved the legend off-screen; guard against that regressing.
+    const legendClipped = await page.evaluate(() => {
+      const el = document.querySelector('.ast-section .ab-legend');
+      if (!el) return true;
+      return el.getBoundingClientRect().bottom > window.innerHeight + 1;
+    });
+    expect(legendClipped, 'AST legend must not be clipped below the viewport').toBe(false);
   });
 });

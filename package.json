@@ -1,6 +1,6 @@
 {
   "name": "mett",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "description": "Mega Empires Turn Tracker — real-time census, leaderboard and A.S.T. tracking",
   "module": "src/index.ts",
   "type": "module",

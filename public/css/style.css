@@ -591,9 +591,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .status-grid .table-section   { padding: 0.25rem 0.4rem; display: flex; flex-direction: column; }
 .status-grid .table-section h3 { font-size: 0.65rem; margin-bottom: 0.15rem; line-height: 1.15; min-height: 2.3em; }
 /* The A.S.T. Progress Order title is long; cap it to the empire-box width so it
-   wraps to two lines and the card hugs the boxes (no dead space on the right) —
-   the freed width flows to the timeline. The uniform 2-line h3 min-height above
-   keeps every table's first row on the same baseline. */
+   wraps to two lines and the card hugs the boxes (no dead space on the right).
+   The uniform 2-line h3 min-height above keeps every table's first row aligned. */
 .status-grid .ast-order-section h3 { max-width: var(--empire-box-w); }
 .status-grid .table-hint       { font-size: 0.58rem; margin-top: auto; margin-bottom: 0; padding-top: 0.15rem; }
 .status-grid .ab-legend        { margin-top: auto; font-size: 0.46rem; line-height: 1.2; padding: 0.1rem 0 0; gap: 0.05rem 0.6rem; }
@@ -978,15 +977,19 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .table-hint       { font-size: 0.82rem; }
   .status-grid .ab-legend        { font-size: 0.72rem; gap: 0.2rem; }
 
-  /* Font/row sizing comes from viewport-height clamp() at the base level. */
-  .status-grid .trade-chip       { width: 1.1rem; height: 1.75rem; font-size: 0.7rem; }
-  /* 9 × 1.1rem + 8 × 0.05rem + 2 × 0.45rem padding = 11.8rem; empire = 7.5rem */
-  .status-grid .trade-chip-col   { width: 11.8rem; }
-  .status-grid .trade-table      { width: calc(9rem + 11.8rem); }
+  /* Font/row sizing comes from viewport-height clamp() at the base level.
+     Big trade-card chips for the 4K TV — legible from across the game table.
+     Column sized to hold all 9: 9 × 2rem + 8 × 0.2rem gap + 0.8rem td padding
+     ≈ 20.4rem (col given a little slack). Chip height stays under the row
+     height so the trade rows keep aligning with the other tables. */
+  .status-grid .trade-chip       { width: 2rem; height: 3.4rem; font-size: 1.4rem; }
+  .status-grid .trade-chips      { gap: 0.2rem; }
+  .status-grid .trade-chip-col   { width: 20.8rem; }
+  .status-grid .trade-table      { width: calc(var(--empire-box-w) + 20.8rem); }
 
-  /* Census: explicit width so empire col gets a full 9rem (longest civ name = 8 chars @ 1.15rem) */
-  .status-grid .census-table { width: calc(9rem + 2 * 2.5rem + 3rem); }
-  .status-grid .census-table thead th:first-child { width: 9rem; }
+  /* Census: explicit width = empire box + the mil/city/pop columns. */
+  .status-grid .census-table { width: calc(var(--empire-box-w) + 2 * 2.5rem + 3rem); }
+  .status-grid .census-table thead th:first-child { width: var(--empire-box-w); }
   :root {
     --col-mil: 2.5rem;
     --col-city: 2.5rem;
@@ -995,12 +998,14 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
     --col-adv-pts: 2.6rem;
     --col-ast-pts: 2.6rem;
     --col-total-vp: 3.3rem;
-    --empire-box-w: 9rem;
+    /* Wide enough for a full two-part player name (e.g. "Nils-Anders Nøttseter")
+       on the 2nd line at the enlarged 4K font, with breathing room to spare. */
+    --empire-box-w: 13rem;
   }
 
-  .empire-cell { width: 9rem; min-width: 9rem; max-width: 9rem; }
-  .status-grid .trade-empire-col { width: 9rem; }
-  .ast-order-table td { width: 9rem; min-width: 9rem; }
+  .empire-cell { width: var(--empire-box-w); min-width: var(--empire-box-w); max-width: var(--empire-box-w); }
+  .status-grid .trade-empire-col { width: var(--empire-box-w); }
+  .ast-order-table td { width: var(--empire-box-w); min-width: var(--empire-box-w); }
   .civ-num { font-size: 0.75rem; min-width: 1.25rem; }
 
   /* Trade separator: re-center in 6px gap */
@@ -1010,9 +1015,29 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
      The colgroup col wins under table-layout:fixed, so it must widen to 9rem
      here too — otherwise the row label stays 7.5rem and the larger 4K font
      truncates 8-char civ names (Carthage, Dravidia). */
-  .status-ast .ab-civ-label { width: 9rem; min-width: 9rem; }
-  .status-ast .ab-label-col { width: 9rem; }
+  .status-ast .ab-civ-label { width: var(--empire-box-w); min-width: var(--empire-box-w); }
+  .status-ast .ab-label-col { width: var(--empire-box-w); }
   .status-ast .ab-magnet    { width: 1.8rem; font-size: clamp(0.72rem, 1vh, 1.05rem); }
+
+  /* ── Bigger type + taller rows to fill a 4K TV ───────────────────────────
+     The base vh-clamps leave ~560px empty below each table at 4K and read
+     small from across the room. Raise the row-height and font vh coefficients
+     (~20% larger text) so the 18 rows fill the available height. 4K-only —
+     1080p/1440p keep their tuned density. */
+  .status-grid .mett-table    { font-size: clamp(1rem, 1.32vh, 1.7rem); }
+  .status-grid .mett-table td { height: clamp(2.5rem, 4.4vh, 6rem); }
+  .status-grid .mett-table th,
+  .status-ast thead th        { font-size: clamp(0.75rem, 1.02vh, 1.25rem); }
+  .empire-cell,
+  .status-ast td.empire-cell  { font-size: clamp(1rem, 1.44vh, 1.75rem); }
+  .empire-player-name         { font-size: clamp(0.72rem, 1.02vh, 1.3rem); }
+  .census-pop                 { font-size: 1.25rem; }
+  .civ-num                    { font-size: 0.9rem; }
+  .status-ast .ab-cell        { height: clamp(2.5rem, 4.4vh, 6rem); }
+  .status-ast .ab-level-num,
+  .status-ast .ab-round-num   { font-size: clamp(0.62rem, 0.94vh, 1.15rem) !important; }
+  .status-ast .ab-name        { font-size: clamp(0.7rem, 1.02vh, 1.25rem) !important; }
+  .status-ast .ab-magnet      { width: 2.3rem; font-size: clamp(0.9rem, 1.2vh, 1.35rem); }
 }
 
 /* ─── Main 3-column layout ────────────────────────────────────────────────── */

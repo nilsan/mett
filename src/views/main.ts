@@ -266,7 +266,7 @@ export function renderMain(state: FullState): string {
   <section class="table-section ast-order-section">
     <h3>A.S.T. Progress Order</h3>
     <table class="mett-table ast-order-table">
-      <thead><tr><th>&nbsp;</th></tr></thead>
+      <thead><tr><th>Special Abilities</th></tr></thead>
       <tbody>${astOrderRows || '<tr><td style="opacity:0.4">—</td></tr>'}</tbody>
     </table>
   </section>

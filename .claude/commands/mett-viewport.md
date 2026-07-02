@@ -8,8 +8,8 @@ Check both the status page (`/`) and the player page at the viewports below. The
 
 Viewports follow the target hierarchy in `todo.md`:
 
-- **Status `/`** — 1920×1080 minimum through 5K2K; phone sizes are out of scope:
-  1366×768, 1920×1080, 2560×1440, 3840×2160, 5120×2160
+- **Status `/`** — 1920×1080 minimum through 5K2K; phone sizes are out of scope (1366×768 dropped 2026-07-02):
+  1920×1080, 2560×1440, 3840×2160, 5120×2160
 - **Player `/<slug>`** — modern phones (Pixel 6–9, iPhone 13–16) primary, legacy/tablet/desktop secondary:
   390×844 (iPhone 13/14 — minimum supported), 393×852 (iPhone 15/16), 412×915 (Pixel 6/7/8), 440×956 (16 Pro Max), 768×1024, 1366×768, 1920×1080
 - **Player with OS font scaling** (emulated via CDP `Page.setFontSizes`; default standard is 16):
