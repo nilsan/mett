@@ -245,7 +245,7 @@ export function renderMain(state: FullState): string {
       </tr></thead>
       <tbody>${censusRows || '<tr><td colspan="4">No players</td></tr>'}</tbody>
     </table>
-    <p class="table-hint">${allCensusSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.census?.population != null).length} / ${players.length} submitted`}</p>
+    ${allCensusSubmitted ? '' : `<p class="table-hint">${pwc.filter(p => p.census?.population != null).length} / ${players.length} submitted</p>`}
   </section>
 
   <section class="table-section">
@@ -260,7 +260,7 @@ export function renderMain(state: FullState): string {
       <thead><tr><th colspan="2">${westTrade.length > 0 ? 'East' : '&nbsp;'}</th></tr></thead>
       <tbody>${tradeRegionRows(eastTrade)}</tbody>
     </table>` : ''}
-    <p class="table-hint">${allCitiesSubmitted ? '✓ All submitted' : `${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted`}</p>
+    ${allCitiesSubmitted ? '' : `<p class="table-hint">${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted</p>`}
   </section>
 
   <section class="table-section ast-order-section">
