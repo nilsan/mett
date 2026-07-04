@@ -126,6 +126,9 @@ export interface FullState {
   game: GameRow;
   players: PlayerRow[];
   census: CensusRow[];
+  /** Previous round's census — lets clients fall back to the last known city
+   *  count (the cities actually on the board) before this round's count is in. */
+  prevCensus: CensusRow[];
   astLevels: AstLevelRow[];
   /** Per-player next-AST prediction. Keyed by player id; computed once in
    *  getFullState so render paths and the WS broadcast both read the same map. */

@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from 'bun:test';
 import { meetsAstRequirements } from '../src/db.js';
+import { renderAgeRequirementsList } from '../src/models/ast.js';
 import type { PlayerRow, AstLevelRow } from '../src/db.js';
 
 // ─── Stubs ────────────────────────────────────────────────────────────────────
@@ -297,4 +298,55 @@ describe('meetsAstRequirements', () => {
     });
   });
 
+});
+
+// ─── Player-page coloured all-ages requirement list ────────────────────────────
+
+describe('renderAgeRequirementsList — green/red per-age requirement colouring', () => {
+  // Mirrors the Maurya example: 10 cheap + 2 mid advances (12 total), 16 adv VP.
+  const player = { adv_1vp: 10, adv_3vp: 2, adv_6vp: 0, adv_points: 16, wonder: 0 };
+
+  it('colours cities against the current effective city count (dynamic)', () => {
+    const html = renderAgeRequirementsList(player, 5, true);
+    // 3/4/5 cities met (green), 6 cities not (red)
+    expect(html).toContain('req-part-ok">3 Cities');
+    expect(html).toContain('req-part-ok">4 Cities');
+    expect(html).toContain('req-part-ok">5 Cities');
+    expect(html).toContain('req-part-fail">6 Cities');
+  });
+
+  it('colours advancement conditions by held cards', () => {
+    const html = renderAgeRequirementsList(player, 5, true);
+    expect(html).toContain('req-part-ok">5 VP in Advances');   // 16 ≥ 5
+    expect(html).toContain('req-part-ok">12 Advances');        // any tier = 12 ≥ 12
+    expect(html).toContain('req-part-ok">10 Adv ≤100');        // cheap = 10 ≥ 10
+    expect(html).toContain('req-part-fail">38 VP');            // 16 < 38
+    expect(html).toContain('req-part-fail">17 Adv ≤100');      // cheap 10 < 17
+  });
+
+  it('leaves city conditions neutral when no city count is submitted', () => {
+    const html = renderAgeRequirementsList(player, null, true);
+    expect(html).toContain('req-part-unknown">3 Cities');
+    // advancement conditions are still evaluated (independent of city count)
+    expect(html).toContain('req-part-ok">12 Advances');
+  });
+
+  it('counts the Wonder of the World as +1 effective city', () => {
+    const withWonder = { ...player, wonder: 1 };
+    const html = renderAgeRequirementsList(withWonder, 5, true);
+    expect(html).toContain('req-part-ok">6 Cities'); // 5 + wonder = 6 ≥ 6
+  });
+
+  it('Stone Age shows "No requirements" and is never red', () => {
+    const html = renderAgeRequirementsList(player, 0, true);
+    expect(html).toContain('req-part-none">No requirements');
+    expect(html).not.toContain('req-part-fail">Stone');
+  });
+
+  it('basic mode uses the basic requirement thresholds', () => {
+    // Basic LBA needs 3 mid-tier (≥100) advances; player has 2 mid (adv_3vp).
+    const html = renderAgeRequirementsList(player, 3, false);
+    expect(html).toContain('req-part-ok">3 Cities');
+    expect(html).toContain('req-part-fail">3 Adv ≥100'); // mid tier = adv_3vp+adv_6vp = 2 < 3
+  });
 });

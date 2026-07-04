@@ -69,6 +69,46 @@
   }
 
   // src/shared/ast-pure.ts
+  function ageRequirements(expert) {
+    if (expert)
+      return [
+        { cls: "age-stone", name: "Stone Age", parts: [] },
+        { cls: "age-ebronze", name: "Early Bronze Age", parts: [{ type: "cities", n: 3, label: "3 Cities" }] },
+        { cls: "age-mbronze", name: "Middle Bronze Age", parts: [{ type: "cities", n: 3, label: "3 Cities" }, { type: "vp", n: 5, label: "5 VP in Advances" }] },
+        { cls: "age-lbronze", name: "Late Bronze Age", parts: [{ type: "cities", n: 4, label: "4 Cities" }, { type: "adv", n: 12, tier: "any", label: "12 Advances" }] },
+        { cls: "age-eiron", name: "Early Iron Age", parts: [{ type: "cities", n: 5, label: "5 Cities" }, { type: "adv", n: 10, tier: "cheap", label: "10 Adv ≤100" }, { type: "vp", n: 38, label: "38 VP" }] },
+        { cls: "age-liron", name: "Late Iron Age", parts: [{ type: "cities", n: 6, label: "6 Cities" }, { type: "adv", n: 17, tier: "cheap", label: "17 Adv ≤100" }, { type: "vp", n: 56, label: "56 VP" }] }
+      ];
+    return [
+      { cls: "age-stone", name: "Stone Age", parts: [] },
+      { cls: "age-ebronze", name: "Early Bronze Age", parts: [{ type: "cities", n: 2, label: "2 Cities" }] },
+      { cls: "age-mbronze", name: "Middle Bronze Age", parts: [{ type: "cities", n: 3, label: "3 Cities" }, { type: "adv", n: 3, tier: "any", label: "3 Advances" }] },
+      { cls: "age-lbronze", name: "Late Bronze Age", parts: [{ type: "cities", n: 3, label: "3 Cities" }, { type: "adv", n: 3, tier: "medium", label: "3 Adv ≥100" }] },
+      { cls: "age-eiron", name: "Early Iron Age", parts: [{ type: "cities", n: 4, label: "4 Cities" }, { type: "adv", n: 2, tier: "expensive", label: "2 Adv ≥200" }] },
+      { cls: "age-liron", name: "Late Iron Age", parts: [{ type: "cities", n: 5, label: "5 Cities" }, { type: "adv", n: 3, tier: "expensive", label: "3 Adv ≥200" }] }
+    ];
+  }
+  function renderAgeRequirementsList(player, cityCount, expert) {
+    const effCities = cityCount == null ? null : cityCount + (player.wonder ? 1 : 0);
+    return ageRequirements(expert).map((line) => {
+      const dot = `<span class="ab-legend-dot ${line.cls}"></span><strong>${line.name}:</strong>`;
+      if (!line.parts.length) {
+        return `<li>${dot} <span class="req-part-none">No requirements</span></li>`;
+      }
+      const parts = line.parts.map((part) => {
+        let met;
+        if (part.type === "cities")
+          met = effCities == null ? null : effCities >= part.n;
+        else if (part.type === "adv")
+          met = advancesOfTier(player, part.tier) >= part.n;
+        else
+          met = player.adv_points >= part.n;
+        const state = met == null ? "unknown" : met ? "ok" : "fail";
+        return `<span class="req-part req-part-${state}">${part.label}</span>`;
+      }).join('<span class="req-sep"> + </span>');
+      return `<li>${dot} ${parts}</li>`;
+    }).join("");
+  }
   function advancesOfTier(player, tier) {
     switch (tier) {
       case "expensive":
@@ -442,6 +482,8 @@
       return { pos, tied, resolved };
     }, buildAstSectionInner = function(player, census, game, state, expert) {
       const cityCount = census ? census.city_count : null;
+      const prevCityCount = state.prevCensus?.find((c) => c.player_id === player.id)?.city_count ?? null;
+      const legendCityCount = cityCount ?? prevCityCount;
       const lb = computeLbInfo(player, state);
       const finalRank = game.active === 0 && game.started_at ? lb.pos : null;
       const lbValue = (lb.tied && !lb.resolved ? "=" : "") + lb.pos + ordinal(lb.pos);
@@ -489,6 +531,7 @@
       ${lia}
       ${middle}
       ${bar}
+      <ul class="ab-legend ast-req-legend">${renderAgeRequirementsList(player, legendCityCount, expert)}</ul>
     `;
     }, renderRequirementBlock = function(player, census, advReq, effectiveCities, nextLevelNum) {
       if (!advReq) {

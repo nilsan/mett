@@ -71,6 +71,76 @@ export function reqLegendItems(expert: boolean): string {
     .join('');
 }
 
+// ─── Per-age requirement breakdown (player-page coloured list) ─────────────────
+
+/** One checkable sub-condition of an age's requirement.
+ *  - `cities`: dynamic — the empire's effective city count this round (goes up
+ *     and down as calamities hit / cities are built).
+ *  - `adv` / `vp`: advancement-based — monotonic in normal play (a player never
+ *     loses an advancement card), so once met it stays met and never goes red
+ *     again. */
+export interface AgeReqPart {
+  type: 'cities' | 'adv' | 'vp';
+  n: number;
+  tier?: AstRequirement['advTier'];
+  label: string;
+}
+export interface AgeReqLine { cls: string; name: string; parts: AgeReqPart[]; }
+
+/** Structured per-age requirements, mirroring the getAgeBands() legend text but
+ *  broken into individually checkable parts so the player page can colour each
+ *  green (reached) or red (still needed). Keep in sync with getAgeBands(). */
+export function ageRequirements(expert: boolean): AgeReqLine[] {
+  if (expert) return [
+    { cls: 'age-stone',   name: 'Stone Age',         parts: [] },
+    { cls: 'age-ebronze', name: 'Early Bronze Age',  parts: [{ type: 'cities', n: 3, label: '3 Cities' }] },
+    { cls: 'age-mbronze', name: 'Middle Bronze Age', parts: [{ type: 'cities', n: 3, label: '3 Cities' }, { type: 'vp', n: 5, label: '5 VP in Advances' }] },
+    { cls: 'age-lbronze', name: 'Late Bronze Age',   parts: [{ type: 'cities', n: 4, label: '4 Cities' }, { type: 'adv', n: 12, tier: 'any', label: '12 Advances' }] },
+    { cls: 'age-eiron',   name: 'Early Iron Age',    parts: [{ type: 'cities', n: 5, label: '5 Cities' }, { type: 'adv', n: 10, tier: 'cheap', label: '10 Adv ≤100' }, { type: 'vp', n: 38, label: '38 VP' }] },
+    { cls: 'age-liron',   name: 'Late Iron Age',     parts: [{ type: 'cities', n: 6, label: '6 Cities' }, { type: 'adv', n: 17, tier: 'cheap', label: '17 Adv ≤100' }, { type: 'vp', n: 56, label: '56 VP' }] },
+  ];
+  return [
+    { cls: 'age-stone',   name: 'Stone Age',         parts: [] },
+    { cls: 'age-ebronze', name: 'Early Bronze Age',  parts: [{ type: 'cities', n: 2, label: '2 Cities' }] },
+    { cls: 'age-mbronze', name: 'Middle Bronze Age', parts: [{ type: 'cities', n: 3, label: '3 Cities' }, { type: 'adv', n: 3, tier: 'any', label: '3 Advances' }] },
+    { cls: 'age-lbronze', name: 'Late Bronze Age',   parts: [{ type: 'cities', n: 3, label: '3 Cities' }, { type: 'adv', n: 3, tier: 'medium', label: '3 Adv ≥100' }] },
+    { cls: 'age-eiron',   name: 'Early Iron Age',    parts: [{ type: 'cities', n: 4, label: '4 Cities' }, { type: 'adv', n: 2, tier: 'expensive', label: '2 Adv ≥200' }] },
+    { cls: 'age-liron',   name: 'Late Iron Age',     parts: [{ type: 'cities', n: 5, label: '5 Cities' }, { type: 'adv', n: 3, tier: 'expensive', label: '3 Adv ≥200' }] },
+  ];
+}
+
+/** Render the all-ages requirement legend for the player page, colouring each
+ *  sub-condition green (reached) or red (still needed). City conditions use the
+ *  empire's current effective city count (dynamic — flips as cities change);
+ *  advancement conditions use the current card counts, which only ever rise in
+ *  play, so once green they stay green. `cityCount === null` (not yet submitted)
+ *  leaves the city part neutral. */
+export function renderAgeRequirementsList(
+  player: Pick<PlayerRow, 'adv_1vp' | 'adv_3vp' | 'adv_6vp' | 'adv_points' | 'wonder'>,
+  cityCount: number | null,
+  expert: boolean,
+): string {
+  const effCities = cityCount == null ? null : cityCount + (player.wonder ? 1 : 0);
+  return ageRequirements(expert).map(line => {
+    const dot = `<span class="ab-legend-dot ${line.cls}"></span><strong>${line.name}:</strong>`;
+    if (!line.parts.length) {
+      return `<li>${dot} <span class="req-part-none">No requirements</span></li>`;
+    }
+    // Colour only (no icons/gaps) and join with a compact " + " so each line
+    // stays as narrow as the old white-text legend — otherwise, at large phone
+    // font sizes the extra width forces requirements onto a second line.
+    const parts = line.parts.map(part => {
+      let met: boolean | null;
+      if (part.type === 'cities') met = effCities == null ? null : effCities >= part.n;
+      else if (part.type === 'adv') met = advancesOfTier(player, part.tier) >= part.n;
+      else met = player.adv_points >= part.n;
+      const state = met == null ? 'unknown' : met ? 'ok' : 'fail';
+      return `<span class="req-part req-part-${state}">${part.label}</span>`;
+    }).join('<span class="req-sep"> + </span>');
+    return `<li>${dot} ${parts}</li>`;
+  }).join('');
+}
+
 /** CSS age-band class for a single player cell on the AST board. */
 export function civBandClass(civNumber: number, level: number, expert: boolean): string {
   if (level === 0) return 'age-start';

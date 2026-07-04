@@ -1942,8 +1942,22 @@ th.ab-player-col {
 .ab-legend li { display: flex; align-items: center; gap: 0.35rem; }
 
 /* Requirement legend on the player page — always visible below the AST strip,
-   one era per line. The player page is allowed to scroll vertically. */
+   one era per line. Each era's requirement is broken into parts coloured green
+   (reached) or red (still needed). The player page is allowed to scroll
+   vertically. */
 .ast-req-legend { flex-direction: column; font-size: 0.62rem; gap: 0.12rem; padding: 0.3rem 0.5rem 0.5rem; }
+/* Block flow (not flex) so each era's requirement wraps like plain inline text —
+   fits one line when it can, and only ever wraps at the " + " separators (never
+   mid-label), never horizontally overflowing. Matches the old white-text width. */
+.ast-req-legend li { display: block; }
+.ast-req-legend .ab-legend-dot { display: inline-block; vertical-align: middle; margin-right: 0.3rem; }
+.ast-req-legend strong { margin-right: 0.2rem; }
+.req-part { white-space: nowrap; }
+.req-part-ok      { color: var(--mett-success); }
+.req-part-fail    { color: var(--mett-danger); }
+.req-part-unknown { color: var(--mett-muted); }
+.req-part-none    { color: var(--mett-muted); }
+.req-sep          { color: var(--mett-muted); }
 
 .ab-legend-dot {
   display: inline-block;

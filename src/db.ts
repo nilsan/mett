@@ -268,6 +268,10 @@ export function getFullState(): FullState {
   const game = getGame();
   const players = getPlayers();
   const census = getCensusForRound(game.current_round);
+  // Previous round's census is retained (advanceRound only prunes rounds strictly
+  // older than the one just finished), so this is available for the last-known
+  // city-count fallback used by the player-page requirement colouring.
+  const prevCensus = game.current_round > 1 ? getCensusForRound(game.current_round - 1) : [];
   const astLevels = getAstLevels();
   const expert = game.expert === 1;
   const censusByPlayer = new Map(census.map(c => [c.player_id, c]));
@@ -276,5 +280,5 @@ export function getFullState(): FullState {
     astStatus[p.id] = nextAstStatus(p, censusByPlayer.get(p.id)?.city_count, astLevels, expert);
   }
   const roundSummaries = getRoundSummaries();
-  return { game, players, census, astLevels, astStatus, roundSummaries };
+  return { game, players, census, prevCensus, astLevels, astStatus, roundSummaries };
 }

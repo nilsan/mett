@@ -16,7 +16,7 @@
 
 import type { FullState, PlayerRow, AstLevelRow } from '../types.js';
 import { playerTotalVp, makeScoreEntry, compareScores, sameScoreGroup, sortCensusOrder, ordinal } from '../shared/scoring.js';
-import { advancesOfTier, getAdvanceRequirement, type AstRequirement } from '../shared/ast-pure.js';
+import { advancesOfTier, getAdvanceRequirement, renderAgeRequirementsList, type AstRequirement } from '../shared/ast-pure.js';
 import { getCivAstProfile } from '../civs.js';
 
 const civEl = document.getElementById('civ-content');
@@ -416,6 +416,10 @@ if (civEl) {
     expert: boolean,
   ): string {
     const cityCount = census ? census.city_count : null;
+    // Last-known city count for the all-ages requirement colouring: this round's
+    // if submitted, else the previous round's (the cities still on the board).
+    const prevCityCount = state.prevCensus?.find(c => c.player_id === player.id)?.city_count ?? null;
+    const legendCityCount = cityCount ?? prevCityCount;
     const lb = computeLbInfo(player, state);
     const finalRank = (game.active === 0 && game.started_at) ? lb.pos : null;
     const lbValue = (lb.tied && !lb.resolved ? '=' : '') + lb.pos + ordinal(lb.pos);
@@ -468,6 +472,7 @@ if (civEl) {
       ${lia}
       ${middle}
       ${bar}
+      <ul class="ab-legend ast-req-legend">${renderAgeRequirementsList(player, legendCityCount, expert)}</ul>
     `;
   }
 
