@@ -30,6 +30,7 @@
   --col-mil: 2.2rem;
   --col-city: 2.2rem;
   --col-census-pop: 2.1rem;
+  --col-mov: 2.2rem;
   --col-rank: 1.2rem;
   --col-adv-pts: 1.9rem;
   --col-ast-pts: 1.9rem;
@@ -350,6 +351,13 @@ body {
   white-space: nowrap;
 }
 .census-table thead .mil-col { color: #cc4444; }
+.census-table .mov-col {
+  width: 2.125rem;
+  text-align: center;
+  white-space: nowrap;
+}
+.census-table thead .mov-col { color: #4a8a5a; }
+.mov-check { color: #4caf6a; font-weight: 700; }
 .census-pop { width: 3.25rem; }
 
 /* Red military dot */
@@ -388,6 +396,22 @@ body {
 .won-toggle-civ.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
 .spc-toggle-civ.spc-on  { background: #1a1a30; border-color: #5555cc; color: #8888ff; }
 .spc-toggle-civ.spc-off { background: var(--mett-surface2); color: var(--mett-muted); }
+
+/* "Units moved" readiness toggle on the census section of the civ page */
+.mov-row { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.75rem; }
+.mov-toggle-civ {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border-radius: 0.25rem;
+  border: 0.0625rem solid var(--mett-border);
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: center;
+}
+.mov-toggle-civ.mov-on  { background: #123020; border-color: #3caa66; color: #7fe0a0; }
+.mov-toggle-civ.mov-off { background: var(--mett-surface2); color: var(--mett-muted); }
+.mov-toggle-civ:disabled { opacity: 0.5; cursor: not-allowed; }
+.mov-hint { color: var(--mett-muted); font-size: 0.8rem; }
 
 /* Requirement label in AST table */
 .req-label { text-align: center; color: var(--mett-muted); font-size: 0.85rem; width: 2.5rem; }
@@ -622,17 +646,18 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 /* Fixed layout with explicit width (= sum of column widths) so empire column respects stated 5.5rem.
    table-layout:fixed + width:auto causes Chrome to use fill-available, ignoring max-width on cells. */
-/* width = empire-cell (7.5) + mil + city + census-pop column widths.
-   Sum of the column vars at default break = 7.5 + 2.2 + 2.2 + 2.1 = 14rem
+/* width = empire-cell (7.5) + mil + city + census-pop + mov column widths.
+   Sum of the column vars at default break = 7.5 + 2.2 + 2.2 + 2.1 + 2.2 = 16.2rem
    so the empire chip column doesn't get any leftover width and the chip
    stays at its declared 7.5rem like every other table. */
-.status-grid .census-table { table-layout: fixed; width: calc(7.5rem + var(--col-mil) + var(--col-city) + var(--col-census-pop)); }
+.status-grid .census-table { table-layout: fixed; width: calc(7.5rem + var(--col-mil) + var(--col-city) + var(--col-census-pop) + var(--col-mov)); }
 .status-grid .census-table thead th:first-child { width: 7.5rem; }
 
 /* Narrow columns — widths come from --col-* on :root, overridden per breakpoint. */
 .status-grid .mil-col    { width: var(--col-mil);        min-width: var(--col-mil); }
 .status-grid .city-col   { width: var(--col-city);       min-width: var(--col-city); }
 .status-grid .census-pop { width: var(--col-census-pop); min-width: var(--col-census-pop); }
+.status-grid .mov-col    { width: var(--col-mov);        min-width: var(--col-mov); }
 .status-grid .rank       { width: var(--col-rank);       min-width: var(--col-rank); }
 .status-grid .adv-pts    { width: var(--col-adv-pts);    min-width: var(--col-adv-pts); }
 .status-grid .ast-pts    { width: var(--col-ast-pts);    min-width: var(--col-ast-pts); }
@@ -894,6 +919,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
     --col-mil: 3.0rem;
     --col-city: 3.0rem;
     --col-census-pop: 3.5rem;
+    --col-mov: 3.0rem;
     --col-rank: 1.8rem;
     --col-adv-pts: 2.5rem;
     --col-ast-pts: 2.5rem;
@@ -902,7 +928,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
   .census-table th.mil-col,
   .census-table th.city-col,
-  .census-table th.census-pop { padding-left: 0.25rem; padding-right: 0.25rem; }
+  .census-table th.census-pop,
+  .census-table th.mov-col { padding-left: 0.25rem; padding-right: 0.25rem; }
 
   /* Empire cells: unconstrained, fill remaining space */
   .empire-cell { width: auto; min-width: 5rem; max-width: none; font-size: 0.84rem; }
@@ -934,13 +961,14 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .trade-chip-col   { width: 10.25rem; }
   .status-grid .trade-table      { width: calc(7.5rem + 10.25rem); }
 
-  /* Census: keep auto column with a fixed table (empire 7.5rem + 2×2.2rem + 2.5rem = 14.4rem) */
-  .status-grid .census-table { width: 14.4rem; }
+  /* Census: fixed table (empire 7.5rem + mil + city + pop + mov columns) */
+  .status-grid .census-table { width: calc(7.5rem + var(--col-mil) + var(--col-city) + var(--col-census-pop) + var(--col-mov)); }
   .status-grid .census-table thead th:first-child { width: 7.5rem; }
   :root {
     --col-mil: 2.2rem;
     --col-city: 2.2rem;
     --col-census-pop: 2.5rem;
+    --col-mov: 2.2rem;
     --col-rank: 1.5rem;
     --col-adv-pts: 2.2rem;
     --col-ast-pts: 2.2rem;
@@ -987,13 +1015,14 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .trade-chip-col   { width: 20.8rem; }
   .status-grid .trade-table      { width: calc(var(--empire-box-w) + 20.8rem); }
 
-  /* Census: explicit width = empire box + the mil/city/pop columns. */
-  .status-grid .census-table { width: calc(var(--empire-box-w) + 2 * 2.5rem + 3rem); }
+  /* Census: explicit width = empire box + the mil/city/pop/mov columns. */
+  .status-grid .census-table { width: calc(var(--empire-box-w) + 3 * 2.5rem + 3rem); }
   .status-grid .census-table thead th:first-child { width: var(--empire-box-w); }
   :root {
     --col-mil: 2.5rem;
     --col-city: 2.5rem;
     --col-census-pop: 3rem;
+    --col-mov: 2.5rem;
     --col-rank: 1.7rem;
     --col-adv-pts: 2.6rem;
     --col-ast-pts: 2.6rem;

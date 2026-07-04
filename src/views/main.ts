@@ -55,7 +55,12 @@ export function renderMain(state: FullState): string {
     const cityCell = p.city_count != null
       ? `<td class="city-col">${p.city_count}</td>`
       : `<td class="city-col not-submitted">?</td>`;
-    return `<tr>${empireCell(p)}${milCell}${cityCell}${popCell}</tr>`;
+    // MOV: optional "units moved" readiness signal. Only meaningful once the
+    // census is revealed (players move in census order); blank otherwise.
+    const movCell = revealed && p.census?.moved
+      ? `<td class="mov-col"><span class="mov-check">✓</span></td>`
+      : `<td class="mov-col"></td>`;
+    return `<tr>${empireCell(p)}${milCell}${cityCell}${popCell}${movCell}</tr>`;
   }).join('');
 
   // ── Trade cards (West and East as separate tables) ───────────────────────
@@ -242,8 +247,9 @@ export function renderMain(state: FullState): string {
         <th class="mil-col" title="Military">MIL</th>
         <th class="city-col" title="Cities">CITY</th>
         <th class="census-pop">POP</th>
+        <th class="mov-col" title="Units moved">MOV</th>
       </tr></thead>
-      <tbody>${censusRows || '<tr><td colspan="4">No players</td></tr>'}</tbody>
+      <tbody>${censusRows || '<tr><td colspan="5">No players</td></tr>'}</tbody>
     </table>
     ${allCensusSubmitted ? '' : `<p class="table-hint">${pwc.filter(p => p.census?.population != null).length} / ${players.length} submitted</p>`}
   </section>

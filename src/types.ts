@@ -58,6 +58,7 @@ export interface CensusRow {
   round: number;
   population: number | null;
   city_count: number | null;
+  moved: number;
   submitted_at: string | null;
 }
 

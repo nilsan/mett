@@ -175,6 +175,24 @@ export function submitCityCount(playerId: number, round: number, count: number):
   `).run(playerId, round, count);
 }
 
+/** Toggle a player's "units moved" flag for the given round. This is an
+ *  optional readiness signal (neighbours can start) — it never gates phase
+ *  or round advancement. Upserts a census row so it works even before the
+ *  player has submitted a population. Returns the new value (0 or 1). */
+export function toggleMoved(playerId: number, round: number): number {
+  const db = getDb();
+  const cur = db.query<{ moved: number }, [number, number]>(
+    'SELECT moved FROM census WHERE player_id=? AND round=?'
+  ).get(playerId, round);
+  const next = cur?.moved ? 0 : 1;
+  db.query(`
+    INSERT INTO census (player_id, round, moved)
+    VALUES (?,?,?)
+    ON CONFLICT(player_id, round) DO UPDATE SET moved=excluded.moved
+  `).run(playerId, round, next);
+  return next;
+}
+
 export function allPlayersSubmitted(round: number): boolean {
   const db = getDb();
   const total = db.query<{ count: number }, []>('SELECT COUNT(*) AS count FROM players').get()!.count;

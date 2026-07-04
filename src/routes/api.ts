@@ -13,7 +13,7 @@ import { AST_LEVELS, LIA_THRESHOLD, MAX_POPULATION, MAX_CITIES } from '../models
 const api = new Hono();
 
 // Player-facing POST endpoints — no auth required (players submit from their own civ page)
-const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv']);
+const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv', '/move']);
 
 // Protect all mutating API endpoints — read-only GETs and player actions are public
 api.use('*', async (c, next) => {
@@ -146,6 +146,16 @@ api.post('/players/:id/military', (c) => {
   const next = db.toggleMilitary(playerId);
   broadcastState(playerId);
   return c.json({ ok: true, military: next });
+});
+
+api.post('/players/:id/move', (c) => {
+  const playerId = Number(c.req.param('id'));
+  const game = db.getGame();
+  const next = db.toggleMoved(playerId, game.current_round);
+  // Targeted broadcast: the status display (non-civ socket) always receives it,
+  // so neighbours see the signal on the shared TV; other civ pages are skipped.
+  broadcastState(playerId);
+  return c.json({ ok: true, moved: next });
 });
 
 api.post('/players/:id/wonder', (c) => {

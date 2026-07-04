@@ -238,6 +238,18 @@
             spcBtn.disabled = false;
         });
       }
+    }, bindMov = function() {
+      const movBtn = document.getElementById("mov-toggle");
+      if (!movBtn)
+        return;
+      movBtn.addEventListener("click", async () => {
+        if (movBtn.disabled)
+          return;
+        movBtn.disabled = true;
+        const res = await mettPost(`/api/players/${playerId}/move`);
+        if (!res.ok)
+          movBtn.disabled = false;
+      });
     }, renderFromState = function(state) {
       if (!state?.game || !state?.players)
         return;
@@ -262,7 +274,7 @@
       if (roundEl)
         roundEl.textContent = String(game.current_round);
       syncMilWon(player);
-      syncCensus(player, census, submitted, revealed, state);
+      syncCensus(player, census, submitted, revealed, citiesPhase, state);
       syncCity(census, cityCountSubmitted, citiesPhase);
       syncAdv(player);
       syncAst(player, census, game, state, expert);
@@ -285,10 +297,31 @@
         spcBtn.classList.toggle("spc-off", !player.special);
         spcBtn.textContent = player.special ? "⚡ Special ability — tap to remove" : "✕ No special ability — tap to grant";
       }
-    }, syncCensus = function(player, census, submitted, revealed, state) {
+    }, syncCensus = function(player, census, submitted, revealed, citiesPhase, state) {
       const formEl = document.getElementById("census-form");
       if (!formEl)
         return;
+      const popInputEl = document.getElementById("pop-input");
+      if (popInputEl)
+        popInputEl.disabled = citiesPhase;
+      const submitBtn = document.getElementById("submit-census");
+      if (submitBtn)
+        submitBtn.disabled = citiesPhase;
+      const movRow = formEl.querySelector(".mov-row");
+      if (movRow)
+        movRow.hidden = citiesPhase;
+      const movBtn = document.getElementById("mov-toggle");
+      if (movBtn) {
+        const moved = !!census?.moved;
+        movBtn.disabled = !revealed;
+        movBtn.classList.toggle("mov-on", moved);
+        movBtn.classList.toggle("mov-off", !moved);
+        movBtn.textContent = moved ? "✓ Units moved — neighbours can start" : "⊙ Mark units moved";
+        const movHint = formEl.querySelector(".mov-hint");
+        if (movHint) {
+          movHint.textContent = revealed ? "Let your neighbours know your units are placed." : "Available once the census is revealed.";
+        }
+      }
       const statusEl = formEl.querySelector(".census-submitted, .census-pending");
       if (statusEl) {
         if (submitted) {
@@ -534,6 +567,7 @@
     bindCity();
     bindAdv();
     bindMilWon();
+    bindMov();
     window.addEventListener("mett:my-state", (e) => {
       try {
         renderFromState(e.detail);

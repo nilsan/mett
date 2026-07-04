@@ -140,6 +140,9 @@ export function renderCivFragment(
   const census = state.census.find(c => c.player_id === player.id);
   const submitted = census?.population != null;
   const cityCountSubmitted = census?.city_count != null;
+  const revealed = game.census_revealed === 1;
+  const citiesPhase = game.cities_phase === 1;
+  const moved = !!census?.moved;
 
   const levels = state.astLevels;
   const currentLevelIdx = levels.findIndex(l => l.level === player.ast_level);
@@ -215,11 +218,17 @@ export function renderCivFragment(
             value="${censusDefault}"
             placeholder="1–55"
             inputmode="numeric"
-            class="census-input">
-          <button id="submit-census" class="btn-submit">Submit</button>
+            class="census-input"${citiesPhase ? ' disabled' : ''}>
+          <button id="submit-census" class="btn-submit"${citiesPhase ? ' disabled' : ''}>Submit</button>
         </div>
         ${!submitted ? '<small class="census-hint">Tip: -27 = 28 tokens remaining</small>' : ''}
         ${moveOrderHtml}
+        <div class="mov-row"${citiesPhase ? ' hidden' : ''}>
+          <button id="mov-toggle" class="mov-toggle-civ ${moved ? 'mov-on' : 'mov-off'}"${revealed ? '' : ' disabled'}>
+            ${moved ? '✓ Units moved — neighbours can start' : '⊙ Mark units moved'}
+          </button>
+          <small class="mov-hint">${revealed ? 'Let your neighbours know your units are placed.' : 'Available once the census is revealed.'}</small>
+        </div>
       </div>
       ` : '<p>No active game.</p>'}
     </section>

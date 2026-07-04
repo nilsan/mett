@@ -27,6 +27,7 @@ if (civEl) {
   bindCity();
   bindAdv();
   bindMilWon();
+  bindMov();
 
   window.addEventListener('mett:my-state', (e: Event) => {
     try { renderFromState((e as CustomEvent<FullState>).detail); }
@@ -154,6 +155,19 @@ if (civEl) {
     }
   }
 
+  function bindMov(): void {
+    const movBtn = document.getElementById('mov-toggle') as HTMLButtonElement | null;
+    if (!movBtn) return;
+    movBtn.addEventListener('click', async () => {
+      if (movBtn.disabled) return;
+      movBtn.disabled = true;
+      const res = await mettPost(`/api/players/${playerId}/move`);
+      // On success, the broadcast triggers syncCensus which re-enables + repaints.
+      // On failure, re-enable here so the user can retry.
+      if (!res.ok) movBtn.disabled = false;
+    });
+  }
+
   // ── Live render from WS state ───────────────────────────────────────────────
 
   function renderFromState(state: FullState): void {
@@ -180,7 +194,7 @@ if (civEl) {
     if (roundEl) roundEl.textContent = String(game.current_round);
 
     syncMilWon(player);
-    syncCensus(player, census, submitted, revealed, state);
+    syncCensus(player, census, submitted, revealed, citiesPhase, state);
     syncCity(census, cityCountSubmitted, citiesPhase);
     syncAdv(player);
     syncAst(player, census, game, state, expert);
@@ -215,13 +229,41 @@ if (civEl) {
 
   function syncCensus(
     player: PlayerRow,
-    census: { population: number | null; city_count: number | null } | null,
+    census: { population: number | null; city_count: number | null; moved?: number } | null,
     submitted: boolean,
     revealed: boolean,
+    citiesPhase: boolean,
     state: FullState,
   ): void {
     const formEl = document.getElementById('census-form');
     if (!formEl) return;
+
+    // Post-calamity (cities phase): the census population is locked — it only
+    // mattered earlier this round for the move order. The submit control is
+    // disabled until the next round reopens the census.
+    const popInputEl = document.getElementById('pop-input') as HTMLInputElement | null;
+    if (popInputEl) popInputEl.disabled = citiesPhase;
+    const submitBtn = document.getElementById('submit-census') as HTMLButtonElement | null;
+    if (submitBtn) submitBtn.disabled = citiesPhase;
+
+    // MOV: optional "units moved" toggle — enabled once census is revealed, and
+    // hidden in the post-calamity phase (units are long since placed by then).
+    const movRow = formEl.querySelector('.mov-row') as HTMLElement | null;
+    if (movRow) (movRow as HTMLElement).hidden = citiesPhase;
+    const movBtn = document.getElementById('mov-toggle') as HTMLButtonElement | null;
+    if (movBtn) {
+      const moved = !!census?.moved;
+      movBtn.disabled = !revealed;
+      movBtn.classList.toggle('mov-on', moved);
+      movBtn.classList.toggle('mov-off', !moved);
+      movBtn.textContent = moved ? '✓ Units moved — neighbours can start' : '⊙ Mark units moved';
+      const movHint = formEl.querySelector('.mov-hint');
+      if (movHint) {
+        movHint.textContent = revealed
+          ? 'Let your neighbours know your units are placed.'
+          : 'Available once the census is revealed.';
+      }
+    }
 
     const statusEl = formEl.querySelector<HTMLElement>('.census-submitted, .census-pending');
     if (statusEl) {

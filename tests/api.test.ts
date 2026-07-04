@@ -95,6 +95,7 @@ describe('API authorisation middleware', () => {
     ['/api/players/1/wonder',     {}],
     ['/api/players/1/special',    {}],
     ['/api/players/1/adv',        { adv_1vp: 1 }],
+    ['/api/players/1/move',       {}],
   ])('POST %s is public (no cookie, never 401)', async (path, body) => {
     const res = await jsonReq(app, 'POST', path, body);
     expect(res.status).not.toBe(401);
@@ -305,5 +306,117 @@ describe('status page: special-dim rendering in AST order', () => {
 
     const html = await getStatusHtml();
     expect(html).not.toContain('special-dim');
+  });
+});
+
+// ─── 5. MOV: units-moved readiness signal ────────────────────────────────────
+
+describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
+  let app: Hono;
+  let db: Database;
+  let p1: number, p2: number;
+
+  beforeEach(async () => {
+    db = setUpDbForGameTests();
+    _setTestDb(db);
+    setAdminPassword('PASSWORD');
+    app = makeApp();
+    await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 0, players: [
+        { civ_id: 1, name: 'Alpha', region: 'west' },
+        { civ_id: 2, name: 'Beta',  region: 'west' },
+      ]},
+      'mett_admin=PASSWORD');
+    const ids = db.query<{ id: number }, []>('SELECT id FROM players ORDER BY id').all();
+    [p1, p2] = [ids[0]!.id, ids[1]!.id];
+  });
+
+  function movedValue(playerId: number): number {
+    const row = db.query<{ moved: number }, [number]>(
+      'SELECT moved FROM census WHERE player_id=? AND round=1'
+    ).get(playerId);
+    return row?.moved ?? 0;
+  }
+
+  it('toggles a player\'s moved flag on and back off, returning the new value', async () => {
+    const on = await jsonReq(app, 'POST', `/api/players/${p1}/move`, {});
+    expect(on.status).toBe(200);
+    expect(await on.json()).toEqual({ ok: true, moved: 1 });
+    expect(movedValue(p1)).toBe(1);
+
+    const off = await jsonReq(app, 'POST', `/api/players/${p1}/move`, {});
+    expect(await off.json()).toEqual({ ok: true, moved: 0 });
+    expect(movedValue(p1)).toBe(0);
+  });
+
+  it('only affects the targeted player', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/move`, {});
+    expect(movedValue(p1)).toBe(1);
+    expect(movedValue(p2)).toBe(0);
+  });
+
+  it('upserts a census row when the player has not submitted a population yet', async () => {
+    // No census submitted for round 1 — the toggle must still work.
+    const res = await jsonReq(app, 'POST', `/api/players/${p2}/move`, {});
+    expect(res.status).toBe(200);
+    const row = db.query<{ population: number | null; moved: number }, [number]>(
+      'SELECT population, moved FROM census WHERE player_id=? AND round=1'
+    ).get(p2);
+    expect(row?.moved).toBe(1);
+    expect(row?.population).toBeNull();
+  });
+
+  it('does not block advancing the round (optional signal)', async () => {
+    // Submit city counts so the round can advance, but leave moved unset.
+    await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 2 }, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p2}/city-count`, { city_count: 2 }, 'mett_admin=PASSWORD');
+    const res = await jsonReq(app, 'POST', '/api/game/round/next', {}, 'mett_admin=PASSWORD');
+    expect(res.status).toBe(200);
+    expect(db.query<{ current_round: number }, []>('SELECT current_round FROM game WHERE id=1').get()!.current_round).toBe(2);
+  });
+
+  it('renders a MOV column with a checkmark once census is revealed', async () => {
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/move`, {});
+    const res = await app.request('/', { headers: { 'HX-Request': 'true' } });
+    const html = await res.text();
+    expect(html).toContain('mov-col');
+    expect(html).toContain('mov-check');
+  });
+
+  async function civHtml(): Promise<string> {
+    const res = await app.request('/minoa', { headers: { 'HX-Request': 'true' } });
+    return res.text();
+  }
+
+  it('civ page: census open and MOV visible before the cities phase', async () => {
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    const html = await civHtml();
+    expect(html).not.toMatch(/id="pop-input"[^>]*disabled/);
+    expect(html).not.toMatch(/id="submit-census"[^>]*disabled/);
+    expect(html).not.toMatch(/mov-row" hidden/);
+  });
+
+  it('civ page: recount (cities phase) locks the census submit and hides MOV', async () => {
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    // Admin "recount" → cities_phase = 1
+    await jsonReq(app, 'POST', '/api/game/cities/clear', {}, 'mett_admin=PASSWORD');
+    const html = await civHtml();
+    expect(html).toMatch(/id="pop-input"[^>]*disabled/);
+    expect(html).toMatch(/id="submit-census"[^>]*disabled/);
+    expect(html).toMatch(/mov-row" hidden/);
+  });
+
+  it('civ page: advancing to a new round reopens the census and MOV', async () => {
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/game/cities/clear', {}, 'mett_admin=PASSWORD');
+    // City counts in (post-calamity) so the round can advance.
+    await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 2 });
+    await jsonReq(app, 'POST', `/api/players/${p2}/city-count`, { city_count: 2 });
+    await jsonReq(app, 'POST', '/api/game/round/next', {}, 'mett_admin=PASSWORD');
+    const html = await civHtml();
+    expect(html).not.toMatch(/id="pop-input"[^>]*disabled/);
+    expect(html).not.toMatch(/id="submit-census"[^>]*disabled/);
+    expect(html).not.toMatch(/mov-row" hidden/);
   });
 });

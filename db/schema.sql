@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS census (
   population   INTEGER,              -- NULL = not yet submitted
   submitted_at TEXT,
   city_count   INTEGER,              -- NULL = not yet submitted
+  moved        INTEGER NOT NULL DEFAULT 0,  -- 1 = units moved this round (optional neighbour-readiness signal)
   UNIQUE(player_id, round)
 );
 
