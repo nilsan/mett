@@ -44,6 +44,7 @@ export interface PlayerRow {
   region: Region;
   rank_order: number;
   late_iron_age_bonus: number;
+  regressed: number;
   // joined from civs
   civ_number: number;
   civ_name: string;

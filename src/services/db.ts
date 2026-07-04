@@ -16,7 +16,7 @@ export const DB_PATH = process.env.DATABASE_PATH ?? join(import.meta.dir, '..', 
 export const PLAYER_SELECT = `
   SELECT
     p.id, p.civ_id, p.name, p.military, p.wonder, p.special, p.ast_level, p.adv_points,
-    p.adv_1vp, p.adv_3vp, p.adv_6vp, p.region, p.rank_order, p.late_iron_age_bonus,
+    p.adv_1vp, p.adv_3vp, p.adv_6vp, p.region, p.rank_order, p.late_iron_age_bonus, p.regressed,
     c.number AS civ_number, c.name AS civ_name, c.slug AS civ_slug,
     c.color AS civ_color, c.text_color AS civ_text_color
   FROM players p
@@ -92,6 +92,7 @@ export function getDb(): Database {
   migrate('ALTER TABLE census ADD COLUMN moved INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
+  migrate('ALTER TABLE players ADD COLUMN regressed INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
   migrate('ALTER TABLE game ADD COLUMN admin_password TEXT');
   migrate('ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0');

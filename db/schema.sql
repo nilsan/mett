@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS players (
   adv_6vp              INTEGER NOT NULL DEFAULT 0,  -- count of ≥200 VP advances
   region               TEXT    NOT NULL,            -- "west" or "east" for this game
   rank_order           INTEGER NOT NULL DEFAULT 0,  -- 0=unresolved; nonzero=admin tie-break rank
-  late_iron_age_bonus  INTEGER NOT NULL DEFAULT 0   -- 5 VP bonus for simultaneous LIA finish
+  late_iron_age_bonus  INTEGER NOT NULL DEFAULT 0,  -- 5 VP bonus for simultaneous LIA finish
+  regressed            INTEGER NOT NULL DEFAULT 0   -- 1 = admin regressed this player (calamity) this round; red marker on status board, cleared on round advance
 );
 
 -- Census entries per player per round

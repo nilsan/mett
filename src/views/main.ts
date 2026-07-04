@@ -194,13 +194,18 @@ export function renderMain(state: FullState): string {
     const moveInd = showMove
       ? `<span class="ab-move ab-move-${moveKind}" title="${moveTitle} — ${p.civ_name}">${moveGlyph}</span>`
       : '';
+    // Calamity regression marker: a red ring on the empire's token this round,
+    // so the GM can confirm the correct empire was regressed. Cleared on advance.
+    const regressed = p.regressed === 1;
+    const magnetClass = regressed ? 'ab-magnet ab-magnet-regressed' : 'ab-magnet';
+    const magnetTitle = regressed ? `Regressed this round (calamity) — ${p.civ_name}` : `${titlePrefix}${p.civ_name}`;
     const cells = boardLevels.map(l => {
       const here = p.ast_level === l;
       const band = civBandClass(p.civ_number, l, expert);
       // Late Iron Age cells take the empire's own colour (the "finish line").
       const lironStyle = band === 'age-liron' ? ` style="background:${p.civ_color}"` : '';
       return `<td class="ab-cell ${band}${here ? ' ab-here' : ''}${l === 0 ? ' ab-start-col' : ''}${isAgeEnd(p.civ_number, l, expert) ? ' ab-age-end' : ''}"${lironStyle}>` +
-        (here ? `<span class="ab-magnet" style="background:${p.civ_color};color:${p.civ_text_color}" title="${titlePrefix}${p.civ_name}">${l === 0 ? 'S' : l}</span>` : '') +
+        (here ? `<span class="${magnetClass}" style="background:${p.civ_color};color:${p.civ_text_color}" title="${magnetTitle}">${l === 0 ? 'S' : l}</span>` : '') +
         (l === 0 && !here ? moveInd : '') +
         `</td>`;
     }).join('');

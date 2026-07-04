@@ -402,6 +402,11 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           </div>
         </div>
       </td>
+      <td data-label="Regress">
+        <button class="regress-btn${p.regressed ? ' regress-active' : ''}" data-player-id="${p.id}"${p.ast_level === 0 ? ' disabled' : ''}
+          aria-label="Regress ${p.name} one A.S.T. step (calamity)"
+          title="${p.ast_level === 0 ? 'Already at Stone Age — cannot regress' : `Calamity: drop ${p.civ_name} one A.S.T. step`}"><span aria-hidden="true">▼</span></button>
+      </td>
       <td data-label="★">
         ${p.ast_level >= LIA_THRESHOLD
           ? `<button class="lia-star-btn ${p.late_iron_age_bonus ? 'lia-star-on' : 'lia-star-off'}" data-player-id="${p.id}" data-granted="${p.late_iron_age_bonus ? '1' : '0'}"
@@ -456,9 +461,10 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           <th>Mil / Won / Spc</th>
           <th>Adv VP</th>
           <th>A.S.T. Position</th>
+          <th title="Calamity regression — drop this empire one A.S.T. step">Regress</th>
           <th title="Late Iron Age bonus (5 VP) — first to reach LIA alone">★</th>
         </tr></thead>
-        <tbody>${playerRows || '<tr><td colspan="7">No players</td></tr>'}</tbody>
+        <tbody>${playerRows || '<tr><td colspan="9">No players</td></tr>'}</tbody>
       </table>
     </div>
   </section>

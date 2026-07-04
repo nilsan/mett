@@ -39,7 +39,7 @@ export {
 import { getDb, _onReset, PLAYER_SELECT } from './services/db.js';
 import type { PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow, Region } from './types.js';
 import { getGame, getRoundSummaries } from './models/game.js';
-import { getAstLevels, LIA_THRESHOLD, nextAstStatus } from './models/ast.js';
+import { getAstLevels, LIA_THRESHOLD, nextAstStatus, AST_LEVELS } from './models/ast.js';
 import type { AstStatus } from './types.js';
 
 // ── Admin password ─────────────────────────────────────────────────────────────
@@ -126,8 +126,34 @@ export function toggleSpecial(playerId: number): number {
 
 export function setAstLevel(playerId: number, level: number): void {
   const db = getDb();
-  db.query('UPDATE players SET ast_level=? WHERE id=?').run(level, playerId);
-  // If admin moved a player back below LIA, clear the expert end-trigger if no one else is there
+  // A deliberate level set via the admin dropdown supersedes any calamity
+  // regression marker for this player — clear it so the red status-board cue
+  // doesn't linger after a manual correction.
+  db.query('UPDATE players SET ast_level=?, regressed=0 WHERE id=?').run(level, playerId);
+  reevalFinalRound(db);
+}
+
+/** Regress a player one AST step (previous level in AST_LEVELS) and flag it so
+ *  the status board shows a red marker on that empire's token — used by the GM
+ *  to apply calamity-driven regressions. No-op (and no marker) if already at 0.
+ *  Returns the new AST level. */
+export function regressAst(playerId: number): number {
+  const db = getDb();
+  const cur = db.query<{ ast_level: number }, [number]>(
+    'SELECT ast_level FROM players WHERE id=?'
+  ).get(playerId);
+  if (!cur) return 0;
+  const idx = AST_LEVELS.indexOf(cur.ast_level);
+  const prev = idx > 0 ? AST_LEVELS[idx - 1]! : 0;
+  if (prev === cur.ast_level) return cur.ast_level; // already at Stone Age — nothing to regress
+  db.query('UPDATE players SET ast_level=?, regressed=1 WHERE id=?').run(prev, playerId);
+  reevalFinalRound(db);
+  return prev;
+}
+
+/** Shared: if a player dropped below Late Iron Age, clear the expert end-trigger
+ *  when no one is at LIA anymore. */
+function reevalFinalRound(db: ReturnType<typeof getDb>): void {
   const game = db.query<{ active: number; expert: number; is_final_round: number }, []>(
     'SELECT active, expert, is_final_round FROM game WHERE id=1'
   ).get();

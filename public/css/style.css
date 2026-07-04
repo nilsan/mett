@@ -868,6 +868,15 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   font-weight: 700;
   vertical-align: middle;
 }
+/* Calamity regression marker — a red ring + glow around the empire's token so
+   the GM can confirm the correct empire was regressed. Ring drawn with
+   box-shadow (not border) so it never changes the chip's size or circularity.
+   Cleared on round advance (players.regressed reset). */
+.status-ast .ab-magnet-regressed {
+  box-shadow: 0 0 0 0.16rem #e01b1b, 0 0 0.5rem 0.1rem rgba(224, 27, 27, 0.85);
+  outline: 0.09rem solid #2a0000;  /* thin dark separation so the red ring reads on any empire colour */
+  outline-offset: -0.02rem;
+}
 
 /* AST status hints on the AST.PROGRESS row (item 11.3): surface
    "will advance" and "will regress" so the GM and table see what's
@@ -2348,6 +2357,28 @@ th.ab-player-col {
 .won-toggle.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
 .spc-toggle.spc-on  { background: #1a1a30; border-color: #5555cc; color: #8888ff; }
 .spc-toggle.spc-off { background: var(--mett-surface2); color: var(--mett-muted); }
+
+/* Calamity regression button (admin table) — drops the empire one AST step. */
+.regress-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1;
+  border-radius: var(--radius-soft);
+  border: 0.0625rem solid var(--mett-border);
+  background: var(--mett-surface2);
+  color: #d98a8a;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.regress-btn:hover:not(:disabled) { background: #3a2020; border-color: #cc5555; color: #ff8888; }
+.regress-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+/* Active = this empire was regressed this round; echoes the status board's red marker. */
+.regress-btn.regress-active { background: #3a1414; border-color: #e01b1b; color: #ff8888; box-shadow: 0 0 0.35rem rgba(224, 27, 27, 0.6); }
 
 /* Special-ability dimming: non-holders in the AST order column (active whenever any player holds the ability) */
 .ast-order-table tr.special-dim td { opacity: 0.15; }

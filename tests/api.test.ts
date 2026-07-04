@@ -109,6 +109,7 @@ describe('API authorisation middleware', () => {
     ['/api/game/cities/clear',               {}],
     ['/api/census/reveal',                   {}],
     ['/api/players/1/ast',                   { level: 25 }],
+    ['/api/players/1/regress',               {}],
     ['/api/players/1/name',                  { name: 'X' }],
     ['/api/players/1/rank',                  { rank_order: 1 }],
     ['/api/players/1/late-iron-age-bonus',   { grant: true }],
@@ -418,5 +419,85 @@ describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
     expect(html).not.toMatch(/id="pop-input"[^>]*disabled/);
     expect(html).not.toMatch(/id="submit-census"[^>]*disabled/);
     expect(html).not.toMatch(/mov-row" hidden/);
+  });
+});
+
+// ─── 6. Calamity AST regression ──────────────────────────────────────────────
+
+describe('POST /api/players/:id/regress — calamity AST regression', () => {
+  let app: Hono;
+  let db: Database;
+  let p1: number, p2: number;
+
+  beforeEach(async () => {
+    db = setUpDbForGameTests();
+    _setTestDb(db);
+    setAdminPassword('PASSWORD');
+    app = makeApp();
+    await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 1, players: [
+        { civ_id: 1, name: 'Alpha', region: 'west' },
+        { civ_id: 2, name: 'Beta',  region: 'east' },
+      ]},
+      'mett_admin=PASSWORD');
+    const ids = db.query<{ id: number }, []>('SELECT id FROM players ORDER BY id').all();
+    [p1, p2] = [ids[0]!.id, ids[1]!.id];
+  });
+
+  function row(id: number) {
+    return db.query<{ ast_level: number; regressed: number }, [number]>(
+      'SELECT ast_level, regressed FROM players WHERE id=?'
+    ).get(id)!;
+  }
+
+  it('drops the player one AST step and flags them (needs admin cookie)', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, 'mett_admin=PASSWORD');
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, ast_level: 30 });
+    expect(row(p1)).toEqual({ ast_level: 30, regressed: 1 });
+    expect(row(p2)).toEqual({ ast_level: 0, regressed: 0 }); // untouched
+  });
+
+  it('is a no-op at Stone Age (level 0) and sets no marker', async () => {
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    expect(await res.json()).toEqual({ ok: true, ast_level: 0 });
+    expect(row(p1)).toEqual({ ast_level: 0, regressed: 0 });
+  });
+
+  it('manually setting the AST level (dropdown) clears the regression marker', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    expect(row(p1).regressed).toBe(1);
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 40 }, 'mett_admin=PASSWORD');
+    expect(row(p1)).toEqual({ ast_level: 40, regressed: 0 });
+  });
+
+  it('advancing the round clears all regression markers', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    expect(row(p1).regressed).toBe(1);
+    // Reach the point where the round can advance.
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 2 });
+    await jsonReq(app, 'POST', `/api/players/${p2}/city-count`, { city_count: 2 });
+    await jsonReq(app, 'POST', '/api/game/round/next', {}, 'mett_admin=PASSWORD');
+    expect(row(p1).regressed).toBe(0);
+  });
+
+  it('status board renders the red token marker for a regressed empire', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    const res = await app.request('/', { headers: { 'HX-Request': 'true' } });
+    const html = await res.text();
+    expect(html).toContain('ab-magnet-regressed');
+  });
+
+  it('admin table renders a regress button, disabled at level 0', async () => {
+    const res = await app.request('/admin', { headers: { 'HX-Request': 'true', cookie: 'mett_admin=PASSWORD' } });
+    const html = await res.text();
+    expect(html).toContain('regress-btn');
+    // Both players start at level 0 → both buttons disabled.
+    expect(html).toMatch(/regress-btn[^>]*disabled/);
   });
 });

@@ -14,7 +14,7 @@ function p(overrides: Partial<PlayerRow> = {}): PlayerRow {
     military: 0, wonder: 0, special: 0,
     ast_level: 0, adv_points: 0,
     adv_1vp: 0, adv_3vp: 0, adv_6vp: 0,
-    region: 'west', rank_order: 0, late_iron_age_bonus: 0,
+    region: 'west', rank_order: 0, late_iron_age_bonus: 0, regressed: 0,
     civ_number: 15, // Hellas — normal civ (stoneEnd=20, ebaEnd=35 expert / ebaEnd=35 basic)
     civ_name: 'Hellas', civ_slug: 'hellas',
     civ_color: '#F5EE2A', civ_text_color: 'black',

@@ -309,6 +309,18 @@
       });
     });
 
+    // Calamity regression — drop the empire one AST step. The WS broadcast
+    // updates the AST select, the movement indicator, and the status board's
+    // red token marker; here we only disable the button while in-flight.
+    document.querySelectorAll('.regress-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const res = await mettPost(`/api/players/${btn.dataset.playerId}/regress`, {});
+        if (!res.ok) btn.disabled = false;  // else the mett:state handler re-syncs it
+      });
+    });
+
 
     // Tie-break rank dropdowns (game-over view)
     document.querySelectorAll('select.rank-select').forEach(sel => {
@@ -423,6 +435,25 @@
           }
         });
       }
+
+      // Sync AST level select + calamity regression button from server state.
+      // A regression (or manual set) lands here so the dropdown and the button's
+      // disabled/active state stay authoritative without a full reload. Guard the
+      // select value on focus so we don't clobber a GM mid-selection.
+      data.players.forEach(p => {
+        const row = document.querySelector(`tr[data-player-id="${p.id}"]`);
+        if (!row) return;
+        const astSel = row.querySelector('.ast-select');
+        if (astSel) {
+          astSel.dataset.serverValue = String(p.ast_level);
+          if (document.activeElement !== astSel) astSel.value = String(p.ast_level);
+        }
+        const reg = row.querySelector('.regress-btn');
+        if (reg) {
+          reg.disabled = p.ast_level === 0;
+          reg.classList.toggle('regress-active', !!p.regressed);
+        }
+      });
 
       // Update per-player mil/won/spc toggles so changes from player pages
       // are reflected here without a full reload.

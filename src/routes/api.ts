@@ -190,6 +190,16 @@ api.post('/players/:id/ast', async (c) => {
   return c.json({ ok: true });
 });
 
+api.post('/players/:id/regress', (c) => {
+  const playerId = Number(c.req.param('id'));
+  // Calamity regression: drop the empire one AST step and flag it so the status
+  // board shows a red marker on that empire's token. Admin-only (not in
+  // PLAYER_PUBLIC) — the GM applies this, not the player.
+  const level = db.regressAst(playerId);
+  broadcastState(); // global — the status board changes for everyone
+  return c.json({ ok: true, ast_level: level });
+});
+
 api.post('/players/:id/adv', async (c) => {
   const playerId = Number(c.req.param('id'));
   const body = await c.req.json<{ adv_1vp?: number; adv_3vp?: number; adv_6vp?: number }>();
