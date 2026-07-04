@@ -420,6 +420,22 @@ describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
     expect(html).not.toMatch(/id="submit-census"[^>]*disabled/);
     expect(html).not.toMatch(/mov-row" hidden/);
   });
+
+  it('civ page: city-count submit is disabled before the census is revealed', async () => {
+    // Fresh round, census not yet revealed (census phase).
+    const html = await civHtml();
+    expect(html).toMatch(/id="submit-city"[^>]*disabled/);
+    expect(html).toMatch(/id="city-input"[^>]*disabled/);
+    expect(html).not.toMatch(/city-hint[^>]*hidden/); // hint shown
+  });
+
+  it('civ page: city-count submit enables once the census is revealed', async () => {
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    const html = await civHtml();
+    expect(html).not.toMatch(/id="submit-city"[^>]*disabled/);
+    expect(html).not.toMatch(/id="city-input"[^>]*disabled/);
+    expect(html).toMatch(/city-hint[^>]*hidden/); // hint hidden
+  });
 });
 
 // ─── 6. Calamity AST regression ──────────────────────────────────────────────

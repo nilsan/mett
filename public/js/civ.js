@@ -315,7 +315,7 @@
         roundEl.textContent = String(game.current_round);
       syncMilWon(player);
       syncCensus(player, census, submitted, revealed, citiesPhase, state);
-      syncCity(census, cityCountSubmitted, citiesPhase);
+      syncCity(census, cityCountSubmitted, citiesPhase, revealed);
       syncAdv(player);
       syncAst(player, census, game, state, expert);
     }, syncMilWon = function(player) {
@@ -408,7 +408,7 @@
       } else if (existing) {
         existing.remove();
       }
-    }, syncCity = function(census, submitted, citiesPhase) {
+    }, syncCity = function(census, submitted, citiesPhase, revealed) {
       const phaseEl = document.querySelector(".phase-hint");
       if (phaseEl) {
         phaseEl.textContent = citiesPhase ? "Enter city count after calamities resolve. This is the count used for A.S.T. progression." : "Enter city count before buying trade cards. You will re-enter after calamities resolve.";
@@ -437,6 +437,15 @@
         cityInput.value = String(census.city_count);
       }
       cityInput.dataset.serverValue = submitted ? String(census.city_count) : "";
+      cityInput.disabled = !revealed;
+      for (const id of ["city-dec", "city-inc", "submit-city"]) {
+        const el = document.getElementById(id);
+        if (el)
+          el.disabled = !revealed;
+      }
+      const cityHint = formEl.querySelector(".city-hint");
+      if (cityHint)
+        cityHint.hidden = revealed;
     }, syncAdv = function(player) {
       const adv1 = document.getElementById("adv-1vp");
       const adv3 = document.getElementById("adv-3vp");

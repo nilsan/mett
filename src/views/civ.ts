@@ -242,15 +242,16 @@ export function renderCivFragment(
           : '<p class="census-pending">Not yet entered</p>'
         }
         <div class="census-input-row city-count-row">
-          <button id="city-dec" class="adv-btn" aria-label="Decrease city count">−</button>
-          <select id="city-input" class="census-input" aria-label="City count" data-server-value="${cityCountSubmitted ? census!.city_count : ''}">
+          <button id="city-dec" class="adv-btn" aria-label="Decrease city count"${revealed ? '' : ' disabled'}>−</button>
+          <select id="city-input" class="census-input" aria-label="City count" data-server-value="${cityCountSubmitted ? census!.city_count : ''}"${revealed ? '' : ' disabled'}>
             ${Array.from({length: 10}, (_, i) =>
               `<option value="${i}"${(cityCountSubmitted ? census!.city_count === i : i === (prevCensus?.city_count ?? 0)) ? ' selected' : ''}>${i}</option>`
             ).join('')}
           </select>
-          <button id="city-inc" class="adv-btn" aria-label="Increase city count">+</button>
-          <button id="submit-city" class="btn-submit">Submit</button>
+          <button id="city-inc" class="adv-btn" aria-label="Increase city count"${revealed ? '' : ' disabled'}>+</button>
+          <button id="submit-city" class="btn-submit"${revealed ? '' : ' disabled'}>Submit</button>
         </div>
+        <small class="city-hint census-hint"${revealed ? ' hidden' : ''}>Available once the census is revealed.</small>
       </div>
     </section>
 

@@ -195,7 +195,7 @@ if (civEl) {
 
     syncMilWon(player);
     syncCensus(player, census, submitted, revealed, citiesPhase, state);
-    syncCity(census, cityCountSubmitted, citiesPhase);
+    syncCity(census, cityCountSubmitted, citiesPhase, revealed);
     syncAdv(player);
     syncAst(player, census, game, state, expert);
   }
@@ -320,6 +320,7 @@ if (civEl) {
     census: { city_count: number | null } | null,
     submitted: boolean,
     citiesPhase: boolean,
+    revealed: boolean,
   ): void {
     const phaseEl = document.querySelector('.phase-hint');
     if (phaseEl) {
@@ -351,6 +352,16 @@ if (civEl) {
       cityInput.value = String(census!.city_count);
     }
     cityInput.dataset.serverValue = submitted ? String(census!.city_count) : '';
+
+    // Lock the city-count controls until the census is revealed — after a new
+    // round starts (census hidden) players must not submit a count too early.
+    cityInput.disabled = !revealed;
+    for (const id of ['city-dec', 'city-inc', 'submit-city']) {
+      const el = document.getElementById(id) as HTMLButtonElement | null;
+      if (el) el.disabled = !revealed;
+    }
+    const cityHint = formEl.querySelector('.city-hint') as HTMLElement | null;
+    if (cityHint) cityHint.hidden = revealed;
   }
 
   function syncAdv(player: PlayerRow): void {
