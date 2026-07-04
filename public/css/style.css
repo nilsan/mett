@@ -1016,13 +1016,13 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .trade-table      { width: calc(var(--empire-box-w) + 20.8rem); }
 
   /* Census: explicit width = empire box + the mil/city/pop/mov columns. */
-  .status-grid .census-table { width: calc(var(--empire-box-w) + 3 * 2.5rem + 3rem); }
+  .status-grid .census-table { width: calc(var(--empire-box-w) + var(--col-mil) + var(--col-city) + var(--col-census-pop) + var(--col-mov)); }
   .status-grid .census-table thead th:first-child { width: var(--empire-box-w); }
   :root {
-    --col-mil: 2.5rem;
-    --col-city: 2.5rem;
+    --col-mil: 3rem;
+    --col-city: 3rem;
     --col-census-pop: 3rem;
-    --col-mov: 2.5rem;
+    --col-mov: 3rem;
     --col-rank: 1.7rem;
     --col-adv-pts: 2.6rem;
     --col-ast-pts: 2.6rem;
@@ -1057,6 +1057,14 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .mett-table td { height: clamp(2.5rem, 4.4vh, 6rem); }
   .status-grid .mett-table th,
   .status-ast thead th        { font-size: clamp(0.75rem, 1.02vh, 1.25rem); }
+  /* The short column codes (MIL/CITY/POP/MOV) are bold and don't fit the narrow
+     columns at the large 4K header font — the rightmost (MOV) then spills past
+     the table's right border. Give them a smaller header font + tight padding
+     so every code sits inside its column. */
+  .status-grid .census-table th.mil-col,
+  .status-grid .census-table th.city-col,
+  .status-grid .census-table th.census-pop,
+  .status-grid .census-table th.mov-col { font-size: 0.85rem; padding-left: 0.2rem; padding-right: 0.2rem; }
   .empire-cell,
   .status-ast td.empire-cell  { font-size: clamp(1rem, 1.44vh, 1.75rem); }
   .empire-player-name         { font-size: clamp(0.72rem, 1.02vh, 1.3rem); }
