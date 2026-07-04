@@ -309,7 +309,11 @@ export function renderCivFragment(
       </div>
       ${player.late_iron_age_bonus ? `<div class="ast-current lia-bonus-row"><span class="ast-level-label">LIA bonus:</span> <span class="lia-bonus-chip">★ +5 VP at game end</span></div>` : ''}
       ${nextLevel ? (() => {
-        const cityCount = census?.city_count ?? null;
+        // Fall back to the previous round's count so the city requirement is
+        // coloured green/red (never a white "not yet submitted"), consistent
+        // with the all-ages legend below — the cities on the board don't vanish
+        // just because this round's count isn't in yet.
+        const cityCount = census?.city_count ?? prevCensus?.city_count ?? null;
         const effectiveCities = cityCount !== null ? cityCount + (player.wonder ? 1 : 0) : null;
         const inStoneAge = player.ast_level <= stoneEnd;
 

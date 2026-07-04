@@ -495,7 +495,7 @@
       const stoneEnd = getCivAstProfile(player.civ_number, expert).stoneEnd;
       let middle = "";
       if (nextLevel) {
-        const effectiveCities = cityCount != null ? cityCount + (player.wonder ? 1 : 0) : null;
+        const effectiveCities = legendCityCount != null ? legendCityCount + (player.wonder ? 1 : 0) : null;
         const inStoneAge = player.ast_level <= stoneEnd;
         if (expert && effectiveCities === 0 && !inStoneAge && curIdx > 0) {
           const regressLevel = levels[curIdx - 1]?.level ?? 0;
@@ -505,7 +505,7 @@
         </div>`;
         } else {
           const advReq = getAdvanceRequirement(player, levels, expert);
-          middle = renderRequirementBlock(player, census, advReq, effectiveCities, nextLevel.level);
+          middle = renderRequirementBlock(player, { city_count: legendCityCount }, advReq, effectiveCities, nextLevel.level);
         }
       } else {
         if (finalRank === 1)

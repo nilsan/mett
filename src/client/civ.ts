@@ -436,8 +436,11 @@ if (civEl) {
 
     let middle = '';
     if (nextLevel) {
-      const effectiveCities = cityCount != null
-        ? cityCount + (player.wonder ? 1 : 0)
+      // Use the last-known city count (this round's, else previous round's) so
+      // the city requirement is coloured green/red — never a white "not yet
+      // submitted" — matching the all-ages legend below.
+      const effectiveCities = legendCityCount != null
+        ? legendCityCount + (player.wonder ? 1 : 0)
         : null;
       const inStoneAge = player.ast_level <= stoneEnd;
       if (expert && effectiveCities === 0 && !inStoneAge && curIdx > 0) {
@@ -448,7 +451,7 @@ if (civEl) {
         </div>`;
       } else {
         const advReq = getAdvanceRequirement(player, levels, expert);
-        middle = renderRequirementBlock(player, census, advReq, effectiveCities, nextLevel.level);
+        middle = renderRequirementBlock(player, { city_count: legendCityCount }, advReq, effectiveCities, nextLevel.level);
       }
     } else {
       if (finalRank === 1) middle = '<p class="ast-complete">🥇 Gold!</p>';

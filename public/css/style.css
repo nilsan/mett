@@ -921,14 +921,17 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .mett-table th    { font-size: 0.72rem; padding: 0.35rem 0.5rem; }
   .status-grid .mett-table td    { height: 2rem; padding: 0.15rem 0.5rem; }
 
-  /* Census: back to normal auto layout filling full width */
-  .status-grid .census-table { table-layout: auto; width: 100%; }
+  /* Census: fixed layout pinned to the card width. Percentage data columns are
+     font-independent, so the table can never content-size past the card edge and
+     clip the (rightmost) MOV column — even at large OS text sizes. The empire
+     column (auto) takes the remainder and ellipsises the name. */
+  .status-grid .census-table { table-layout: fixed; width: 100%; }
   .status-grid .census-table thead th:first-child { width: auto; }
+  .status-grid .mil-col    { width: 15%; min-width: 0; }
+  .status-grid .city-col   { width: 15%; min-width: 0; }
+  .status-grid .census-pop { width: 16%; min-width: 0; }
+  .status-grid .mov-col    { width: 15%; min-width: 0; }
   :root {
-    --col-mil: 3.0rem;
-    --col-city: 3.0rem;
-    --col-census-pop: 3.5rem;
-    --col-mov: 3.0rem;
     --col-rank: 1.8rem;
     --col-adv-pts: 2.5rem;
     --col-ast-pts: 2.5rem;
@@ -1956,7 +1959,8 @@ th.ab-player-col {
 .req-part-ok      { color: var(--mett-success); }
 .req-part-fail    { color: var(--mett-danger); }
 .req-part-unknown { color: var(--mett-muted); }
-.req-part-none    { color: var(--mett-muted); }
+/* Stone Age has no requirements — it's always satisfied, so show it green. */
+.req-part-none    { color: var(--mett-success); }
 .req-sep          { color: var(--mett-muted); }
 
 .ab-legend-dot {
