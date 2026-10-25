@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { resolve } from 'node:path';
 
 // Browser specs live under tests/browser/. Each worker starts its own me[tt]
 // instance (port 3100 + worker index, throwaway DB in a temp folder) from
@@ -17,5 +18,16 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // The TV layout again with a wide system font (DejaVu Sans): the board
+    // once fit Noto Sans but clipped with DejaVu, the default on many Linux
+    // TV computers and on the CI runners.
+    {
+      name: 'chromium-wide-font',
+      testMatch: /layout\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { env: { ...process.env, FONTCONFIG_FILE: resolve('tests/browser/wide-font.conf') } },
+      },
+    },
   ],
 });

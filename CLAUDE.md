@@ -59,7 +59,7 @@ bun run test            # unit + integration via bun test (tests/*.test.ts glob)
 bun run test:browser    # Playwright; one self-managed instance per worker on :3100+ (does not touch :3000)
 ```
 
-`bun run test` runs every `tests/*.test.ts` file (new files are picked up automatically). All must pass before any commit. The browser suite is separate locally and also runs in CI. Browser specs run in parallel, one me[tt] instance per worker, so a test may freely mutate its game (the next test re-seeds it).
+`bun run test` runs every `tests/*.test.ts` file (new files are picked up automatically). All must pass before any commit. The browser suite is separate locally and also runs in CI. Browser specs run in parallel, one me[tt] instance per worker, so a test may freely mutate its game (the next test re-seeds it). `layout.spec.ts` also runs in a second project, `chromium-wide-font`, with the UI font forced to DejaVu Sans (`tests/browser/wide-font.conf`): the board must fit wide system fonts too, not just the font on this machine.
 
 **Unused CSS:** `bun run css:usage` walks every page through every game state at phone/1080p/4K on a throwaway instance and fails if any selector in `style.css` never matches (also runs in CI). When it flags a selector, either delete the rule or — only for DOM that exists solely at runtime — add it to `KNOWN_DYNAMIC` in `scripts/css-usage.ts` with the reason.
 

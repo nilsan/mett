@@ -533,7 +533,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    The uniform 2-line h3 min-height above keeps every table's first row aligned. */
 .status-grid .ast-order-section h3 { max-width: var(--empire-box-w); }
 .status-grid .table-hint       { font-size: 0.58rem; margin-top: auto; margin-bottom: 0; padding-top: 0.15rem; }
-.status-grid .ab-legend        { margin-top: auto; font-size: 0.56rem; line-height: 1.2; padding: 0.1rem 0 0; gap: 0.05rem 0.6rem; }
+.status-grid .ab-legend        { margin-top: auto; font-size: 0.46rem; line-height: 1.2; padding: 0.1rem 0 0; gap: 0.05rem 0.6rem; }
 .status-grid .ab-legend li     { gap: 0.2rem; }
 .status-grid .ab-legend-dot    { width: 0.5rem; height: 0.5rem; }
 /* Row height + font scale with viewport HEIGHT (not width) so the table
@@ -801,8 +801,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .ab-table.status-ast { width: max-content !important; }
   .status-ast .ab-data-col { width: clamp(1.9rem, 2.4vw, 3rem); }
 }
-.status-ast .ab-level-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
-.status-ast .ab-round-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.52rem, 0.78vh, 0.95rem) !important; }
+.status-ast .ab-level-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.45rem, 0.78vh, 0.95rem) !important; }
+.status-ast .ab-round-num { width: clamp(1.9rem, 2.4vw, 3rem); font-size: clamp(0.45rem, 0.78vh, 0.95rem) !important; }
 .status-ast .ab-name      { font-size: clamp(0.55rem, 0.85vh, 1rem) !important; }
 .status-ast .ab-magnet {
   width: 1.1rem;
@@ -927,8 +927,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .census-table thead th:first-child { width: var(--empire-box-w); }
   :root {
     --col-mil: 2.2rem;
-    --col-city: 2.2rem;
-    --col-census-pop: 2.5rem;
     --col-mov: 2.2rem;
     /* WQHD has width to spare in the timeline; wider boxes keep long player
        names whole at the larger board type. */
@@ -967,8 +965,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .census-table thead th:first-child { width: var(--empire-box-w); }
   :root {
     --col-mil: 3rem;
-    --col-city: 3rem;
-    --col-census-pop: 3rem;
     --col-mov: 3rem;
     /* Wide enough for a full two-part player name (e.g. "Nils-Anders Nøttseter")
        on the 2nd line at the enlarged 4K font, with breathing room to spare. */
@@ -2463,7 +2459,7 @@ body:has(.civ-page) { overflow-x: hidden; }
     --board-sub: clamp(0.55rem, 0.85vh, 1.05rem);
     --board-head: clamp(0.55rem, 0.95vh, 1.1rem);
 
-    --text-scale-max: 1.3;
+    --text-scale-max: 1.2;
     --num-scale-max: 1.15;
     --row-scale: clamp(1, calc(18 / var(--players, 18)), 3);
     --text-scale: clamp(1, calc(1 + (var(--row-scale) - 1) * 0.3), var(--text-scale-max));
@@ -2509,20 +2505,30 @@ body:has(.civ-page) { overflow-x: hidden; }
      narrowed the timeline, which wrapped the age legend onto one more line and
      pushed the board past the bottom of a 1080p screen. Every leaderboard
      column is sized from the number font, so its widest value fits at every
-     size: "=18" for rank, two digits for ADV / AST, three for the total. */
+     size: "=18" for rank, two digits for ADV / AST, three for the total.
+     The census number columns (cities, population) work the same way. All
+     factors leave room for wide system fonts (DejaVu Sans digits are ~11 %
+     wider than Noto's). */
   .status-grid {
+    --col-city: calc(var(--board-num-base) * 1.5 + 0.8rem);
+    --col-census-pop: calc(var(--board-num-base) * 1.5 + 0.8rem);
     /* From the base number size (× the largest number scale, 1.15), not the
        scaled one: the width — and so the timeline's width — must not change
        with the player count either. */
-    --col-rank: calc(var(--board-num-base) * 2.05 + 0.3rem);
-    --col-adv-pts: calc(var(--board-num-base) * 1.35 + 0.8rem);
-    --col-ast-pts: calc(var(--board-num-base) * 1.35 + 0.8rem);
-    --col-total-vp: calc(var(--board-num-base) * 2.1 + 0.8rem);
+    --col-rank: calc(var(--board-num-base) * 2.6 + 0.3rem);
+    --col-adv-pts: calc(var(--board-num-base) * 1.5 + 0.8rem);
+    --col-ast-pts: calc(var(--board-num-base) * 1.5 + 0.8rem);
+    --col-total-vp: calc(var(--board-num-base) * 2.3 + 0.8rem);
   }
   .status-grid td.rank { padding-left: 0.15rem; padding-right: 0.15rem; }
   .status-grid .lb-table {
     width: calc(var(--col-rank) + var(--empire-box-w) + var(--col-adv-pts) + var(--col-ast-pts) + var(--col-total-vp));
   }
+
+  /* The VP / Round axis under the timeline stays one line per cell — with a
+     wide system font (DejaVu Sans, Linux's default) "17+" and "Round →"
+     wrapped and made the axis 12 px taller at 1080p. */
+  .status-ast tfoot td { white-space: nowrap; letter-spacing: -0.04em; }
 }
 @media (min-width: 192rem) and (min-height: 115rem) {
   .status-grid {

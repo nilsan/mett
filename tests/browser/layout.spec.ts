@@ -48,7 +48,7 @@ test.describe('main display layout', () => {
       if (chips) await expect(page.locator('.trade-chip')).toHaveCount(18 * 9);
       await page.evaluate(() => document.fonts.ready);
 
-      const { overflow, clipped, rowHeights } = await page.evaluate(() => ({
+      const { overflow, clipped, rowHeights, cutText } = await page.evaluate(() => ({
         overflow: document.documentElement.scrollHeight - window.innerHeight,
         // The status grid uses overflow:hidden, so content pushed past the fold
         // is clipped WITHOUT growing scrollHeight — the overflow check can't see
@@ -63,10 +63,15 @@ test.describe('main display layout', () => {
           ['.census-table', '.trade-table', '.ast-order-table', '.lb-table'].map(sel =>
             Math.round(document.querySelector(`${sel} tbody tr`)!.getBoundingClientRect().height)),
         )),
+        // Text cut off inside a cell: names, player names and every number.
+        cutText: Array.from(document.querySelectorAll('.status-grid .empire-civ, .status-grid .empire-player-name, .status-grid td:not(.empire-cell):not(.trade-region)'))
+          .filter(el => el.scrollWidth > el.clientWidth + 1)
+          .map(el => el.textContent?.trim()),
       }));
       expect(overflow, 'page must not scroll').toBeLessThanOrEqual(0);
       expect(clipped, 'panels clipped below the viewport').toEqual([]);
       expect(rowHeights, 'row height must match across tables').toHaveLength(1);
+      expect(cutText, 'text cut off inside a cell').toEqual([]);
 
       await expect(page.locator('.mett-version')).toBeVisible();
     });
@@ -112,31 +117,37 @@ test.describe('main display layout', () => {
   // ("=10") widened it, which narrowed the timeline, which wrapped the age
   // legend onto an extra line and pushed the board past the bottom of a 1080p
   // screen — in some games but not others. Its width must not depend on ties.
-  test('a two-digit tie rank keeps the leaderboard width, and the board fits at 1920×1080', async ({ page, request }) => {
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    await fillTradeChips(request);
-    const state = await (await request.get('/api/state')).json();
-    const score = async (tiedFrom: number) => {
-      for (const [i, p] of state.players.entries()) {
-        const tied = i >= tiedFrom;
-        await request.post(`/api/players/${p.id}/ast`, { data: { level: tied ? 30 : 50 } });
-        await request.post(`/api/players/${p.id}/adv`, { data: { adv_1vp: tied ? 1 : 2 + i } });
+  // 12 players is the demanding case: numbers there are 1.15× larger.
+  for (const players of [18, 12]) {
+    test(`${players} players: a two-digit tie rank keeps the leaderboard width, and the board fits at 1920×1080`, async ({ page, request }) => {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      if (players !== 18) {
+        expect((await request.post('/api/debug/simulate', { data: { expert: 1, player_count: players, rounds: 6 } })).ok()).toBe(true);
       }
-      await page.goto('/');
-      await expect(page.locator('.lb-table tbody tr')).toHaveCount(18);
-      return page.evaluate(() => ({
-        lb: Math.round(document.querySelector('.lb-table')!.getBoundingClientRect().width),
-        clippedPanels: Array.from(document.querySelectorAll('.table-section'))
-          .filter(el => el.getBoundingClientRect().bottom > window.innerHeight + 1).length,
-        cutRanks: Array.from(document.querySelectorAll('.lb-table td.rank')).filter(el => el.scrollWidth > el.clientWidth + 1).length,
-      }));
-    };
-    const distinct = await score(18);  // every empire scores differently: no ties
-    await expect(page.locator('.lb-table td.rank', { hasText: '=' })).toHaveCount(0);
-    const tied = await score(9);       // nine empires tied for 10th
-    await expect(page.locator('.lb-table td.rank', { hasText: '=10' })).toHaveCount(9);
-    expect(tied).toEqual({ lb: distinct.lb, clippedPanels: 0, cutRanks: 0 });
-  });
+      await fillTradeChips(request);
+      const state = await (await request.get('/api/state')).json();
+      const score = async (tiedFrom: number) => {
+        for (const [i, p] of state.players.entries()) {
+          const tied = i >= tiedFrom;
+          await request.post(`/api/players/${p.id}/ast`, { data: { level: tied ? 30 : 50 } });
+          await request.post(`/api/players/${p.id}/adv`, { data: { adv_1vp: tied ? 1 : 2 + i } });
+        }
+        await page.goto('/');
+        await expect(page.locator('.lb-table tbody tr')).toHaveCount(players);
+        return page.evaluate(() => ({
+          lb: Math.round(document.querySelector('.lb-table')!.getBoundingClientRect().width),
+          clippedPanels: Array.from(document.querySelectorAll('.table-section'))
+            .filter(el => el.getBoundingClientRect().bottom > window.innerHeight + 1).length,
+          cutRanks: Array.from(document.querySelectorAll('.lb-table td.rank')).filter(el => el.scrollWidth > el.clientWidth + 1).length,
+        }));
+      };
+      const distinct = await score(players);  // every empire scores differently: no ties
+      await expect(page.locator('.lb-table td.rank', { hasText: '=' })).toHaveCount(0);
+      const tied = await score(9);            // the rest tie for 10th
+      await expect(page.locator('.lb-table td.rank', { hasText: '=10' })).toHaveCount(players - 9);
+      expect(tied).toEqual({ lb: distinct.lb, clippedPanels: 0, cutRanks: 0 });
+    });
+  }
 
   // Phones are supported too: the status page stacks and scrolls table by
   // table, and the admin page must stay usable — but neither may ever scroll

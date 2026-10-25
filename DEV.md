@@ -337,6 +337,10 @@ For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun
 
 `bun run css:usage` (`scripts/css-usage.ts`) starts its own instance on a throwaway database and walks it through every state — no game, round 1, census, trade (partial and full), calamities, a real round advance with a summary, final round, game over with a tie, password form, basic mode — loading the status, admin, player and login pages at phone, 1080p and 4K. It fails if any selector in `style.css` never matches. Selectors for DOM that only exists at runtime (error toast, offline pill, rare round-summary lines) are listed with a reason in `KNOWN_DYNAMIC`. Runs in CI after the browser tests.
 
+### Wide system fonts
+
+The board uses the platform UI font, so its text width depends on the machine: DejaVu Sans (the default sans on many Linux installs and on the CI runners) is ~10 % wider than Noto Sans. `layout.spec.ts` therefore runs twice — the `chromium` project with the local font, and `chromium-wide-font`, which points Chromium's fontconfig at `tests/browser/wide-font.conf` so `system-ui`/`sans-serif` render as DejaVu Sans. Number columns are sized from the number font with room for wide digits, and the timeline's axis labels never wrap.
+
 ### Screenshot tests
 
 `tests/browser/visual.spec.ts` renders a seeded 18-player game (`seed: 42` on the debug endpoints) and compares the status board (1920×1080, 3840×2160), the admin page and a player page on a phone pixel-exactly with the PNGs in `tests/browser/visual.spec.ts-snapshots/`. The version stamp and the backup list are masked. Accept an intended change with `bunx playwright test tests/browser/visual.spec.ts --update-snapshots`. Skipped on CI: the runners render the system font differently from the machine the baselines come from.
