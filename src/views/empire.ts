@@ -38,15 +38,18 @@ function cellBody(p: EmpireCellInput): string {
 }
 
 export function empireCell(p: EmpireCellInput, variant: EmpireCellVariant = 'cell'): string {
-  const style = `background:${p.civ_color};color:${p.civ_text_color}`;
+  // Every variant is neutral; the empire colour only paints the .civ-num
+  // badge (via --civ / --civ-fg), so a page of 18 empires doesn't shout.
+  const vars = `--civ:${p.civ_color};--civ-fg:${p.civ_text_color}`;
+  const num = `<span class="civ-num">${p.civ_number}</span>`;
   switch (variant) {
     case 'cell':
-      return `<td class="empire-cell" style="${style}">${cellBody(p)}</td>`;
+      return `<td class="empire-cell" style="${vars}">${cellBody(p)}</td>`;
     case 'cell-ab':
-      return `<td class="ab-civ-label empire-cell" style="${style}">${cellBody(p)}</td>`;
+      return `<td class="ab-civ-label empire-cell" style="${vars}">${cellBody(p)}</td>`;
     case 'badge':
-      return `<span class="civ-badge civ-badge-with-num" style="${style}"><span class="civ-num-in-badge">${p.civ_number}</span>${p.civ_name}</span>`;
+      return `<span class="civ-badge civ-badge-with-num" style="${vars}">${num}${p.civ_name}</span>`;
     case 'badge-with-player':
-      return `<span class="civ-badge civ-badge-with-num" style="${style}"><span class="civ-num-in-badge">${p.civ_number}</span><span class="civ-badge-label">${p.civ_name}<span class="go-player-name">${escapeHtml(p.name)}</span></span></span>`;
+      return `<span class="civ-badge civ-badge-with-num" style="${vars}">${num}<span class="civ-badge-label">${p.civ_name}<span class="go-player-name">${escapeHtml(p.name)}</span></span></span>`;
   }
 }

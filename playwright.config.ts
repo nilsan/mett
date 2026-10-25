@@ -8,10 +8,13 @@ const TEST_PORT = 3100;
 
 export default defineConfig({
   testDir: 'tests/browser',
-  fullyParallel: true,
+  // One worker: every spec shares the single :3100 instance and its DB, and
+  // each test re-seeds the game first, so parallel workers would reset each
+  // other's state mid-test (seen as rare, unreproducible failures).
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: `http://localhost:${TEST_PORT}`,

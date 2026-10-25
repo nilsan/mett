@@ -185,11 +185,11 @@ export function renderCivFragment(
 
   return /* html */`
 <div id="civ-content" data-player-id="${player.id}" data-game-active="${game.active}">
-<div class="civ-page" style="--civ-color:${player.civ_color};--civ-text:${player.civ_text_color}">
+<div class="civ-page" style="--civ:${player.civ_color};--civ-fg:${player.civ_text_color}">
   <div class="civ-hero">
     <div class="civ-hero-content">
       <span class="civ-region-tag">${regionLabel}</span>
-      <h2>${player.civ_name} <span class="civ-player-name">${escapeHtml(player.name)}</span></h2>
+      <h2><span class="civ-num">${player.civ_number}</span>${player.civ_name} <span class="civ-player-name">${escapeHtml(player.name)}</span></h2>
     </div>
   </div>
 

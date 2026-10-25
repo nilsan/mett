@@ -69,7 +69,7 @@ METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml pull
 METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml up -d
 ```
 
-`:latest` (the default) tracks `main` and is only published after the full test suite passes. Every build is also tagged with its version (`0.18.0`, `0.18`; plus `1` from 1.0.0 on) and short commit SHA. Game data lives at the `mett_data` named volume on the host.
+`:latest` (the default) tracks `main` and is only published after the full test suite passes. Every build is also tagged with its version (`1.0.0`, `1.0`, `1`) and short commit SHA. Pin `METT_VERSION=1` to receive every compatible update and nothing that needs manual work (see [DEV.md › Versioning](DEV.md#versioning)). Game data lives at the `mett_data` named volume on the host.
 
 **Multi-instance / multi-game on one host:** duplicate the `mett` service in `docker-compose.yml` under different names with separate volume mounts, and add a Caddyfile block per hostname. Each instance is fully independent — separate database, separate game.
 

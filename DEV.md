@@ -343,6 +343,20 @@ For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun
 
 ---
 
+## Versioning
+
+me[tt] follows [semantic versioning](https://semver.org). The version lives in `package.json`, shows in the page footer (with the build SHA), and becomes the Docker image tags. Every push to `main` publishes an image, so **every commit that changes behaviour is a release**: bump the version in that same commit and put it in the subject, e.g. `fix(ui): … (1.0.1)`.
+
+The "public API" is what operators and players rely on: the compose file, environment variables, volume and port; player and admin URLs (bookmarks); and that an upgrade is just *pull and restart*.
+
+| Bump | When | Examples |
+|---|---|---|
+| **Major** `x.0.0` | Upgrading needs manual work, or breaks something people rely on | Compose/env/volume/port change; player URLs change; a DB change that can't migrate automatically; dropping an advertised feature |
+| **Minor** `1.x.0` | New features or visible changes; upgrade is still pull-and-restart | New feature or redesign; any new entry in `MIGRATIONS` (rolling back past it is unsafe); dropping support for a screen size |
+| **Patch** `1.0.x` | Fixes with no new behaviour and no schema change | Bug fixes, styling tweaks, dependency patch updates |
+
+Commits that change no shipped behaviour (tests, CI, docs only) need no bump. Tag what you deploy (`git tag v1.0.0`) so `git log v1.0.0..main` shows exactly what is not yet live.
+
 ## Deployment
 
 The shipped compose file runs a single me[tt] instance behind Caddy. The public demo at `demo.mett.games` runs from this exact configuration. Game data persists in the `mett_data` named Docker volume on the host.
@@ -363,7 +377,7 @@ METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml pull
 METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml up -d
 ```
 
-`build.yml` publishes `:<version>`, `:<major>.<minor>` and `:<major>` tags from `package.json` alongside `:latest` and `:<short-sha>` (the bare `:<major>` tag is only published from 1.0.0 on). Default of `:latest` is fine for the demo / dev; production should pin.
+`build.yml` publishes `:<version>`, `:<major>.<minor>` and `:<major>` tags from `package.json` alongside `:latest` and `:<short-sha>`. Default of `:latest` is fine for the demo / dev; production should pin — `METT_VERSION=1` follows every compatible release (see [Versioning](#versioning)).
 
 The container starts as root only long enough for `docker/entrypoint.sh` to `chown` the data volume to the `bun` user (volumes from older, root-run images hold root-owned files), then runs the server unprivileged. `HEALTHCHECK` polls `/healthz`, and Caddy waits for it before starting.
 
@@ -407,27 +421,30 @@ Caddy in the compose file expects a real DNS name (`demo.mett.games` by default)
 
 ## Responsive layout
 
-The status page uses a CSS Grid layout that adapts across five breakpoints defined in `public/css/style.css`:
+The status page uses a CSS Grid layout in `public/css/style.css`. Supported sizes are **phones** and **1920×1080 at 100 % scaling and up**; everything in between (tablets, laptops, 1080p at 125 %) is out of scope.
 
 | Breakpoint | Viewport | Layout |
 |---|---|---|
-| Default | ≥ 700 px | 5-column grid (leaderboard, census, trade, AST board, AST order) |
+| Phone | ≤ 700 px | Single column; the page scrolls table by table |
+| Default | ≥ 700 px (supported from 1920×1080) | 5-column grid (census, trade, A.S.T. order, timeline, leaderboard), viewport-locked, never scrolls |
 | 1080p admin | 1200 px ≤ width < 2560 px | `(min-width: 75em) and (max-width: 159.99em)` block tightens admin row density so 18 players fit at 1920×1080 without compromising WQHD |
 | WQHD | ≥ 2560 px (`160rem`) | Larger row heights, bigger fonts (TV target) |
-| 4K @ 1.25× | ≥ 3072 px (`192rem`) | 9 rem empire cells, even larger fonts |
-| Tablet | ≤ 700 px | Single column |
+| 4K widths | ≥ 3072 px (`192rem`) | 13 rem empire cells |
+| 4K rows | ≥ 3072 px wide **and** ≥ 1840 px tall (`115rem`) | Re-values the board type tokens (taller rows, bigger type). Height-gated: 4K at 125 % OS scaling is 3072×~1600 and must keep the base rows to fit |
 
-`rem` values in media queries use the browser default font size (16 px), not Pico's fluid root font size (~21 px at 1920 px). Keep this in mind when editing breakpoints.
+**Board type scale.** Row height, name/player/number/header sizes are `--board-*` tokens on `.status-grid` (vh-based clamps, end of `style.css`); breakpoints only re-value the tokens. Trade-card chips are sized from `--board-row`, so a trade row can never be taller than the other tables' rows. **Calm components** (panels, striped tables, the `.civ-num` empire badge, colour tokens such as `--mett-text`, `--mett-stripe`, `--radius-panel`) are shared by every page — change the token, not per-page copies. The app font is the platform UI font (`--mett-font`); a condensed web font was tried and dropped as blurry on desktop monitors.
+
+`rem` values in media queries use the browser default font size (16 px), not Pico's fluid root font size (~21 px at 1920 px). Keep this in mind when editing breakpoints. The status grid hides overflow, so clipping never shows up as a scrollbar — `tests/browser/layout.spec.ts` checks that every panel ends inside the viewport and rows are equally tall across tables at 1920×1080, 2560×1440, 3072×1600, 3440×1440, 3840×2160 and 5120×2160 — each both with an empty trade table and with 9 trade cards per empire (the tallest case).
 
 ### Per-page viewport targets
 
 Layout work must respect this hierarchy — captured here so future tightening doesn't accidentally compromise the primary read target.
 
-| Page | Primary | Minimum | Out of scope |
+| Page | Primary | Must work | Out of scope |
 |---|---|---|---|
-| Status display (`/`) | WQHD / 4K (TV) | 1920×1080 | < 1080p |
-| Admin (`/admin`) | WQHD / 4K (TV) | 1920×1080 | 1280×720 laptop |
-| Player page (`/<slug>`) | Phone (≈ 411×731 portrait) | Tablet | Wide desktop is fine but not optimised for |
+| Status display (`/`) | WQHD / 4K (TV) | Phones (scrolls table by table); 1920×1080 at 100 % and up (never scrolls) | Tablets, laptops, anything between phone and 1080p |
+| Admin (`/admin`) | WQHD / 4K (TV) | Phones; 1920×1080 at 100 % and up | Anything between phone and 1080p |
+| Player page (`/<slug>`) | Modern phones incl. large OS fonts | Phones; never scrolls horizontally | Wide desktop is fine but not optimised for |
 
 When tightening density to fit a smaller viewport, scope the change inside a media query so WQHD/4K density stays untouched. The 1080p admin block above is a worked example of the pattern.
 

@@ -78,7 +78,13 @@ export function renderMain(state: FullState): string {
   const westTrade = tradeSorted.filter(p => p.region === 'west');
   const eastTrade = tradeSorted.filter(p => p.region === 'east');
 
-  function tradeRegionRows(list: PlayerWithCensus[]): string {
+  // One 18-row table (West block, then East) so every trade row lines up with
+  // the other status tables. With both regions present, each block gets a
+  // vertical side label (rowspan) instead of a heading row, and the East block
+  // starts with a divider drawn in the row gap — neither adds height.
+  const bothRegions = westTrade.length > 0 && eastTrade.length > 0;
+
+  function tradeRegionRows(list: PlayerWithCensus[], region: 'West' | 'East'): string {
     return list.map((p, i) => {
       let cardCell: string;
       if (citiesPhase) {
@@ -96,7 +102,12 @@ export function renderMain(state: FullState): string {
       }
       // Trade-card count groupings only make sense while trade cards are live.
       const groupStart = !citiesPhase && allCitiesSubmitted && i > 0 && list[i - 1]!.city_count !== p.city_count;
-      return `<tr${groupStart ? ' class="trade-group-start"' : ''}>${empireCell(p)}${cardCell}</tr>`;
+      const regionStart = bothRegions && region === 'East' && i === 0;
+      const cls = regionStart ? 'trade-region-start' : groupStart ? 'trade-group-start' : '';
+      const label = bothRegions && i === 0
+        ? `<td class="trade-region" rowspan="${list.length}"><span>${region}</span></td>`
+        : '';
+      return `<tr${cls ? ` class="${cls}"` : ''}>${label}${empireCell(p)}${cardCell}</tr>`;
     }).join('');
   }
 
@@ -202,8 +213,9 @@ export function renderMain(state: FullState): string {
     const cells = boardLevels.map(l => {
       const here = p.ast_level === l;
       const band = civBandClass(p.civ_number, l, expert);
-      // Late Iron Age cells take the empire's own colour (the "finish line").
-      const lironStyle = band === 'age-liron' ? ` style="background:${p.civ_color}"` : '';
+      // Late Iron Age cells take the empire's own colour (the "finish line"),
+      // toned down in CSS via --civ.
+      const lironStyle = band === 'age-liron' ? ` style="--civ:${p.civ_color}"` : '';
       return `<td class="ab-cell ${band}${here ? ' ab-here' : ''}${l === 0 ? ' ab-start-col' : ''}${isAgeEnd(p.civ_number, l, expert) ? ' ab-age-end' : ''}"${lironStyle}>` +
         (here ? `<span class="${magnetClass}" style="background:${p.civ_color};color:${p.civ_text_color}" title="${magnetTitle}">${l === 0 ? 'S' : l}</span>` : '') +
         (l === 0 && !here ? moveInd : '') +
@@ -261,15 +273,10 @@ export function renderMain(state: FullState): string {
 
   <section class="table-section">
     <h3>Trade Cards</h3>
-    ${westTrade.length > 0 ? `<table class="mett-table trade-table">
-      <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
-      <thead><tr><th colspan="2">${eastTrade.length > 0 ? 'West' : '&nbsp;'}</th></tr></thead>
-      <tbody>${tradeRegionRows(westTrade)}</tbody>
-    </table>` : ''}
-    ${eastTrade.length > 0 ? `<table class="mett-table trade-table${westTrade.length > 0 ? ' trade-east' : ''}">
-      <colgroup><col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
-      <thead><tr><th colspan="2">${westTrade.length > 0 ? 'East' : '&nbsp;'}</th></tr></thead>
-      <tbody>${tradeRegionRows(eastTrade)}</tbody>
+    ${pwc.length > 0 ? `<table class="mett-table trade-table${bothRegions ? ' trade-two-regions' : ''}">
+      <colgroup>${bothRegions ? '<col class="trade-region-col">' : ''}<col class="trade-empire-col"><col class="trade-chip-col"></colgroup>
+      <thead><tr>${bothRegions ? '<th class="trade-region"></th>' : ''}<th>Empire</th><th class="trade-card-col">Cards</th></tr></thead>
+      <tbody>${tradeRegionRows(westTrade, 'West')}${tradeRegionRows(eastTrade, 'East')}</tbody>
     </table>` : ''}
     ${allCitiesSubmitted ? '' : `<p class="table-hint">${pwc.filter(p => p.city_count != null).length} / ${players.length} submitted</p>`}
   </section>

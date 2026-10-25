@@ -8,8 +8,8 @@ Check both the status page (`/`) and the player page at the viewports below. The
 
 Viewports follow the target hierarchy in `todo.md`:
 
-- **Status `/`** — 1920×1080 minimum through 5K2K; phone sizes are out of scope (1366×768 dropped 2026-07-02):
-  1920×1080, 2560×1440, 3840×2160, 5120×2160
+- **Status `/`** — phones (scrolls table by table; horizontal must be 0) and 1920×1080 at 100 % through 5K2K (must never scroll or clip); sizes in between are out of scope:
+  1920×1080, 2560×1440, 3072×1600 (4K at 125 % scaling, minus browser chrome), 3440×1440, 3840×2160, 5120×2160
 - **Player `/<slug>`** — modern phones (Pixel 6–9, iPhone 13–16) primary, legacy/tablet/desktop secondary:
   390×844 (iPhone 13/14 — minimum supported), 393×852 (iPhone 15/16), 412×915 (Pixel 6/7/8), 440×956 (16 Pro Max), 768×1024, 1366×768, 1920×1080
 - **Player with OS font scaling** (emulated via CDP `Page.setFontSizes`; default standard is 16):
@@ -34,9 +34,11 @@ const hosts = [
 ];
 
 const statusViewports = [
-  { w: 1366, h: 768  },
+  { w: 412,  h: 915, vOk: true },   // phone: vertical scroll by design
   { w: 1920, h: 1080 },
   { w: 2560, h: 1440 },
+  { w: 3072, h: 1600 },   // 4K at 125 % OS scaling, minus browser chrome
+  { w: 3440, h: 1440 },
   { w: 3840, h: 2160 },
   { w: 5120, h: 2160 },
 ];
@@ -51,10 +53,11 @@ const civViewports = [
   { w: 1920, h: 1080 },
 ];
 // Font-scaled checks: fontPx sets the CDP default font size (16 = 1.0×).
-// vOk=true means vertical scroll is acceptable (only horizontal must be 0).
+// The player page may always scroll vertically (policy since 2026-06-16);
+// only horizontal scroll fails it.
 const civFontScaled = [
-  { w: 412, h: 915, fontPx: 21, label: "Pixel 8 @1.3×", vOk: false },
-  { w: 390, h: 844, fontPx: 32, label: "iPhone @2.0×",  vOk: true  },
+  { w: 412, h: 915, fontPx: 21, label: "Pixel 8 @1.3×" },
+  { w: 390, h: 844, fontPx: 32, label: "iPhone @2.0×"  },
 ];
 
 for (const { host, label } of hosts) {
@@ -64,8 +67,8 @@ for (const { host, label } of hosts) {
   if (!slug) { console.log("  ✗ no players in game — cannot check player page"); }
   const checks = [
     ...statusViewports.map(v => ({ ...v, page: "/", tag: `status ${v.w}×${v.h}` })),
-    ...(slug ? civViewports.map(v => ({ ...v, page: `/${slug}`, tag: `civ ${v.w}×${v.h}` })) : []),
-    ...(slug ? civFontScaled.map(v => ({ ...v, page: `/${slug}`, tag: `civ ${v.label}` })) : []),
+    ...(slug ? civViewports.map(v => ({ ...v, page: `/${slug}`, tag: `civ ${v.w}×${v.h}`, vOk: true })) : []),
+    ...(slug ? civFontScaled.map(v => ({ ...v, page: `/${slug}`, tag: `civ ${v.label}`, vOk: true })) : []),
   ];
   for (const vp of checks) {
     const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h } });
@@ -77,14 +80,19 @@ for (const { host, label } of hosts) {
     }
     await p.goto(host + vp.page, { timeout: 10000 });
     await p.waitForLoadState("networkidle");
+    await p.evaluate(() => document.fonts.ready);  // measure with the web font, not the fallback
     const v = await p.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
     const h = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    const fail = h > 0 || (v > 0 && !vp.vOk);
-    console.log(`  ${fail ? "✗" : "✓"} ${vp.tag}: v=${v} h=${h}`);
+    // The status page hides overflow, so content past the fold is clipped
+    // without growing scrollHeight — measure the panels' bottom edge instead.
+    const clip = vp.page === "/" && vp.w > 700 ? await p.evaluate(() => Math.max(0, Math.round(Math.max(
+      ...[...document.querySelectorAll(".table-section")].map(e => e.getBoundingClientRect().bottom)) - window.innerHeight))) : 0;
+    const fail = h > 0 || clip > 0 || (v > 0 && !vp.vOk);
+    console.log(`  ${fail ? "✗" : "✓"} ${vp.tag}: v=${v} h=${h}${vp.page === "/" ? ` clip=${clip}` : ""}`);
     await ctx.close();
   }
 }
 await browser.close();
 ```
 
-After running, report the results. If any viewport fails (✗), investigate the cause and fix the CSS before reporting done. The status page must never scroll on any viewport from 1366×768 up to 5K2K. The player page must not scroll on any modern phone at default fonts or 1.15×, and must not scroll on Pixel-class phones at 1.3×; horizontal scroll is never acceptable anywhere, at any font scale.
+After running, report the results. If any viewport fails (✗), investigate the cause and fix the CSS before reporting done. The status page must never scroll or clip on any viewport from 1920×1080 up to 5K2K, including OS-scaled screens (4K at 125 % = 3072×1600). The player page may scroll vertically; horizontal scroll is never acceptable anywhere, at any font scale. Status checks are only meaningful with trade chips showing — if the dev game has no city counts this round, the trade table is empty and the tallest case is untested (the browser suite's "with 9 trade cards each" cases cover it).
