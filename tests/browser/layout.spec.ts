@@ -24,9 +24,9 @@ const VIEWPORTS = [
 
 /** Worst case for the trade table: census revealed and every empire at 9
  *  cities, so every trade row carries the maximum 9 chips. */
-async function fillTradeChips(request: APIRequestContext): Promise<void> {
+async function fillTradeChips(request: APIRequestContext, seed?: number): Promise<void> {
   await adminLogin(request);
-  expect((await request.post('/api/debug/census')).ok()).toBe(true);
+  expect((await request.post('/api/debug/census', { data: seed === undefined ? {} : { seed } })).ok()).toBe(true);
   const state = await (await request.get('/api/state')).json();
   for (const p of state.players) {
     const res = await request.post(`/api/players/${p.id}/city-count`, { data: { city_count: 9 } });
@@ -107,6 +107,36 @@ test.describe('main display layout', () => {
       });
     }
   }
+
+  // The leaderboard's width once followed its content: a two-digit tie rank
+  // ("=10") widened it, which narrowed the timeline, which wrapped the age
+  // legend onto an extra line and pushed the board past the bottom of a 1080p
+  // screen — in some games but not others. Its width must not depend on ties.
+  test('a two-digit tie rank keeps the leaderboard width, and the board fits at 1920×1080', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await fillTradeChips(request);
+    const state = await (await request.get('/api/state')).json();
+    const score = async (tiedFrom: number) => {
+      for (const [i, p] of state.players.entries()) {
+        const tied = i >= tiedFrom;
+        await request.post(`/api/players/${p.id}/ast`, { data: { level: tied ? 30 : 50 } });
+        await request.post(`/api/players/${p.id}/adv`, { data: { adv_1vp: tied ? 1 : 2 + i } });
+      }
+      await page.goto('/');
+      await expect(page.locator('.lb-table tbody tr')).toHaveCount(18);
+      return page.evaluate(() => ({
+        lb: Math.round(document.querySelector('.lb-table')!.getBoundingClientRect().width),
+        clippedPanels: Array.from(document.querySelectorAll('.table-section'))
+          .filter(el => el.getBoundingClientRect().bottom > window.innerHeight + 1).length,
+        cutRanks: Array.from(document.querySelectorAll('.lb-table td.rank')).filter(el => el.scrollWidth > el.clientWidth + 1).length,
+      }));
+    };
+    const distinct = await score(18);  // every empire scores differently: no ties
+    await expect(page.locator('.lb-table td.rank', { hasText: '=' })).toHaveCount(0);
+    const tied = await score(9);       // nine empires tied for 10th
+    await expect(page.locator('.lb-table td.rank', { hasText: '=10' })).toHaveCount(9);
+    expect(tied).toEqual({ lb: distinct.lb, clippedPanels: 0, cutRanks: 0 });
+  });
 
   // Phones are supported too: the status page stacks and scrolls table by
   // table, and the admin page must stay usable — but neither may ever scroll

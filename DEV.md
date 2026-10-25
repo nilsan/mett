@@ -333,6 +333,10 @@ The seed fixture logs its request context in through `POST /login` (`adminLogin(
 
 For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun -e` with the Playwright API directly — see `CLAUDE.md` for the pattern.
 
+### Unused CSS
+
+`bun run css:usage` (`scripts/css-usage.ts`) starts its own instance on a throwaway database and walks it through every state — no game, round 1, census, trade (partial and full), calamities, a real round advance with a summary, final round, game over with a tie, password form, basic mode — loading the status, admin, player and login pages at phone, 1080p and 4K. It fails if any selector in `style.css` never matches. Selectors for DOM that only exists at runtime (error toast, offline pill, rare round-summary lines) are listed with a reason in `KNOWN_DYNAMIC`. Runs in CI after the browser tests.
+
 ### Screenshot tests
 
 `tests/browser/visual.spec.ts` renders a seeded 18-player game (`seed: 42` on the debug endpoints) and compares the status board (1920×1080, 3840×2160), the admin page and a player page on a phone pixel-exactly with the PNGs in `tests/browser/visual.spec.ts-snapshots/`. The version stamp and the backup list are masked. Accept an intended change with `bunx playwright test tests/browser/visual.spec.ts --update-snapshots`. Skipped on CI: the runners render the system font differently from the machine the baselines come from.

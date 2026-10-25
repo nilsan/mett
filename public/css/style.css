@@ -176,20 +176,6 @@ body {
   margin: 0.25rem 0 0.3rem;
 }
 
-.mett-header h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.game-status {
-  color: var(--mett-muted);
-  font-size: 0.9rem;
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
 /* ─── Phase strip ─────────────────────────────────────────────────────────── */
 
 .phase-strip {
@@ -312,19 +298,6 @@ body {
   border: 0.0625rem solid rgba(0,0,0,0.15);
 }
 
-.civ-badge-sm {
-  display: inline-block;
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.125rem;
-  font-weight: 700;
-  font-size: 0.75rem;
-  white-space: nowrap;
-  border: 0.0625rem solid rgba(0,0,0,0.15);
-}
-
-.region-west .civ-badge { border-left: 0.1875rem solid rgba(0,0,0,0.3); }
-.region-east .civ-badge { border-right: 0.1875rem solid rgba(255,255,255,0.3); }
-
 .civ-badge-with-num {
   /* Calm badge: neutral text, colour only on the .civ-num inside. */
   display: inline-flex;
@@ -339,17 +312,9 @@ body {
 }
 .civ-badge-label { min-width: 0; }
 
-.mil-badge {
-  font-size: 0.75rem;
-  margin-left: 0.3rem;
-  opacity: 0.9;
-}
-
 /* Census table column sizing */
 .census-table { table-layout: fixed; width: 100%; }
-.census-table .empire-col { width: 100%; }
-.empire-col-inner { display: flex; align-items: center; overflow: hidden; min-width: 0; }
-.empire-col-inner .civ-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
 .lb-table td, .census-table td { font-weight: 700; }
 
 .census-table .city-col {
@@ -387,7 +352,7 @@ body {
 }
 
 .census-pop { text-align: right; font-size: 1rem; white-space: nowrap; }
-.pending-pop { color: var(--mett-warning); font-size: 0.85rem; }
+
 .submitted-hidden { color: #4a8a5a; font-size: 0.85rem; }   /* muted green ✓ */
 .not-submitted    { color: var(--mett-warning); font-size: 0.85rem; }
 .cell-na          { color: var(--mett-muted); font-weight: 400; }  /* muted — for data not relevant this phase */
@@ -428,35 +393,6 @@ body {
 .mov-toggle-civ:disabled { opacity: 0.5; cursor: not-allowed; }
 .mov-hint { color: var(--mett-muted); font-size: 0.8rem; }
 
-/* Requirement label in AST table */
-.req-label { text-align: center; color: var(--mett-muted); font-size: 0.85rem; width: 2.5rem; }
-
-/* Requirement legend below AST table */
-.req-legend {
-  margin: 0.6rem 0 0;
-  padding: 0.5rem 0.75rem;
-  list-style: none;
-  font-size: 0.75rem;
-  color: var(--mett-muted);
-  border-top: 0.0625rem solid var(--mett-border);
-  line-height: 1.7;
-}
-.req-legend li strong { color: var(--mett-text); margin-right: 0.3rem; }
-
-.move-pos {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  background: var(--mett-accent);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  margin-right: 0.4rem;
-}
-
 .total-vp { text-align: right; }
 
 /* Leaderboard ties */
@@ -494,32 +430,12 @@ body {
   white-space: nowrap;
 }
 
-
 .rank { color: var(--mett-muted); font-size: 0.85rem; width: 2rem; text-align: center; }
-.player-name { font-weight: 500; }
-.lb-emp-badge {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.0625rem;
-  padding: 0.1875rem 0.5rem 0.25rem 0.25rem;
-  width: 7.1875rem;
-  box-sizing: border-box;
-}
-.lb-emp-top {
-  display: flex;
-  align-items: center;
-  gap: 0.3125rem;
-}
+
 /* Player name in go-empire — visible by default, block on mobile for card layout */
 .go-player-name { display: none; font-size: 0.78rem; color: var(--mett-muted); margin-top: 0.1rem; }
 .adv-pts { text-align: right; }
 .ast-pts { text-align: right; }
-.ast-req { color: var(--mett-muted); font-size: 0.82rem; }
-.status-col { text-align: center; width: 2.5rem; }
-.status-icon { font-size: 1rem; }
-.status-icon.submitted { color: var(--mett-success); }
-.status-icon.pending { color: var(--mett-warning); }
 
 .table-hint {
   margin: 0;
@@ -818,8 +734,9 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 /* Leaderboard: fixed layout pins every column to a fixed width — empire to the
    shared box width (so it lines up with every other table), rank and the three
-   number columns to their vars. The leaderboard is content-sized in the grid,
-   so the timeline (not the leaderboard) absorbs the spare horizontal space. */
+   number columns to their vars. Its width is set from those columns in the
+   board token block (never from content), so the timeline (not the
+   leaderboard) absorbs the spare horizontal space. */
 .status-grid .lb-table { table-layout: fixed; width: max-content; }
 .lb-rank-col   { width: var(--col-rank); }
 .lb-empire-col { width: var(--empire-box-w); }
@@ -950,7 +867,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
   /* Undo TV-compact sizing */
   .status-header { margin: 0.5rem 0 0.75rem; }
-  .status-header .game-status { font-size: 0.9rem; }
+
   .status-grid .table-section   { padding: 0.6rem 0.8rem; }
   .status-grid .table-section h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
   .status-grid .table-hint       { font-size: 0.78rem; margin-top: 0.35rem; }
@@ -1013,10 +930,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
     --col-city: 2.2rem;
     --col-census-pop: 2.5rem;
     --col-mov: 2.2rem;
-    --col-rank: 1.5rem;
-    --col-adv-pts: 2.2rem;
-    --col-ast-pts: 2.2rem;
-    --col-total-vp: 2.8rem;
     /* WQHD has width to spare in the timeline; wider boxes keep long player
        names whole at the larger board type. */
     --empire-box-w: 8.5rem;
@@ -1044,13 +957,10 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
     gap: 0.75rem;
   }
 
-  .status-header .game-status { font-size: 1rem; }
-
   .status-grid .table-section   { padding: 0.55rem 0.65rem; }
   .status-grid .table-section h3 { font-size: 0.95rem; margin-bottom: 0.4rem; }
   .status-grid .table-hint       { font-size: 0.82rem; }
   .status-grid .ab-legend        { font-size: 0.72rem; gap: 0.2rem; }
-
 
   /* Census: explicit width = empire box + the mil/city/pop/mov columns. */
   .status-grid .census-table { width: calc(var(--empire-box-w) + var(--col-mil) + var(--col-city) + var(--col-census-pop) + var(--col-mov)); }
@@ -1060,10 +970,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
     --col-city: 3rem;
     --col-census-pop: 3rem;
     --col-mov: 3rem;
-    --col-rank: 1.7rem;
-    --col-adv-pts: 2.6rem;
-    --col-ast-pts: 2.6rem;
-    --col-total-vp: 3.3rem;
     /* Wide enough for a full two-part player name (e.g. "Nils-Anders Nøttseter")
        on the 2nd line at the enlarged 4K font, with breathing room to spare. */
     --empire-box-w: 13rem;
@@ -1133,17 +1039,15 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .admin-table { font-size: 0.82rem; }
   .admin-table td { height: 1.9rem; }
   .admin-table .player-name-input { width: 6.875rem; font-size: 0.82rem; }
-  .admin-table .adv-input { width: 4.25rem; }
-  .mett-header h2 { font-size: 1.2rem; }
+
   .admin-header h2 { font-size: 1.2rem; }
 }
 @media (max-width: 56.25em) {
   .admin-table { font-size: 0.76rem; }
   .admin-table .player-name-input { width: 5.625rem; font-size: 0.76rem; }
-  .admin-table .adv-input { width: 3.625rem; }
-  .ast-btn { width: 1.4rem; height: 1.4rem; font-size: 0.85rem; }
+
   .ast-select { font-size: 0.76rem; }
-  .mil-toggle:not(.icon-toggle), .won-toggle:not(.icon-toggle) { font-size: 0.72rem; padding: 0.15rem 0.35rem; }
+
   .setup-section, .admin-section { padding: 0.4rem 0.6rem; }
 }
 @media (max-width: 43.75em) {
@@ -1151,13 +1055,12 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .admin-table { font-size: 0.68rem; }
   .admin-table td, .admin-table th { padding: 0.15rem 0.2rem; height: 1.6rem; }
   .admin-table .player-name-input { width: 4.5rem; font-size: 0.68rem; }
-  .admin-table .adv-input { width: 2.875rem; font-size: 0.68rem; }
+
   .census-admin-input { width: 2.625rem !important; font-size: 0.68rem; padding: 0.12rem 0.15rem; }
-  .admin-table .rank-input { width: 2.125rem; font-size: 0.65rem; }
-  .ast-btn { width: 1.2rem; height: 1.2rem; font-size: 0.75rem; }
+
   .ast-select { font-size: 0.66rem; padding: 0.1rem 0.15rem; }
   .ast-ctrl { gap: 0.15rem; }
-  .mil-toggle:not(.icon-toggle), .won-toggle:not(.icon-toggle) { font-size: 0.62rem; padding: 0.1rem 0.2rem; }
+
   .admin-section { padding: 0.3rem 0.4rem; }
 
   /* All tables on phone — minimal column gaps */
@@ -1173,8 +1076,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   min-width: 0;
 }
 
-.table-spacer { flex: 1; }
-
 .table-section h3 {
   margin: 0 0 0.75rem;
   font-size: 0.9rem;
@@ -1186,8 +1087,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 /* ─── Banners ─────────────────────────────────────────────────────────────── */
 
-.no-game-banner,
-.census-ready-banner,
 .final-round-banner {
   padding: 1rem 1.5rem;
   border-radius: var(--radius-card);
@@ -1200,14 +1099,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   border: 0.0625rem solid var(--mett-danger);
   color: #ff9999;
 }
-
-.final-scores-section {
-  margin-bottom: 1.5rem;
-  padding: 1rem 1.5rem;
-}
-
-/* Score breakdown shown only on mobile inside player name cell */
-.go-score-detail { display: none; }
 
 /* Game-over empire badge: let it size to content so long names like "Carthage"
    never clip regardless of font rendering or monitor DPI. */
@@ -1257,13 +1148,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .medal-silver { color: #adb5bd; }
 .medal-bronze { color: #cd7f32; }
 
-/* Late Iron Age star — shown next to empire name */
-.lia-star {
-  color: var(--mett-accent);
-  font-size: 0.9rem;
-  vertical-align: middle;
-}
-
 /* Late Iron Age star toggle button (admin game-over) */
 .lia-star-btn {
   background: none;
@@ -1289,22 +1173,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   --pico-form-element-spacing-horizontal: 0.35rem;
   font-size: 0.8rem;
   width: auto;
-}
-.rank-select-resolved {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.no-game-banner {
-  background: var(--mett-surface);
-  border: 0.0625rem solid var(--mett-border);
-  color: var(--mett-muted);
-}
-
-.census-ready-banner {
-  background: #1a3a1a;
-  border: 0.0625rem solid var(--mett-success);
-  color: var(--mett-success);
 }
 
 /* ─── Civ Page ────────────────────────────────────────────────────────────── */
@@ -1383,14 +1251,13 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .census-pending { color: var(--mett-warning); margin: 0 0 0.35rem; font-size: 0.9rem; }
 .status-icon-fixed { display: inline-block; width: 1em; text-align: center; flex-shrink: 0; }
 
-.census-input-row,
-.adv-input-row {
+.census-input-row {
   display: flex;
   gap: 0.5rem;
   align-items: center;
 }
 
-.census-input, .adv-input {
+.census-input {
   --pico-form-element-spacing-vertical: 0.25rem;
   --pico-form-element-spacing-horizontal: 0.5rem;
   flex: 1;
@@ -1492,7 +1359,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 }
 .ast-next h4 { margin: 0 0 0.4rem; font-size: 0.85rem; color: var(--mett-accent); }
 .ast-req-text { margin: 0; font-weight: 600; font-size: 1rem; }
-.ast-mode-note { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--mett-muted); }
 
 .ast-warn-regress { margin: 0; font-weight: 700; color: var(--mett-danger); font-size: 1rem; }
 .ast-req-status { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -1514,7 +1380,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .civ-section { padding: 0.28rem 0.5rem; }
   .civ-section h3 { font-size: 0.74rem; margin-bottom: 0.18rem; }
   .census-submitted, .census-pending { font-size: 0.82rem; margin-bottom: 0.2rem; }
-  .census-input, .adv-input { height: 1.75rem; min-height: 0; line-height: 1.75rem; }
+  .census-input { height: 1.75rem; min-height: 0; line-height: 1.75rem; }
   .adv-card-input { height: 1.65rem; min-height: 0; line-height: 1.65rem; }
   .adv-btn { width: 1.65rem; height: 1.65rem; min-height: 0; }
   .adv-total-row { margin-top: 0.12rem; padding-top: 0.15rem; }
@@ -1525,7 +1391,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .ast-next { padding: 0.25rem 0.45rem; margin-bottom: 0.15rem; }
   .ast-next h4 { font-size: 0.74rem; margin-bottom: 0.08rem; }
   .ast-req-text { font-size: 0.78rem; }
-  .ast-mode-note { font-size: 0.68rem; margin-top: 0.06rem; }
+
   :root { --ast-node-size: 1.5rem; --ast-node-gap: 0.09rem; }
 }
 
@@ -1548,8 +1414,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
   /* Census */
   .census-submitted, .census-pending { font-size: 0.68rem; margin-bottom: 0.05rem; }
-  .census-input-row, .adv-input-row { gap: 0.18rem; }
-  .census-input, .adv-input { -webkit-appearance: none; appearance: none; font-size: 0.95rem; padding: 0 0 0 0.45rem; height: 2.6rem; min-height: 0; line-height: 2.6rem; box-sizing: border-box; border-radius: 0.1875rem; }
+  .census-input-row { gap: 0.18rem; }
+  .census-input { -webkit-appearance: none; appearance: none; font-size: 0.95rem; padding: 0 0 0 0.45rem; height: 2.6rem; min-height: 0; line-height: 2.6rem; box-sizing: border-box; border-radius: 0.1875rem; }
   .btn-submit { font-size: 0.92rem; padding: 0 0.85rem; height: 2.6rem; min-height: 0; box-sizing: border-box; }
   .move-order { font-size: 0.64rem; margin-top: 0.06rem; }
 
@@ -1575,7 +1441,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .ast-next { padding: 0.18rem 0.3rem; margin-bottom: 0.12rem; }
   .ast-next h4 { font-size: 0.66rem; margin-bottom: 0.08rem; }
   .ast-req-text { font-size: 0.72rem; }
-  .ast-mode-note { font-size: 0.6rem; margin-top: 0.06rem; }
+
   /* AST strip: 17 nodes (expert) must fit ≈412px without h-scroll */
   :root { --ast-node-size: 1.3rem; --ast-node-gap: 0.0625rem; }
   .ast-node { font-size: 0.55rem; }
@@ -1679,66 +1545,6 @@ body:has(.civ-page) { overflow-x: hidden; }
 }
 .ast-node.future { background: var(--mett-surface); border: 0.0625rem solid var(--mett-border); color: var(--mett-muted); }
 
-/* ─── AST Full Table ──────────────────────────────────────────────────────── */
-
-.ast-full-table td { vertical-align: top; padding-top: 0.3rem; padding-bottom: 0.3rem; }
-
-.ast-full-table .ast-level-cell {
-  font-weight: 800;
-  font-size: 1rem;
-  text-align: right;
-  width: 4rem;
-}
-
-.ast-full-table .ast-era-cell {
-  color: var(--mett-muted);
-  font-size: 0.82rem;
-  white-space: nowrap;
-}
-
-.ast-full-table tr.ast-row-occupied td {
-  background: rgba(108, 110, 255, 0.08);
-}
-
-/* ast-civs-cell is now an inner div (not td) to avoid display:flex on td causing row jump */
-.ast-civs-cell { display: flex; flex-direction: column; gap: 0.125rem; min-width: 6.25rem; align-items: flex-start; }
-
-.ast-table-wrap { overflow-x: auto; }
-
-.ast-mode-toggle {
-  margin-bottom: 0.5rem;
-  padding: 0.3rem 0.5rem;
-  background: var(--mett-surface);
-  border-radius: 0.25rem;
-  border: 0.0625rem solid var(--mett-border);
-  font-size: 0.82rem;
-}
-.ast-mode-toggle p { margin: 0; }
-
-/* ─── AST View Toggle ────────────────────────────────────────────────────── */
-
-.ast-view-toggle {
-  display: flex;
-  gap: 0.4rem;
-  margin-bottom: 0.75rem;
-}
-
-.ast-toggle-btn {
-  padding: 0.25rem 0.9rem;
-  font-size: 0.85rem;
-  border: 0.0625rem solid var(--mett-border);
-  border-radius: 0.25rem;
-  background: var(--mett-surface);
-  color: var(--mett-muted);
-  cursor: pointer;
-}
-
-.ast-toggle-btn.active-toggle {
-  background: var(--mett-accent);
-  color: #fff;
-  border-color: var(--mett-accent);
-}
-
 /* ─── AST Board View ─────────────────────────────────────────────────────── */
 
 /* Shrink-wrap the table so it doesn't stretch to fill the page */
@@ -1798,43 +1604,12 @@ body:has(.civ-page) { overflow-x: hidden; }
 .ab-corner { background: var(--mett-bg) !important; z-index: 3; }
 .status-ast .ab-corner { background: transparent !important; border: none !important; }
 
-.ab-player-col {
-  position: sticky;
-  left: 10rem;
-  background: inherit;
-  z-index: 2;
-  width: 10rem;
-  min-width: 10rem;
-  max-width: 10rem;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.72rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border-right: 0.0625rem solid var(--mett-border);
-}
-th.ab-player-col {
-  font-size: 0.65rem;
-  color: var(--mett-muted);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
 .ab-vp-label {
   font-size: 0.6rem;
   color: var(--mett-muted);
   font-weight: 400;
   text-align: right;
   padding-right: 0.3rem;
-}
-
-.ab-civ-num {
-  display: inline-block;
-  width: 1.1em;
-  opacity: 0.65;
-  font-size: 0.65em;
-  vertical-align: middle;
 }
 
 /* Age band header row */
@@ -1975,12 +1750,6 @@ th.ab-player-col {
 .ab-legend-dot.age-eiron   { background: #6a7d9e; }
 .ab-legend-dot.age-liron   { background: conic-gradient(from 45deg, #e0533a, #e0b13a, #4caf50, #3a9ad0, #9b59d0, #e0533a); }
 
-.ab-slowstart-note {
-  font-size: 0.68rem;
-  color: var(--mett-muted);
-  margin: 0.25rem 0 0;
-}
-
 /* Round track footer row */
 .ab-round-label {
   font-size: 0.6rem;
@@ -2114,7 +1883,6 @@ th.ab-player-col {
   margin: 0;
 }
 
-
 /* ─── Name inputs ─────────────────────────────────────────────────────────── */
 
 .name-inputs-grid2 {
@@ -2179,14 +1947,7 @@ th.ab-player-col {
   flex-wrap: wrap;
   align-items: center;
 }
-.debug-controls {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 0.0625rem solid var(--mett-border);
-}
+
 .round-hint {
   font-size: 0.8rem;
   color: var(--mett-warning);
@@ -2248,13 +2009,6 @@ th.ab-player-col {
 }
 .round-phase-progress #round-progress-count { font-weight: 700; opacity: 1; }
 
-/* Section hint text (civ page) */
-.section-hint {
-  font-size: 0.8rem;
-  opacity: 0.7;
-  margin: -0.25rem 0 0.5rem;
-}
-
 /* Reset Pico CSS margin AND padding on all form elements inside admin table */
 .admin-table input,
 .admin-table select,
@@ -2315,7 +2069,7 @@ th.ab-player-col {
     line-height: 1.2;
     margin: 0 0 0.25rem;
   }
-  .admin-page > h2 .mode-badge { font-size: 0.6rem; padding: 0.05rem 0.4rem; }
+
   /* Compact danger zone + password nag at the foot. */
   .danger-section .danger-row { gap: 0.4rem; }
   .danger-section button { padding: 0.2rem 0.6rem; font-size: 0.74rem; min-height: 0; }
@@ -2422,22 +2176,6 @@ th.ab-player-col {
 .ast-move-regress { color: var(--mett-danger); }
 .ast-move-unknown { color: var(--mett-border); }
 
-.ast-btn {
-  width: 1.4rem;
-  height: 1.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 0.0625rem solid var(--mett-border);
-  border-radius: 0.1875rem;
-  background: var(--mett-surface2);
-  color: var(--mett-text);
-  cursor: pointer;
-  font-size: 0.88rem;
-  line-height: 1;
-  padding: 0;
-}
-
 .ast-select {
   background: var(--mett-surface2);
   border: 0.0625rem solid var(--mett-border);
@@ -2446,30 +2184,6 @@ th.ab-player-col {
   padding: 0.1rem 0.25rem;
   font-size: 0.82rem;
   width: 4.25rem;
-}
-
-.admin-table .rank-input {
-  width: 2.75rem;
-  background: var(--mett-surface2);
-  border: 0.0625rem solid var(--mett-border);
-  border-radius: 0.25rem;
-  padding: 0.15rem 0.3rem;
-  color: var(--mett-muted);
-  font-size: 0.78rem;
-  text-align: center;
-  margin: 0;
-}
-
-.admin-table .adv-input {
-  width: 4.25rem;
-  background: var(--mett-surface2);
-  border: 0.0625rem solid var(--mett-border);
-  border-radius: 0.25rem;
-  padding: 0.15rem 0.3rem;
-  color: var(--mett-text);
-  font-size: 0.82rem;
-  text-align: right;
-  margin: 0;
 }
 
 .city-admin-select {
@@ -2486,8 +2200,7 @@ th.ab-player-col {
 .census-admin-input::-webkit-inner-spin-button,
 .census-admin-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; display: none; }
 .census-admin-input { -moz-appearance: textfield; }
-.census-admin-input,
-.city-admin-input {
+.census-admin-input {
   background: var(--mett-surface2);
   border: 0.0625rem solid var(--mett-border);
   border-radius: 0.1875rem;
@@ -2497,23 +2210,12 @@ th.ab-player-col {
   text-align: right;
   margin: 0 !important;
 }
-.census-admin-input:focus,
-.city-admin-input:focus {
+.census-admin-input:focus {
   border-color: var(--mett-accent);
   outline: none;
 }
-.census-admin-input::placeholder,
-.city-admin-input::placeholder { color: var(--mett-muted); }
+.census-admin-input::placeholder { color: var(--mett-muted); }
 
-.btn-outline-danger {
-  background: transparent;
-  border: 0.0625rem solid var(--mett-danger);
-  color: var(--mett-danger);
-  padding: 0.3rem 0.75rem;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
 .danger-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
 #sim-controls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
 
@@ -2529,20 +2231,6 @@ th.ab-player-col {
 }
 .default-pwd-nag strong { color: var(--mett-fg); }
 
-.ast-req-table { font-size: 0.8rem; }
-.ast-req-table .ast-req-vp { font-weight: 700; width: 2.5rem; color: var(--mett-accent); }
-.ast-req-table .ast-req-era { color: var(--mett-muted); white-space: nowrap; width: 8rem; }
-
-/* ─── AST Turn Tracker ────────────────────────────────────────────────────── */
-
-.ast-tracker-count {
-  font-weight: 400;
-  font-size: 0.8rem;
-  color: var(--mett-muted);
-  margin-left: 0.4rem;
-}
-
-.ast-tracker-table { width: auto; min-width: 0; }
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 
 .btn-primary {
@@ -2565,16 +2253,6 @@ th.ab-player-col {
   border-radius: 0.25rem;
   padding: 0.45rem 1rem;
   font-weight: 700;
-  cursor: pointer;
-}
-
-button.secondary {
-  background: var(--mett-surface2);
-  color: var(--mett-text);
-  border: 0.0625rem solid var(--mett-border);
-  border-radius: 0.25rem;
-  padding: 0.45rem 0.9rem;
-  font-weight: 600;
   cursor: pointer;
 }
 
@@ -2709,7 +2387,7 @@ button.secondary {
   .civ-body { gap: 0.3rem; }
   .civ-section { padding: 0.3rem 0.45rem; }
   .phase-hint { font-size: 0.62rem; margin-bottom: 0.08rem; }
-  .census-input, .adv-input { height: 1.9rem; line-height: 1.9rem; }
+  .census-input { height: 1.9rem; line-height: 1.9rem; }
   .btn-submit { height: 1.9rem; }
   .adv-card-input { height: 1.9rem; line-height: 1.9rem; }
   .adv-btn { height: 1.9rem; }
@@ -2825,6 +2503,26 @@ button.secondary {
   .status-grid .trade-chip-col   { width: var(--trade-chip-col-w); }
   .status-grid .trade-chips      { gap: var(--chip-gap); }
   .status-grid .trade-chip       { width: var(--chip-w); height: var(--chip-h); font-size: calc(var(--chip-h) * 0.5); }
+
+  /* Leaderboard width is the sum of its columns — never its content. With a
+     content-sized table, a tie rank like "=10" widened the leaderboard, which
+     narrowed the timeline, which wrapped the age legend onto one more line and
+     pushed the board past the bottom of a 1080p screen. Every leaderboard
+     column is sized from the number font, so its widest value fits at every
+     size: "=18" for rank, two digits for ADV / AST, three for the total. */
+  .status-grid {
+    /* From the base number size (× the largest number scale, 1.15), not the
+       scaled one: the width — and so the timeline's width — must not change
+       with the player count either. */
+    --col-rank: calc(var(--board-num-base) * 2.05 + 0.3rem);
+    --col-adv-pts: calc(var(--board-num-base) * 1.35 + 0.8rem);
+    --col-ast-pts: calc(var(--board-num-base) * 1.35 + 0.8rem);
+    --col-total-vp: calc(var(--board-num-base) * 2.1 + 0.8rem);
+  }
+  .status-grid td.rank { padding-left: 0.15rem; padding-right: 0.15rem; }
+  .status-grid .lb-table {
+    width: calc(var(--col-rank) + var(--empire-box-w) + var(--col-adv-pts) + var(--col-ast-pts) + var(--col-total-vp));
+  }
 }
 @media (min-width: 192rem) and (min-height: 115rem) {
   .status-grid {

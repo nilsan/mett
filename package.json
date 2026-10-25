@@ -1,6 +1,6 @@
 {
   "name": "mett",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Mega Empires Turn Tracker — real-time census, leaderboard and A.S.T. tracking",
   "module": "src/index.ts",
   "type": "module",
@@ -12,6 +12,7 @@
     "test": "bun test tests/*.test.ts",
     "test:browser": "playwright test",
     "screenshots": "bun run scripts/screenshots.ts",
+    "css:usage": "bun run scripts/css-usage.ts",
     "build:client": "bun build src/client/civ.ts --outfile public/js/civ.js --format iife --target browser && bun build src/client/admin.ts --outfile public/js/admin.js --format iife --target browser"
   },
   "devDependencies": {

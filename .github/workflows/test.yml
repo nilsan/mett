@@ -55,7 +55,7 @@ jobs:
   browser:
     name: playwright
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
@@ -71,6 +71,9 @@ jobs:
 
       - name: Run browser tests
         run: bun run test:browser
+
+      - name: Check for unused CSS
+        run: bun run css:usage
 
   lint:
     name: yamllint, hadolint, shellcheck
