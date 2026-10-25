@@ -9,15 +9,13 @@
 
 export { getDb } from './services/db.js';
 
-export type { GameRow, PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow, RoundSummary, RoundSummaryPlayer } from './types.js';
+export type { GameRow, PlayerRow, CensusRow, FullState, CivRefRow, RoundSummary, RoundSummaryPlayer } from './types.js';
 
 export type { AstRequirement } from './models/ast.js';
 export {
   checkRequirement,
   meetsAstRequirements,
   autoAdvanceAst,
-  getAstLevels,
-  getAstLevel,
 } from './models/ast.js';
 
 export {
@@ -37,13 +35,14 @@ export {
 // ─── CRUD (players, census, admin, civs, full state) ──────────────────────────
 
 import { getDb, _onReset, PLAYER_SELECT } from './services/db.js';
-import type { PlayerRow, CensusRow, AstLevelRow, FullState, CivRefRow, Region } from './types.js';
+import type { PlayerRow, CensusRow, FullState, CivRefRow, Region } from './types.js';
 import { getGame, getRoundSummaries } from './models/game.js';
-import { getAstLevels, LIA_THRESHOLD, nextAstStatus, AST_LEVELS } from './models/ast.js';
+import { LIA_THRESHOLD, nextAstStatus, AST_LEVELS } from './models/ast.js';
 import type { AstStatus } from './types.js';
 
 // ── Admin password ─────────────────────────────────────────────────────────────
 
+import { createHash, randomBytes } from 'node:crypto';
 import { hashPassword, verifyPassword } from './services/password.js';
 
 /** Returns the stored scrypt hash, or '' when unset. */
@@ -64,6 +63,38 @@ export function verifyAdminPassword(plain: string): boolean {
   return verifyPassword(plain, getAdminPassword());
 }
 
+// ── Admin sessions ─────────────────────────────────────────────────────────────
+
+/** Admin session lifetime — matches the cookie maxAge. */
+export const ADMIN_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function sha256(s: string): string {
+  return createHash('sha256').update(s).digest('hex');
+}
+
+/** Start an admin session; returns the opaque token for the cookie. */
+export function createAdminSession(): string {
+  const token = randomBytes(32).toString('base64url');
+  const db = getDb();
+  db.query('DELETE FROM admin_sessions WHERE expires_at <= ?').run(Date.now());
+  db.query('INSERT INTO admin_sessions (token_hash, expires_at) VALUES (?,?)')
+    .run(sha256(token), Date.now() + ADMIN_SESSION_TTL_MS);
+  return token;
+}
+
+/** Cheap lookup (one SHA-256) — safe to run on every admin request. */
+export function isValidAdminSession(token: string | undefined): boolean {
+  if (!token) return false;
+  return !!getDb().query<{ ok: number }, [string, number]>(
+    'SELECT 1 AS ok FROM admin_sessions WHERE token_hash=? AND expires_at > ?'
+  ).get(sha256(token), Date.now());
+}
+
+/** Invalidate every admin session (password change). */
+export function clearAdminSessions(): void {
+  getDb().exec('DELETE FROM admin_sessions');
+}
+
 /** True when the current stored password is the built-in 'PASSWORD' default. */
 export function isUsingDefaultPassword(): boolean {
   return verifyPassword('PASSWORD', getAdminPassword());
@@ -73,6 +104,10 @@ export function isUsingDefaultPassword(): boolean {
 
 export function getPlayers(): PlayerRow[] {
   return getDb().query<PlayerRow, []>(PLAYER_SELECT).all();
+}
+
+export function playerExists(playerId: number): boolean {
+  return !!getDb().query<{ ok: number }, [number]>('SELECT 1 AS ok FROM players WHERE id=?').get(playerId);
 }
 
 export function addPlayer(civId: number, name: string, region: Region): number {
@@ -272,13 +307,12 @@ export function getFullState(): FullState {
   // older than the one just finished), so this is available for the last-known
   // city-count fallback used by the player-page requirement colouring.
   const prevCensus = game.current_round > 1 ? getCensusForRound(game.current_round - 1) : [];
-  const astLevels = getAstLevels();
   const expert = game.expert === 1;
   const censusByPlayer = new Map(census.map(c => [c.player_id, c]));
   const astStatus: Record<number, AstStatus> = {};
   for (const p of players) {
-    astStatus[p.id] = nextAstStatus(p, censusByPlayer.get(p.id)?.city_count, astLevels, expert);
+    astStatus[p.id] = nextAstStatus(p, censusByPlayer.get(p.id)?.city_count, expert);
   }
   const roundSummaries = getRoundSummaries();
-  return { game, players, census, prevCensus, astLevels, astStatus, roundSummaries };
+  return { game, players, census, prevCensus, astStatus, roundSummaries };
 }

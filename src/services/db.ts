@@ -6,6 +6,7 @@ import { Database } from 'bun:sqlite';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { hashPassword, isLegacyPlaintext } from './password.js';
+import { CIVS } from '../civs.js';
 
 /** Resolved SQLite path. Module-relative so it doesn't depend on the cwd
  *  the server was started from. Exported so callers (e.g. index.ts'
@@ -41,28 +42,75 @@ export function _setTestDb(db: Database | null): void {
   for (const hook of _resetHooks) hook();
 }
 
-// Structured AST requirements seeded into ast_levels.{basic,expert}_req_json.
-// Tier values: 'any' = all advances, 'medium' = adv_3vp+adv_6vp (≥100 each),
-//              'expensive' = adv_6vp (≥200 each), 'cheap' = adv_1vp (<100 each).
-const AST_REQ_SEED: Record<number, { basic: object | null; expert: object | null }> = {
-  0:  { basic: null, expert: null },
-  5:  { basic: null, expert: null },
-  10: { basic: null, expert: null },
-  15: { basic: null, expert: null },
-  20: { basic: { cities: 2 },                                                     expert: { cities: 3 } },
-  25: { basic: { cities: 2 },                                                     expert: { cities: 3 } },
-  30: { basic: { cities: 2 },                                                     expert: { cities: 3 } },
-  35: { basic: { cities: 3, advCount: 3, advTier: 'any' },                        expert: { cities: 3, advVpTotal: 5 } },
-  40: { basic: { cities: 3, advCount: 3, advTier: 'any' },                        expert: { cities: 3, advVpTotal: 5 } },
-  45: { basic: { cities: 3, advCount: 3, advTier: 'any' },                        expert: { cities: 3, advVpTotal: 5 } },
-  50: { basic: { cities: 3, advCount: 3, advTier: 'medium' },                     expert: { cities: 4, advCount: 12, advTier: 'any' } },
-  55: { basic: { cities: 3, advCount: 3, advTier: 'medium' },                     expert: { cities: 4, advCount: 12, advTier: 'any' } },
-  60: { basic: { cities: 3, advCount: 3, advTier: 'medium' },                     expert: { cities: 4, advCount: 12, advTier: 'any' } },
-  65: { basic: { cities: 4, advCount: 2, advTier: 'expensive' },                  expert: { cities: 5, advCount: 10, advTier: 'cheap', totalVp: 38 } },
-  70: { basic: { cities: 5, advCount: 3, advTier: 'expensive' },                  expert: { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 } },
-  75: { basic: { impossible: true },                                               expert: { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 } },
-  80: { basic: { impossible: true },                                               expert: { impossible: true } },
-};
+/** Ordered schema migrations, tracked with PRAGMA user_version. Migration i
+ *  runs once, when the DB's user_version is below i+1. schema.sql (CREATE IF
+ *  NOT EXISTS) always describes the current shape, so on a fresh DB these are
+ *  no-ops; they exist to upgrade databases created by older releases.
+ *  Append only — never reorder or edit a shipped entry. */
+const MIGRATIONS: ReadonlyArray<(db: Database) => void> = [
+  // 1: columns added before versioned migrations existed. Older DBs may have
+  //    any subset of them, so tolerate "duplicate column name".
+  (db) => {
+    for (const sql of [
+      'ALTER TABLE players ADD COLUMN rank_order INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE players ADD COLUMN adv_1vp INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE players ADD COLUMN adv_3vp INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE players ADD COLUMN adv_6vp INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE census ADD COLUMN city_count INTEGER',
+      'ALTER TABLE census ADD COLUMN moved INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE players ADD COLUMN regressed INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE game ADD COLUMN admin_password TEXT',
+      'ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE players ADD COLUMN special INTEGER NOT NULL DEFAULT 0',
+    ]) {
+      try { db.exec(sql); } catch (e: any) {
+        if (!String(e?.message).includes('duplicate column name')) throw e;
+      }
+    }
+  },
+  // 2: A.S.T. rules moved from the ast_levels table into src/shared/ast-pure.ts.
+  (db) => { db.exec('DROP TABLE IF EXISTS ast_levels'); },
+];
+
+/** Bring any database — fresh, legacy, or in-memory test DB — to the current
+ *  schema: tables, migrations, static civ reference data, admin password.
+ *  Idempotent; runs on every boot. */
+export function initDb(db: Database): void {
+  db.exec('PRAGMA foreign_keys=ON;');
+  db.exec(readFileSync(join(import.meta.dir, '..', '..', 'db', 'schema.sql'), 'utf8'));
+
+  const version = db.query<{ user_version: number }, []>('PRAGMA user_version').get()!.user_version;
+  for (let i = version; i < MIGRATIONS.length; i++) {
+    db.transaction(() => {
+      MIGRATIONS[i]!(db);
+      db.exec(`PRAGMA user_version = ${i + 1}`);
+    })();
+  }
+
+  // Civ reference rows mirror CIVS — upsert so colour/name fixes in civs.ts
+  // reach existing databases too.
+  const civStmt = db.prepare(`
+    INSERT INTO civs (number, name, slug, color, text_color, def_region) VALUES (?,?,?,?,?,?)
+    ON CONFLICT(number) DO UPDATE SET name=excluded.name, slug=excluded.slug,
+      color=excluded.color, text_color=excluded.text_color, def_region=excluded.def_region
+  `);
+  for (const c of CIVS) civStmt.run(c.number, c.name, c.slug, c.color, c.textColor, c.defRegion);
+
+  // Seed admin password from env var on first run, and migrate pre-hash
+  // databases to the scrypt format. Empty ADMIN_PASSWORD falls back to the
+  // 'PASSWORD' default (|| not ?? so '' also falls through).
+  const row = db.query<{ admin_password: string | null }, []>('SELECT admin_password FROM game WHERE id=1').get();
+  const stored = row?.admin_password ?? null;
+  if (!stored) {
+    db.query('UPDATE game SET admin_password=? WHERE id=1').run(hashPassword(process.env.ADMIN_PASSWORD || 'PASSWORD'));
+  } else if (isLegacyPlaintext(stored)) {
+    console.log('[me[tt]] Migrating admin password storage: plaintext → scrypt');
+    db.query('UPDATE game SET admin_password=? WHERE id=1').run(hashPassword(stored));
+  }
+}
 
 export function getDb(): Database {
   if (_testDb) return _testDb;
@@ -70,62 +118,6 @@ export function getDb(): Database {
 
   _db = new Database(DB_PATH, { create: true });
   _db.exec('PRAGMA journal_mode=WAL;');
-  _db.exec('PRAGMA foreign_keys=ON;');
-  const schema = readFileSync(join(import.meta.dir, '..', '..', 'db', 'schema.sql'), 'utf8');
-  _db.exec(schema);
-
-  // Backward-compat column additions for databases created before the column
-  // was added to schema.sql. Every column below is part of the canonical
-  // schema now; these ALTERs no-op on fresh installs (duplicate column name
-  // is swallowed) but upgrade older DBs in place.
-  function migrate(sql: string) {
-    try { _db!.exec(sql); } catch (e: any) {
-      if (!String(e?.message).includes('duplicate column name')) throw e;
-    }
-  }
-
-  migrate('ALTER TABLE players ADD COLUMN rank_order INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN adv_1vp INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN adv_3vp INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN adv_6vp INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE census ADD COLUMN city_count INTEGER');
-  migrate('ALTER TABLE census ADD COLUMN moved INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN regressed INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE game ADD COLUMN admin_password TEXT');
-  migrate('ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE players ADD COLUMN special INTEGER NOT NULL DEFAULT 0');
-  migrate('ALTER TABLE ast_levels ADD COLUMN basic_req_json TEXT');
-  migrate('ALTER TABLE ast_levels ADD COLUMN expert_req_json TEXT');
-
-  // Fix basic EIA/LIA era assignments
-  _db.query("UPDATE ast_levels SET era='Early Iron Age', basic_req='5 cities + 3 advances (≥200 each)' WHERE level=70").run();
-  _db.query("UPDATE ast_levels SET era='Late Iron Age', basic_req='N/A', expert_req='6 cities + all 17 advances (<100 each) + 56 VP' WHERE level=75").run();
-
-  // Seed JSON requirements (idempotent)
-  const seedStmt = _db.prepare('UPDATE ast_levels SET basic_req_json=?, expert_req_json=? WHERE level=?');
-  for (const [lvl, { basic, expert }] of Object.entries(AST_REQ_SEED)) {
-    seedStmt.run(
-      basic  ? JSON.stringify(basic)  : null,
-      expert ? JSON.stringify(expert) : null,
-      parseInt(lvl),
-    );
-  }
-
-  // Seed admin password from env var on first run, and migrate pre-hash
-  // databases to the scrypt format. Empty ADMIN_PASSWORD falls back to the
-  // 'PASSWORD' default (|| not ?? so '' also falls through).
-  const envPassword = process.env.ADMIN_PASSWORD || 'PASSWORD';
-  const row = _db.query<{ admin_password: string | null }, []>('SELECT admin_password FROM game WHERE id=1').get();
-  const stored = row?.admin_password ?? null;
-  if (!stored) {
-    _db.query('UPDATE game SET admin_password=? WHERE id=1').run(hashPassword(envPassword));
-  } else if (isLegacyPlaintext(stored)) {
-    console.log('[me[tt]] Migrating admin password storage: plaintext → scrypt');
-    _db.query('UPDATE game SET admin_password=? WHERE id=1').run(hashPassword(stored));
-  }
-
+  initDb(_db);
   return _db;
 }

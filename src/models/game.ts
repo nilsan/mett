@@ -4,12 +4,16 @@
 
 import { getDb, _onReset } from '../services/db.js';
 import { autoAdvanceAst, LIA_THRESHOLD } from './ast.js';
-import type { GameRow, PlayerRow, RoundSummary, RoundSummaryPlayer } from '../types.js';
+import type { GameRow, RoundSummary, RoundSummaryPlayer } from '../types.js';
 
 export * from '../shared/scoring.js';
 
+// Explicit column list: game.admin_password must never reach GameRow, which is
+// broadcast to every client via getFullState.
+const GAME_COLUMNS = 'id, expert, current_round, active, census_revealed, is_final_round, cities_phase, started_at';
+
 export function getGame(): GameRow {
-  return getDb().query<GameRow, []>('SELECT * FROM game WHERE id = 1').get() as GameRow;
+  return getDb().query<GameRow, []>(`SELECT ${GAME_COLUMNS} FROM game WHERE id = 1`).get() as GameRow;
 }
 
 export function startGame(expert: number): void {

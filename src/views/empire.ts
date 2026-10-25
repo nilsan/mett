@@ -9,6 +9,7 @@
  */
 
 import type { TextColor } from '../types.js';
+import { escapeHtml } from '../shared/html.js';
 
 export type EmpireCellVariant =
   | 'cell'              // <td class="empire-cell">          status tables
@@ -33,7 +34,7 @@ interface EmpireCellInput {
  */
 function cellBody(p: EmpireCellInput): string {
   return `<span class="empire-civ"><span class="civ-num">${p.civ_number}</span>${p.civ_name}</span>` +
-    `<span class="empire-player-name">${p.name ?? ''}</span>`;
+    `<span class="empire-player-name">${escapeHtml(p.name)}</span>`;
 }
 
 export function empireCell(p: EmpireCellInput, variant: EmpireCellVariant = 'cell'): string {
@@ -46,6 +47,6 @@ export function empireCell(p: EmpireCellInput, variant: EmpireCellVariant = 'cel
     case 'badge':
       return `<span class="civ-badge civ-badge-with-num" style="${style}"><span class="civ-num-in-badge">${p.civ_number}</span>${p.civ_name}</span>`;
     case 'badge-with-player':
-      return `<span class="civ-badge civ-badge-with-num" style="${style}"><span class="civ-num-in-badge">${p.civ_number}</span><span class="civ-badge-label">${p.civ_name}<span class="go-player-name">${p.name ?? ''}</span></span></span>`;
+      return `<span class="civ-badge civ-badge-with-num" style="${style}"><span class="civ-num-in-badge">${p.civ_number}</span><span class="civ-badge-label">${p.civ_name}<span class="go-player-name">${escapeHtml(p.name)}</span></span></span>`;
   }
 }

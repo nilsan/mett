@@ -4,7 +4,7 @@
 
 import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { AST_LEVELS, getAgeBands, civBandClass, isAgeEnd, reqLegendItems } from '../models/ast.js';
-import { playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry, computeTieGroupMeta, sortCensusOrder } from '../models/game.js';
+import { playerTotalVp, compareScores, makeScoreEntry, computeTieGroupMeta, sortCensusOrder } from '../models/game.js';
 import { empireCell } from './empire.js';
 
 export { empireCell };

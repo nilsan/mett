@@ -3,15 +3,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /**
- * Auth-flow tests. Locks down the empty-password bypass fix from 47b005d
- * and the scrypt-hashed storage introduced in the same commit.
+ * Auth-flow tests. Locks down the empty-password bypass fix from 47b005d,
+ * the scrypt-hashed storage introduced in the same commit, and the opaque
+ * session-token cookie (the password itself never leaves the login form).
  *
  * Covers:
  *   - verifyAdminPassword (correct / wrong / empty)
  *   - setAdminPassword (hashes; rejects empty)
- *   - isAdminAuthed (valid / no / empty / wrong cookie)
+ *   - isAdminAuthed (live / expired / unknown session; password-as-cookie rejected)
  *   - isUsingDefaultPassword (true while seeded; false after rotation)
- *   - POST /login redirect targets and cookie behaviour
+ *   - POST /login redirect targets, cookie flags and the failure throttle
  *   - POST /admin/change-password auth + validation flow
  */
 
@@ -21,8 +22,8 @@ import { Hono } from 'hono';
 
 import { makeMinimalDb as makeDb } from './_helpers.js';
 import { _setTestDb } from '../src/services/db.js';
-import { setAdminPassword, verifyAdminPassword, isUsingDefaultPassword } from '../src/db.js';
-import pages, { isAdminAuthed } from '../src/routes/pages.js';
+import { setAdminPassword, verifyAdminPassword, isUsingDefaultPassword, createAdminSession, ADMIN_SESSION_TTL_MS } from '../src/db.js';
+import pages, { isAdminAuthed, _resetLoginThrottle } from '../src/routes/pages.js';
 
 // ─── HTTP test helpers (auth-specific) ────────────────────────────────────────
 
@@ -99,16 +100,24 @@ describe('setAdminPassword', () => {
   });
 });
 
-// ─── isAdminAuthed (cookie validation) ────────────────────────────────────────
+// ─── isAdminAuthed (session cookie validation) ────────────────────────────────
 
 describe('isAdminAuthed', () => {
+  let db: Database;
+  let token: string;
   beforeEach(() => {
-    _setTestDb(makeDb());
+    db = makeDb();
+    _setTestDb(db);
     setAdminPassword('PASSWORD');
+    token = createAdminSession();
   });
 
-  it('accepts a request whose cookie matches the stored password', () => {
-    expect(isAdminAuthed(reqWith('mett_admin=PASSWORD'))).toBe(true);
+  it('accepts a live session token', () => {
+    expect(isAdminAuthed(reqWith(`mett_admin=${token}`))).toBe(true);
+  });
+
+  it('rejects the plaintext password as a cookie value', () => {
+    expect(isAdminAuthed(reqWith('mett_admin=PASSWORD'))).toBe(false);
   });
 
   it('rejects when there is no cookie at all', () => {
@@ -119,25 +128,32 @@ describe('isAdminAuthed', () => {
     expect(isAdminAuthed(reqWith('mett_admin='))).toBe(false);
   });
 
-  it('rejects a wrong cookie value', () => {
-    expect(isAdminAuthed(reqWith('mett_admin=wrong'))).toBe(false);
+  it('rejects an unknown token', () => {
+    expect(isAdminAuthed(reqWith('mett_admin=not-a-session'))).toBe(false);
   });
 
   it('reads the cookie even when other cookies precede or follow it', () => {
-    expect(isAdminAuthed(reqWith('foo=bar; mett_admin=PASSWORD; baz=qux'))).toBe(true);
+    expect(isAdminAuthed(reqWith(`foo=bar; mett_admin=${token}; baz=qux`))).toBe(true);
   });
 
-  it('decodes URL-encoded cookie values', () => {
-    expect(isAdminAuthed(reqWith('mett_admin=' + encodeURIComponent('with spaces')))).toBe(false);
-    setAdminPassword('with spaces');
-    expect(isAdminAuthed(reqWith('mett_admin=' + encodeURIComponent('with spaces')))).toBe(true);
+  it('rejects an expired session', () => {
+    db.exec('UPDATE admin_sessions SET expires_at = 0');
+    expect(isAdminAuthed(reqWith(`mett_admin=${token}`))).toBe(false);
+  });
+
+  it('stores only a hash of the token', () => {
+    const rows = db.query<{ token_hash: string }, []>('SELECT token_hash FROM admin_sessions').all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.token_hash).not.toBe(token);
   });
 });
 
 // ─── isUsingDefaultPassword (drives the admin nag banner) ─────────────────────
 
 describe('isUsingDefaultPassword', () => {
-  beforeEach(() => { _setTestDb(makeDb()); });
+  let testDb: Database;
+  const getDbForTest = () => testDb;
+  beforeEach(() => { testDb = makeDb(); _setTestDb(testDb); });
 
   it('true while seeded with PASSWORD', () => {
     setAdminPassword('PASSWORD');
@@ -151,28 +167,48 @@ describe('isUsingDefaultPassword', () => {
     expect(isUsingDefaultPassword()).toBe(false);
   });
 
-  it('false when admin_password is unset (NULL row from a fresh schema)', () => {
+  it('false when admin_password is unset (NULL row)', () => {
+    getDbForTest().exec('UPDATE game SET admin_password=NULL WHERE id=1');
     expect(isUsingDefaultPassword()).toBe(false);
   });
 });
 
 // ─── POST /login ──────────────────────────────────────────────────────────────
 
+/** Value of the mett_admin cookie in a Set-Cookie header, or null. */
+function sessionCookie(res: Response): string | null {
+  return (res.headers.get('set-cookie') ?? '').match(/mett_admin=([^;]*)/)?.[1] ?? null;
+}
+
 describe('POST /login', () => {
   let app: Hono;
   beforeEach(() => {
     _setTestDb(makeDb());
     setAdminPassword('PASSWORD');
+    _resetLoginThrottle();
     app = makeApp();
   });
 
-  it('correct password redirects to /admin with the session cookie', async () => {
+  it('correct password redirects to /admin with an opaque session cookie', async () => {
     const res = await postForm(app, '/login', { password: 'PASSWORD' });
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/admin');
-    const setCookie = res.headers.get('set-cookie') ?? '';
-    expect(setCookie).toContain('mett_admin=PASSWORD');
-    expect(setCookie).toContain('HttpOnly');
+    const token = sessionCookie(res);
+    expect(token).toBeTruthy();
+    expect(token).not.toBe('PASSWORD');
+    expect(res.headers.get('set-cookie')).toContain('HttpOnly');
+    expect(isAdminAuthed(reqWith(`mett_admin=${token}`))).toBe(true);
+  });
+
+  it('marks the cookie Secure behind an HTTPS proxy, not on plain HTTP', async () => {
+    const plain = await postForm(app, '/login', { password: 'PASSWORD' });
+    expect(plain.headers.get('set-cookie')).not.toContain('Secure');
+    const res = await app.request('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Forwarded-Proto': 'https' },
+      body: 'password=PASSWORD',
+    });
+    expect(res.headers.get('set-cookie')).toContain('Secure');
   });
 
   it('wrong password redirects to /login?error=1 and sets no cookie', async () => {
@@ -182,14 +218,34 @@ describe('POST /login', () => {
     expect(res.headers.get('set-cookie')).toBeNull();
   });
 
-  // Regression test for the empty-password bypass fixed in 47b005d. Before the
-  // fix, an empty stored password (or the right shape of guard) would let any
-  // submitted value through.
-  it('empty password is rejected (regression: empty-password bypass)', async () => {
+  it('empty password is rejected', async () => {
     const res = await postForm(app, '/login', { password: '' });
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/login?error=1');
     expect(res.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('locks a client out after 10 failures, even for the right password', async () => {
+    for (let i = 0; i < 10; i++) await postForm(app, '/login', { password: 'wrong' });
+    const res = await postForm(app, '/login', { password: 'PASSWORD' });
+    expect(res.headers.get('location')).toBe('/login?error=locked');
+    expect(res.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('throttles per client — another forwarded address can still log in', async () => {
+    const from = (ip: string, password: string) => app.request('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Forwarded-For': ip },
+      body: `password=${password}`,
+    });
+    for (let i = 0; i < 10; i++) await from('10.0.0.1', 'wrong');
+    expect((await from('10.0.0.1', 'PASSWORD')).headers.get('location')).toBe('/login?error=locked');
+    expect((await from('10.0.0.2', 'PASSWORD')).headers.get('location')).toBe('/admin');
+  });
+
+  it('session lifetime matches the cookie maxAge', async () => {
+    const res = await postForm(app, '/login', { password: 'PASSWORD' });
+    expect(res.headers.get('set-cookie')).toContain(`Max-Age=${ADMIN_SESSION_TTL_MS / 1000}`);
   });
 });
 
@@ -197,20 +253,29 @@ describe('POST /login', () => {
 
 describe('POST /admin/change-password', () => {
   let app: Hono;
+  let cookie: string;
   beforeEach(() => {
     _setTestDb(makeDb());
     setAdminPassword('CURRENT');
+    cookie = `mett_admin=${createAdminSession()}`;
     app = makeApp();
   });
 
-  it('valid change rotates the stored hash and refreshes the cookie', async () => {
+  it('valid change rotates the stored hash and issues a fresh session', async () => {
+    const other = `mett_admin=${createAdminSession()}`;
     const res = await postForm(app, '/admin/change-password',
-      { current: 'CURRENT', next: 'NEW' }, 'mett_admin=CURRENT');
+      { current: 'CURRENT', next: 'NEW' }, cookie);
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/admin?pwd_ok=1');
-    expect(res.headers.get('set-cookie') ?? '').toContain('mett_admin=NEW');
+    const fresh = sessionCookie(res);
+    expect(fresh).toBeTruthy();
+    expect(fresh).not.toBe('NEW');
     expect(verifyAdminPassword('NEW')).toBe(true);
     expect(verifyAdminPassword('CURRENT')).toBe(false);
+    // Every pre-existing session is logged out; the new one works.
+    expect(isAdminAuthed(reqWith(cookie))).toBe(false);
+    expect(isAdminAuthed(reqWith(other))).toBe(false);
+    expect(isAdminAuthed(reqWith(`mett_admin=${fresh}`))).toBe(true);
   });
 
   it('without admin cookie redirects to /login (no rotation happens)', async () => {
@@ -223,7 +288,7 @@ describe('POST /admin/change-password', () => {
 
   it('wrong current password — pwd_error=1, password unchanged', async () => {
     const res = await postForm(app, '/admin/change-password',
-      { current: 'wrong', next: 'NEW' }, 'mett_admin=CURRENT');
+      { current: 'wrong', next: 'NEW' }, cookie);
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/admin?pwd_error=1');
     expect(verifyAdminPassword('CURRENT')).toBe(true);
@@ -231,7 +296,7 @@ describe('POST /admin/change-password', () => {
 
   it('empty current — pwd_error=1 (matches the wrong-password branch)', async () => {
     const res = await postForm(app, '/admin/change-password',
-      { current: '', next: 'NEW' }, 'mett_admin=CURRENT');
+      { current: '', next: 'NEW' }, cookie);
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/admin?pwd_error=1');
     expect(verifyAdminPassword('CURRENT')).toBe(true);
@@ -239,7 +304,7 @@ describe('POST /admin/change-password', () => {
 
   it('empty new — pwd_error=2, password unchanged', async () => {
     const res = await postForm(app, '/admin/change-password',
-      { current: 'CURRENT', next: '' }, 'mett_admin=CURRENT');
+      { current: 'CURRENT', next: '' }, cookie);
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/admin?pwd_error=2');
     expect(verifyAdminPassword('CURRENT')).toBe(true);

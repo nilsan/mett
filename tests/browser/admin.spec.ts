@@ -3,17 +3,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /// <reference lib="dom" />
-import { test, expect } from './fixtures';
+import { test, expect, adminLogin } from './fixtures';
 
 // Regression: the admin census input committed only on blur, so editing it with
 // the native number-spinner up/down arrows (which fire `change` but never blur)
 // silently dropped the edit. It must now persist on `change` too.
 test.describe('admin census input', () => {
   test('spinner/arrow change persists without blurring the field', async ({ page, request }) => {
-    // /admin is GM-gated — the mett_admin cookie value is the plaintext password.
-    await page.context().addCookies([
-      { name: 'mett_admin', value: 'PASSWORD', url: 'http://localhost:3100' },
-    ]);
+    // /admin is GM-gated — log the page's browser context in.
+    await adminLogin(page.context().request);
     await page.goto('/admin');
 
     const input = page.locator('input.census-admin-input').first();

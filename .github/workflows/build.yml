@@ -1,4 +1,3 @@
----
 name: build
 
 # yamllint thinks bare `on:` is a YAML 1.1 boolean; quote it to silence.
@@ -8,45 +7,69 @@ name: build
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  test:
+    name: test
+    uses: ./.github/workflows/test.yml
+
   ghcr:
     name: build & push to ghcr.io
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - name: Compute short SHA
-        id: sha
-        run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+      - name: Read app + Bun versions, short SHA
+        id: ver
+        run: |
+          echo "app=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+          echo "bun=$(cat .bun-version)" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-buildx-action@v3
+      # Tags: :latest is what production pulls; :<version>, :<major.minor> and
+      # :<major> (from package.json) let docker-compose pin via METT_VERSION;
+      # :<short-sha> pins a specific commit for rollback / forensic inspection.
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/mett
+          tags: |
+            type=raw,value=latest
+            type=semver,pattern={{version}},value=${{ steps.ver.outputs.app }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.ver.outputs.app }}
+            # No bare :0 tag while in major version zero (semver: 0.x is unstable).
+            type=semver,pattern={{major}},value=${{ steps.ver.outputs.app }},enable=${{ !startsWith(steps.ver.outputs.app, '0.') }}
+            type=sha,prefix=,format=short
+
+      - uses: docker/setup-buildx-action@v4
 
       - name: Log in to ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile
           push: true
-          # Tags: :latest is what production pulls; :<short-sha> pins a specific commit
-          # for rollback / blue-green / forensic inspection.
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/mett:latest
-            ghcr.io/${{ github.repository_owner }}/mett:${{ steps.sha.outputs.short }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BUILD_SHA=${{ steps.sha.outputs.short }}
+            BUN_VERSION=${{ steps.ver.outputs.bun }}
+            BUILD_SHA=${{ steps.ver.outputs.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

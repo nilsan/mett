@@ -17,9 +17,9 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Hono } from 'hono';
 
-import { makeMinimalDb as makeDb, MIGRATIONS, REQ_ROWS } from './_helpers.js';
+import { makeMinimalDb as makeDb } from './_helpers.js';
 import { _setTestDb } from '../src/services/db.js';
-import { setAdminPassword } from '../src/db.js';
+import { setAdminPassword, createAdminSession } from '../src/db.js';
 import type { Database } from 'bun:sqlite';
 import api from '../src/routes/api.js';
 import pages from '../src/routes/pages.js';
@@ -33,18 +33,13 @@ function makeApp(): Hono {
   return new Hono().route('/', pages).route('/api', api);
 }
 
+/** Admin session cookie for the current test DB — set by setUpDbForGameTests. */
+let ADMIN = '';
+
 function setUpDbForGameTests(): ReturnType<typeof makeDb> {
   const db = makeDb();
-  // Tests in this file simulate a partially-set-up game: run migrations + AST
-  // seed so /game/round/next and /players/:id/rank have sensible state to
-  // operate on. (makeMinimalDb only ran schema.sql.)
-  for (const sql of MIGRATIONS) {
-    try { db.exec(sql); } catch (e: any) {
-      if (!String(e?.message).includes('duplicate column name')) throw e;
-    }
-  }
-  const stmt = db.prepare('UPDATE ast_levels SET basic_req_json=?, expert_req_json=? WHERE level=?');
-  for (const [b, e, lvl] of REQ_ROWS) stmt.run(b, e, lvl);
+  _setTestDb(db);
+  ADMIN = `mett_admin=${createAdminSession()}`;
   return db;
 }
 
@@ -73,7 +68,7 @@ describe('API authorisation middleware', () => {
     // and the assertion below (status !== 401) still passes, just noisily.
     await jsonReq(app, 'POST', '/api/game/start',
       { expert: 1, players: [{ civ_id: 1, name: 'Test', region: 'west' }] },
-      'mett_admin=PASSWORD');
+      ADMIN);
   });
 
   // GETs are unconditionally public
@@ -127,7 +122,7 @@ describe('API authorisation middleware', () => {
   it('admin cookie unlocks a protected POST that fails without it', async () => {
     const without = await jsonReq(app, 'POST', '/api/players/1/name', { name: 'X' });
     expect(without.status).toBe(401);
-    const withCookie = await jsonReq(app, 'POST', '/api/players/1/name', { name: 'X' }, 'mett_admin=PASSWORD');
+    const withCookie = await jsonReq(app, 'POST', '/api/players/1/name', { name: 'X' }, ADMIN);
     expect(withCookie.status).toBe(200);
   });
 });
@@ -151,7 +146,7 @@ describe('POST /api/players/:id/rank — tie resolution', () => {
         { civ_id: 2, name: 'B', region: 'east' },
         { civ_id: 3, name: 'C', region: 'west' },
       ]},
-      'mett_admin=PASSWORD');
+      ADMIN);
     const ids = db.query<{ id: number }, []>('SELECT id FROM players ORDER BY id').all();
     [p1, p2, p3] = [ids[0]!.id, ids[1]!.id, ids[2]!.id];
   });
@@ -168,7 +163,7 @@ describe('POST /api/players/:id/rank — tie resolution', () => {
   it('setting rank for one player records it; others stay at 0', async () => {
     const res = await jsonReq(app, 'POST', `/api/players/${p1}/rank`,
       { rank_order: 1, group_players: [p1, p2, p3], group_positions: [1, 2, 3] },
-      'mett_admin=PASSWORD');
+      ADMIN);
     expect(res.status).toBe(200);
     expect(getRankOrders()).toEqual({ [p1]: 1, [p2]: 0, [p3]: 0 });
   });
@@ -177,11 +172,11 @@ describe('POST /api/players/:id/rank — tie resolution', () => {
     // p1 is at rank 1
     await jsonReq(app, 'POST', `/api/players/${p1}/rank`,
       { rank_order: 1, group_players: [p1, p2, p3], group_positions: [1, 2, 3] },
-      'mett_admin=PASSWORD');
+      ADMIN);
     // Admin reassigns rank 1 to p2 — p1 should drop back to 0
     await jsonReq(app, 'POST', `/api/players/${p2}/rank`,
       { rank_order: 1, group_players: [p1, p2, p3], group_positions: [1, 2, 3] },
-      'mett_admin=PASSWORD');
+      ADMIN);
     expect(getRankOrders()).toEqual({ [p1]: 0, [p2]: 1, [p3]: 0 });
   });
 
@@ -189,10 +184,10 @@ describe('POST /api/players/:id/rank — tie resolution', () => {
     // p1 → 1, then p2 → 2; p3 has no choice but rank 3 — server auto-assigns it
     await jsonReq(app, 'POST', `/api/players/${p1}/rank`,
       { rank_order: 1, group_players: [p1, p2, p3], group_positions: [1, 2, 3] },
-      'mett_admin=PASSWORD');
+      ADMIN);
     await jsonReq(app, 'POST', `/api/players/${p2}/rank`,
       { rank_order: 2, group_players: [p1, p2, p3], group_positions: [1, 2, 3] },
-      'mett_admin=PASSWORD');
+      ADMIN);
     expect(getRankOrders()).toEqual({ [p1]: 1, [p2]: 2, [p3]: 3 });
   });
 
@@ -200,14 +195,14 @@ describe('POST /api/players/:id/rank — tie resolution', () => {
     // Only p1 set → p2 and p3 still ambiguous, server leaves them at 0
     await jsonReq(app, 'POST', `/api/players/${p1}/rank`,
       { rank_order: 2, group_players: [p1, p2, p3], group_positions: [1, 2, 3] },
-      'mett_admin=PASSWORD');
+      ADMIN);
     expect(getRankOrders()).toEqual({ [p1]: 2, [p2]: 0, [p3]: 0 });
   });
 
   it('rejects a non-numeric rank_order with 400', async () => {
     const res = await jsonReq(app, 'POST', `/api/players/${p1}/rank`,
       { rank_order: 'bogus' as unknown as number },
-      'mett_admin=PASSWORD');
+      ADMIN);
     expect(res.status).toBe(400);
   });
 });
@@ -277,7 +272,7 @@ describe('status page: special-dim rendering in AST order', () => {
         { civ_id: 1, name: 'Alpha', region: 'west' },
         { civ_id: 2, name: 'Beta',  region: 'west' },
       ]},
-      'mett_admin=PASSWORD');
+      ADMIN);
   });
 
   async function getStatusHtml(): Promise<string> {
@@ -327,7 +322,7 @@ describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
         { civ_id: 1, name: 'Alpha', region: 'west' },
         { civ_id: 2, name: 'Beta',  region: 'west' },
       ]},
-      'mett_admin=PASSWORD');
+      ADMIN);
     const ids = db.query<{ id: number }, []>('SELECT id FROM players ORDER BY id').all();
     [p1, p2] = [ids[0]!.id, ids[1]!.id];
   });
@@ -369,15 +364,16 @@ describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
 
   it('does not block advancing the round (optional signal)', async () => {
     // Submit city counts so the round can advance, but leave moved unset.
-    await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 2 }, 'mett_admin=PASSWORD');
-    await jsonReq(app, 'POST', `/api/players/${p2}/city-count`, { city_count: 2 }, 'mett_admin=PASSWORD');
-    const res = await jsonReq(app, 'POST', '/api/game/round/next', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, ADMIN);
+    await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 2 }, ADMIN);
+    await jsonReq(app, 'POST', `/api/players/${p2}/city-count`, { city_count: 2 }, ADMIN);
+    const res = await jsonReq(app, 'POST', '/api/game/round/next', {}, ADMIN);
     expect(res.status).toBe(200);
     expect(db.query<{ current_round: number }, []>('SELECT current_round FROM game WHERE id=1').get()!.current_round).toBe(2);
   });
 
   it('renders a MOV column with a checkmark once census is revealed', async () => {
-    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, ADMIN);
     await jsonReq(app, 'POST', `/api/players/${p1}/move`, {});
     const res = await app.request('/', { headers: { 'HX-Request': 'true' } });
     const html = await res.text();
@@ -391,7 +387,7 @@ describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
   }
 
   it('civ page: census open and MOV visible before the cities phase', async () => {
-    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, ADMIN);
     const html = await civHtml();
     expect(html).not.toMatch(/id="pop-input"[^>]*disabled/);
     expect(html).not.toMatch(/id="submit-census"[^>]*disabled/);
@@ -399,9 +395,9 @@ describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
   });
 
   it('civ page: recount (cities phase) locks the census submit and hides MOV', async () => {
-    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, ADMIN);
     // Admin "recount" → cities_phase = 1
-    await jsonReq(app, 'POST', '/api/game/cities/clear', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/game/cities/clear', {}, ADMIN);
     const html = await civHtml();
     expect(html).toMatch(/id="pop-input"[^>]*disabled/);
     expect(html).toMatch(/id="submit-census"[^>]*disabled/);
@@ -409,12 +405,12 @@ describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
   });
 
   it('civ page: advancing to a new round reopens the census and MOV', async () => {
-    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
-    await jsonReq(app, 'POST', '/api/game/cities/clear', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, ADMIN);
+    await jsonReq(app, 'POST', '/api/game/cities/clear', {}, ADMIN);
     // City counts in (post-calamity) so the round can advance.
     await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 2 });
     await jsonReq(app, 'POST', `/api/players/${p2}/city-count`, { city_count: 2 });
-    await jsonReq(app, 'POST', '/api/game/round/next', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/game/round/next', {}, ADMIN);
     const html = await civHtml();
     expect(html).not.toMatch(/id="pop-input"[^>]*disabled/);
     expect(html).not.toMatch(/id="submit-census"[^>]*disabled/);
@@ -430,7 +426,7 @@ describe('POST /api/players/:id/move — units-moved readiness toggle', () => {
   });
 
   it('civ page: city-count submit enables once the census is revealed', async () => {
-    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, ADMIN);
     const html = await civHtml();
     expect(html).not.toMatch(/id="submit-city"[^>]*disabled/);
     expect(html).not.toMatch(/id="city-input"[^>]*disabled/);
@@ -455,7 +451,7 @@ describe('POST /api/players/:id/regress — calamity AST regression', () => {
         { civ_id: 1, name: 'Alpha', region: 'west' },
         { civ_id: 2, name: 'Beta',  region: 'east' },
       ]},
-      'mett_admin=PASSWORD');
+      ADMIN);
     const ids = db.query<{ id: number }, []>('SELECT id FROM players ORDER BY id').all();
     [p1, p2] = [ids[0]!.id, ids[1]!.id];
   });
@@ -467,8 +463,8 @@ describe('POST /api/players/:id/regress — calamity AST regression', () => {
   }
 
   it('drops the player one AST step and flags them (needs admin cookie)', async () => {
-    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, 'mett_admin=PASSWORD');
-    const res = await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, ADMIN);
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, ADMIN);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, ast_level: 30 });
     expect(row(p1)).toEqual({ ast_level: 30, regressed: 1 });
@@ -476,44 +472,154 @@ describe('POST /api/players/:id/regress — calamity AST regression', () => {
   });
 
   it('is a no-op at Stone Age (level 0) and sets no marker', async () => {
-    const res = await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, ADMIN);
     expect(await res.json()).toEqual({ ok: true, ast_level: 0 });
     expect(row(p1)).toEqual({ ast_level: 0, regressed: 0 });
   });
 
   it('manually setting the AST level (dropdown) clears the regression marker', async () => {
-    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, 'mett_admin=PASSWORD');
-    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, ADMIN);
+    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, ADMIN);
     expect(row(p1).regressed).toBe(1);
-    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 40 }, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 40 }, ADMIN);
     expect(row(p1)).toEqual({ ast_level: 40, regressed: 0 });
   });
 
   it('advancing the round clears all regression markers', async () => {
-    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, 'mett_admin=PASSWORD');
-    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, ADMIN);
+    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, ADMIN);
     expect(row(p1).regressed).toBe(1);
     // Reach the point where the round can advance.
-    await jsonReq(app, 'POST', '/api/census/reveal', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, ADMIN);
     await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 2 });
     await jsonReq(app, 'POST', `/api/players/${p2}/city-count`, { city_count: 2 });
-    await jsonReq(app, 'POST', '/api/game/round/next', {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', '/api/game/round/next', {}, ADMIN);
     expect(row(p1).regressed).toBe(0);
   });
 
   it('status board renders the red token marker for a regressed empire', async () => {
-    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, 'mett_admin=PASSWORD');
-    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, 'mett_admin=PASSWORD');
+    await jsonReq(app, 'POST', `/api/players/${p1}/ast`, { level: 35 }, ADMIN);
+    await jsonReq(app, 'POST', `/api/players/${p1}/regress`, {}, ADMIN);
     const res = await app.request('/', { headers: { 'HX-Request': 'true' } });
     const html = await res.text();
     expect(html).toContain('ab-magnet-regressed');
   });
 
   it('admin table renders a regress button, disabled at level 0', async () => {
-    const res = await app.request('/admin', { headers: { 'HX-Request': 'true', cookie: 'mett_admin=PASSWORD' } });
+    const res = await app.request('/admin', { headers: { 'HX-Request': 'true', cookie: ADMIN } });
     const html = await res.text();
     expect(html).toContain('regress-btn');
     // Both players start at level 0 → both buttons disabled.
     expect(html).toMatch(/regress-btn[^>]*disabled/);
+  });
+});
+
+// ─── Request validation, game-state guards, secrets, escaping ────────────────
+
+describe('API input validation', () => {
+  let app: Hono;
+  let db: Database;
+  let p1: number;
+  beforeEach(async () => {
+    db = setUpDbForGameTests();
+    app = makeApp();
+    await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 1, players: [{ civ_id: 1, name: 'Ann', region: 'west' }] }, ADMIN);
+    p1 = db.query<{ id: number }, []>('SELECT id FROM players').get()!.id;
+  });
+
+  it('malformed JSON is a 400 with a JSON error, not a 500', async () => {
+    const res = await app.request(`/api/players/${p1}/census`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'nope',
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'Invalid JSON body' });
+  });
+
+  it.each(['census', 'city-count', 'military', 'move', 'wonder', 'special', 'adv'])(
+    'unknown player on /%s is a 404', async (action) => {
+      const res = await jsonReq(app, 'POST', `/api/players/999/${action}`, { population: 5, city_count: 1, adv_1vp: 1 });
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: 'Player not found' });
+    });
+
+  it('non-numeric player id is a 404', async () => {
+    expect((await jsonReq(app, 'POST', '/api/players/abc/military', {})).status).toBe(404);
+  });
+
+  it('census is refused (409) when no game is running', async () => {
+    db.exec('UPDATE game SET active=0');
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/census`, { population: 5 });
+    expect(res.status).toBe(409);
+  });
+
+  it('city count is refused (409) until the census is revealed', async () => {
+    const early = await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 3 });
+    expect(early.status).toBe(409);
+    await jsonReq(app, 'POST', '/api/census/reveal', {}, ADMIN);
+    const ok = await jsonReq(app, 'POST', `/api/players/${p1}/city-count`, { city_count: 3 });
+    expect(ok.status).toBe(200);
+  });
+
+  it('census can still be resubmitted after reveal (by design)', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/census`, { population: 5 });
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/census`, { population: 50 })).status).toBe(200);
+  });
+
+  it('non-numeric advance counts are a 400', async () => {
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/adv`, { adv_1vp: 'lots' });
+    expect(res.status).toBe(400);
+  });
+
+  it('game/start rejects an unknown civ and a bad expert flag', async () => {
+    const badCiv = await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 1, players: [{ civ_id: 999, name: 'X', region: 'west' }] }, ADMIN);
+    expect(badCiv.status).toBe(400);
+    const badMode = await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 'yes', players: [{ civ_id: 1, name: 'X', region: 'west' }] }, ADMIN);
+    expect(badMode.status).toBe(400);
+  });
+
+  it('debug/set-round rejects a non-positive round', async () => {
+    expect((await jsonReq(app, 'POST', '/api/debug/set-round', { round: 'x' }, ADMIN)).status).toBe(400);
+    expect((await jsonReq(app, 'POST', '/api/debug/set-round', { round: 0 }, ADMIN)).status).toBe(400);
+  });
+
+  it('LIA bonus toggle requires a boolean grant', async () => {
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/late-iron-age-bonus`, { grant: 'yes' }, ADMIN);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('secrets never leave the server', () => {
+  it('GET /api/state carries no admin password hash', async () => {
+    setUpDbForGameTests();
+    const res = await makeApp().request('/api/state');
+    const text = await res.text();
+    expect(text).not.toContain('admin_password');
+    expect(text).not.toContain('scrypt$');
+  });
+});
+
+describe('player names are HTML-escaped', () => {
+  const EVIL = '"><img src=x onerror=alert(1)>';
+  let app: Hono;
+  beforeEach(async () => {
+    setUpDbForGameTests();
+    app = makeApp();
+    await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 1, players: [{ civ_id: 1, name: EVIL, region: 'west' }] }, ADMIN);
+  });
+
+  it.each([
+    ['status page', '/', {}],
+    ['player page', '/minoa', {}],
+    ['admin page', '/admin', { cookie: '' }],
+  ])('%s', async (_label, path, headers) => {
+    const h: Record<string, string> = { ...headers };
+    if ('cookie' in h) h.cookie = ADMIN;
+    const html = await (await app.request(path, { headers: h })).text();
+    expect(html).not.toContain('<img src=x');
+    expect(html).toContain('&quot;&gt;&lt;img src=x');
   });
 });

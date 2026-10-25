@@ -1,0 +1,19 @@
+# Keep the build context to what the image needs (package.json, bun.lock,
+# src/, db/, public/, docker/entrypoint.sh).
+.git
+.github
+.claude
+.ansible
+node_modules
+data
+docs
+tests
+scripts
+test-results
+playwright-report
+blob-report
+*.db
+*.db-shm
+*.db-wal
+.pid
+todo.md

@@ -14,12 +14,12 @@ For the user-facing guide see [README.md](README.md). For which game rules are i
 | Web framework | **Hono** | Lightweight, TypeScript-first, first-class Bun support |
 | Database | **bun:sqlite** | Zero extra dependencies; Bun includes it natively |
 | Password hashing | **node:crypto scrypt** | OWASP-recommended; sync; no extra dep |
-| CSS | **Pico CSS + custom** | Dark-mode baseline out of the box; small footprint (~10 KB) |
-| Frontend JS | **Vanilla JS + HTMX** | No framework needed at this scale; HTMX for first-paint fragments |
+| CSS | **Pico CSS + custom** | Dark-mode baseline out of the box; served from `node_modules` (no CDN), version pinned in `package.json` |
+| Frontend JS | **TypeScript bundles + vanilla JS + HTMX** | No framework needed at this scale; HTMX (served from `node_modules`) for the status page |
 | Browser tests | **Playwright** | Auto-wait, browser bundled, TypeScript-native |
 | Container | **Docker + Docker Compose** | Volume-mounted SQLite for persistence |
 | TLS | **Caddy** | Automatic Let's Encrypt certificates, bundled in compose |
-| CI | **GitHub Actions** | bun test + tsc + yamllint + hadolint on every push |
+| CI | **GitHub Actions** | bun test + tsc + Playwright + linters on every PR; the image is only published when they pass |
 | Deployment | **Docker Compose** | `docker compose pull` from GHCR + recreate; pin via `METT_VERSION` (no git pull on remote — image-only swap). Multi-instance Ansible automation lives in the private `mett-deploy` repo. |
 
 ---
@@ -37,23 +37,27 @@ mett/
 │   ├── version.ts          Reads package.json + BUILD_SHA env → footer string
 │   ├── ws.ts               WebSocket clients set + broadcast/sendInitialState
 │   ├── client/
-│   │   └── civ.ts          Empire-page client source — compiled to
-│   │                       public/js/civ.js via `bun run build:client`
+│   │   ├── civ.ts          Empire-page client source ┐ compiled to public/js/
+│   │   └── admin.ts        Admin-page client source  ┘ via `bun run build:client`
 │   ├── shared/
-│   │   ├── ast-pure.ts     Pure AST helpers shared by server + client bundle
+│   │   ├── ast-pure.ts     AGE_TABLE — the single source of A.S.T. rules — plus
+│   │   │                   pure AST helpers shared by server + client bundles
+│   │   ├── html.ts         escapeHtml (server views + client bundles)
 │   │   └── scoring.ts      Pure scoring/sort helpers shared by server + client
 │   ├── models/
-│   │   ├── ast.ts          AST requirement parsing, advancement, tier helpers
+│   │   ├── ast.ts          autoAdvanceAst (re-exports shared/ast-pure.ts)
 │   │   └── game.ts         advanceRound, scoring, computeTieGroupMeta
 │   ├── services/
-│   │   ├── db.ts           Raw SQLite connection, schema + migrations,
-│   │   │                   PLAYER_SELECT, _onReset cache hooks, DB_PATH
+│   │   ├── db.ts           initDb (schema, versioned migrations, civ seed,
+│   │   │                   password seed), PLAYER_SELECT, _onReset, DB_PATH
 │   │   └── password.ts     scrypt hashPassword / verifyPassword
 │   ├── routes/
-│   │   ├── api.ts          REST API routes (admin auth + public submissions)
-│   │   └── pages.ts        Server-rendered pages (login, /admin, /:slug)
+│   │   ├── api.ts          REST API routes (admin auth, input validation,
+│   │   │                   public submissions)
+│   │   └── pages.ts        Server-rendered pages (login + session cookie,
+│   │                       login throttle, /admin, /:slug)
 │   └── views/
-│       ├── layout.ts       Base HTML shell (Pico, htmx, toast.js, api.js,
+│       ├── layout.ts       Base HTML shell (/vendor Pico + htmx, toast.js, api.js,
 │       │                   ws-client.js, version footer)
 │       ├── main.ts         Main display (5-section status grid)
 │       ├── admin.ts        Admin (setup wizard / active game / game over)
@@ -65,44 +69,52 @@ mett/
 │       ├── ws-client.js    Shared WebSocket client (auto-reconnect)
 │       ├── toast.js        Error toast helper (window.showToast)
 │       ├── api.js          Shared mettPost helper (JSON + toast on error)
-│       ├── main.js         Main page JS (HTMX swap entry-point)
-│       ├── admin.js        Admin page JS (in-place updates from mett:state)
-│       └── civ.js          GENERATED — committed build artifact of
-│                           src/client/civ.ts (`bun run build:client`).
-│                           Never edit directly; tests/client-build.test.ts
-│                           fails the suite if it drifts from its source
+│       ├── main.js         Main page JS (asks ws-client for ping-only frames)
+│       ├── admin.js        GENERATED from src/client/admin.ts ┐ committed build
+│       └── civ.js          GENERATED from src/client/civ.ts   ┘ artifacts
+│                           (`bun run build:client`). Never edit directly;
+│                           tests/client-build.test.ts fails on drift
 ├── db/
-│   └── schema.sql          Schema + seed data (civs and A.S.T. levels)
+│   └── schema.sql          Current schema (CREATE IF NOT EXISTS); no seed data —
+│                           civs come from src/civs.ts, A.S.T. rules from
+│                           src/shared/ast-pure.ts
 ├── docker/
-│   ├── Dockerfile          Bun image; ARG BUILD_SHA → ENV
+│   ├── Dockerfile          Bun image (version from .bun-version); runs as the
+│   │                       unprivileged `bun` user; HEALTHCHECK on /healthz
+│   ├── entrypoint.sh       Hands the data volume to `bun`, drops privileges
 │   ├── docker-compose.yml  Single mett service + Caddy; pin via $METT_VERSION
 │   └── Caddyfile           One reverse-proxy block (demo.mett.games by default)
 ├── .github/
 │   └── workflows/
-│       ├── test.yml        CI: bun test + tsc + yamllint + hadolint
-│       └── build.yml       Builds + pushes ghcr.io/nilsan/mett:latest on push to main
+│       ├── test.yml        CI: bun test, tsc, Playwright, yamllint/hadolint/shellcheck
+│       └── build.yml       On push to main: runs test.yml, then builds + pushes
+│                           ghcr.io/nilsan/mett (:latest, semver, short SHA)
+├── .bun-version            The one pinned Bun version (CI + Docker)
 ├── playwright.config.ts    Browser-test config (testDir tests/browser/)
 ├── .yamllint               Project-wide yamllint config (line-length 140)
 └── tests/
-    ├── _helpers.ts         Shared schema/migration/AST-seed factory + DB helpers
-    ├── ast.test.ts         A.S.T. requirement unit tests
+    ├── _helpers.ts         In-memory DB factories (via initDb) + DB helpers
+    ├── ast.test.ts         A.S.T. requirement unit tests + golden age table
+    ├── db.test.ts          initDb: fresh DB, legacy upgrade, idempotence
     ├── game.test.ts        Game flow integration (AST, LIA, ties,
     │                       advanceRound orchestration + census prune,
     │                       cities_phase reset, computeTieGroupMeta)
     ├── auth.test.ts        Login, change-password, isAdminAuthed, scrypt
     ├── password.test.ts    hashPassword / verifyPassword round-trip
     ├── api.test.ts         Auth middleware classification, /rank tie resolution,
-    │                       static civ scenario shape
-    ├── ws.test.ts          broadcastState payload contract + per-player routing
-    ├── client-build.test.ts Rebuilds src/client/civ.ts and byte-compares the
-    │                       committed public/js/civ.js (drift guard)
+    │                       input validation, secret + XSS regressions
+    ├── ws.test.ts          broadcastState payload contract, per-player routing,
+    │                       ping-only clients
+    ├── client-build.test.ts Rebuilds src/client/{civ,admin}.ts and byte-compares
+    │                       the committed bundles; Bun version pin in sync
     └── browser/            Playwright specs (self-managed :3100 instance)
         ├── fixtures.ts             Auto-seed fixture (fresh 18-player game)
         ├── layout.spec.ts          1080p / 4K layout regression
         ├── civ-viewport.spec.ts    Civ page fits phones/laptops + font scaling
         ├── admin.spec.ts           Admin page behaviour
         ├── civ-ast-strip.spec.ts   Civ-page A.S.T. strip layout
-        └── civ-live-update.spec.ts Civ-page live update preserves focus
+        ├── civ-live-update.spec.ts Civ-page live update preserves focus
+        └── status-live.spec.ts     Status page gets ping-only WS frames
 ```
 
 ---
@@ -110,7 +122,7 @@ mett/
 ## Database schema
 
 ```sql
--- Static reference, seeded at startup
+-- Static reference, upserted at startup from CIVS in src/civs.ts
 CREATE TABLE civs (
   id INTEGER PRIMARY KEY,
   number INTEGER NOT NULL UNIQUE,   -- official number 1–18
@@ -119,15 +131,6 @@ CREATE TABLE civs (
   color TEXT NOT NULL,
   text_color TEXT NOT NULL,
   def_region TEXT NOT NULL          -- "west" or "east"
-);
-
-CREATE TABLE ast_levels (
-  level INTEGER PRIMARY KEY,        -- 0, 5, 10 … 80
-  era TEXT NOT NULL,
-  basic_req TEXT,
-  expert_req TEXT,
-  basic_req_json TEXT,              -- structured AstRequirement
-  expert_req_json TEXT
 );
 
 -- One row; reset on new game
@@ -139,7 +142,7 @@ CREATE TABLE game (
   census_revealed INTEGER NOT NULL DEFAULT 0,
   is_final_round INTEGER NOT NULL DEFAULT 0,
   cities_phase INTEGER NOT NULL DEFAULT 0,
-  admin_password TEXT,
+  admin_password TEXT,              -- scrypt hash; never selected into GameRow
   started_at TEXT
 );
 
@@ -176,7 +179,9 @@ CREATE TABLE census (
 
 ## REST API
 
-All mutating endpoints require the `mett_admin` session cookie. Player census and city-count submissions are public (players act on their own pages without admin access).
+All mutating endpoints require the `mett_admin` session cookie (an opaque random token issued by `POST /login`; only its SHA-256 is stored, in `admin_sessions`, and all sessions are cleared on a password change). Player census and city-count submissions are public (players act on their own pages without admin access).
+
+Requests are validated at the boundary: malformed JSON → `400`, unknown player → `404`, census/city-count/move with no game running → `409`, city count before the census is revealed → `409`. Errors are always `{ "error": "…" }`.
 
 ```
 GET  /api/state                    Full game state
@@ -214,6 +219,7 @@ Every mutating endpoint broadcasts a `state_update` WebSocket event after writin
 - Endpoint: `/ws`
 - The server tracks all connected clients in `src/ws.ts`.
 - On client `open`, the server immediately sends one `state_update` so reconnecting tabs are fresh without waiting for the next mutation.
+- Clients identify with `{ "type": "identify", "playerId": n|null, "ping": bool }`. Ping-only clients (the status page, which re-fetches HTML and never reads the JSON) receive `{ "type": "state_changed" }` instead of the full state.
 - After any state-changing API call the server broadcasts:
   ```json
   { "type": "state_update", "data": { ...fullGameState, "targetPlayerId": null|number } }
@@ -225,8 +231,8 @@ Every mutating endpoint broadcasts a `state_update` WebSocket event after writin
 
 | Page | First paint | Updates |
 |---|---|---|
-| `/` (status display) | Server-rendered | HTMX swap of `#main-content` on every `mett:state` |
-| `/admin` | Server-rendered | In-place DOM patch on `mett:state` (sub-prog bar, AST status dots, census/city icons, LIA stars, mil/won classes). Five reloads remain by design — round transitions and setup ↔ active page-shape changes |
+| `/` (status display) | Server-rendered | HTMX swap of `#main-content` on every `mett:state` (ping-only WS frames) |
+| `/admin` | Server-rendered | In-place DOM patch on `mett:state` in `admin.js` (TypeScript source `src/client/admin.ts`) (sub-prog bar, AST status dots, census/city icons, LIA stars, mil/won classes). Five reloads remain by design — round transitions and setup ↔ active page-shape changes |
 | `/<slug>` (player) | Server-rendered (`renderCivFragment`) | **Full client-side render from WS state** in `civ.js`'s `renderFromState()`. No HTMX swap → focused inputs and scroll position are preserved. The client is TypeScript (`src/client/civ.ts`, compiled to `public/js/civ.js` by `bun run build:client`) and imports the same pure helpers (`compareScores`, `playerTotalVp`, `getCivAstProfile`, etc.) from `src/shared/` as the server, so the leaderboard sort and requirement-row formatting are identical by construction |
 
 ---
@@ -245,7 +251,7 @@ Census is hidden from all clients until every player in the game has submitted, 
 
 ## A.S.T. advancement
 
-A.S.T. level requirements are stored as structured data in `src/models/ast.ts` (not freeform text). Each level specifies minimum cities, minimum Advance VP, and minimum count of ≥100 VP and ≥200 VP advances. Auto-advancement runs server-side after each VP or city-count update: if a player meets the next level's requirements they are automatically bumped up. In Expert mode, a player with 0 effective cities outside the Stone Age automatically regresses one level.
+A.S.T. rules live in one place: `AGE_TABLE` in `src/shared/ast-pure.ts`. Each age lists its board squares and the structured requirement (cities, advance counts by tier, VP totals) to move onto them, per mode; the requirement to advance from level L is that of the age holding L+5. Legends, tooltips, the player-page checklist and the rule checks are all derived from it, and per-civ era shifts come from `getCivAstProfile` in `src/civs.ts`. Auto-advancement runs server-side after each VP or city-count update: if a player meets the next level's requirements they are automatically bumped up. In Expert mode, a player with 0 effective cities outside the Stone Age automatically regresses one level.
 
 Each round has a two-phase city count: players submit a pre-trade count, then re-submit a post-calamity count after calamities resolve. The post-calamity count is what drives A.S.T. checks. The admin uses "Prepare for A.S.T." to transition between phases.
 
@@ -255,7 +261,7 @@ The Wonder of the World grants +1 effective city toward all A.S.T. requirements 
 
 ## Running locally (without Docker)
 
-**Prerequisites:** [Bun](https://bun.sh) ≥ 1.0
+**Prerequisites:** [Bun](https://bun.sh) — the version in `.bun-version` (CI and the Docker image use exactly that one)
 
 ```bash
 bun install
@@ -271,6 +277,7 @@ Environment variables:
 | `DATABASE_PATH` | `./data/mett.db` | Path to the SQLite database file |
 | `PORT` | `3000` | Port the HTTP server listens on |
 | `ADMIN_PASSWORD` | `PASSWORD` | Seeded on first boot; persisted in DB and changeable from the admin UI |
+| `NODE_ENV` | — | `production` (set in the image) skips writing the dev `.pid` file |
 
 ---
 
@@ -287,15 +294,16 @@ bunx tsc --noEmit     # TypeScript strict check
 
 Everything in `tests/*.test.ts` runs against an in-memory SQLite DB (`_setTestDb()` from `services/db.ts` for isolation):
 
-- `tests/ast.test.ts` — A.S.T. requirement unit tests (all level transitions, Expert vs Basic, Wonder bonus, slow-start civs).
+- `tests/ast.test.ts` — A.S.T. requirement unit tests (all level transitions, Expert vs Basic, Wonder bonus, slow-start civs) and a golden check that `AGE_TABLE` reproduces the historical per-level requirements.
+- `tests/db.test.ts` — `initDb` on a fresh DB, an upgrade from a pre-versioning legacy DB (columns added, `ast_levels` dropped, plaintext password hashed), and idempotence.
 - `tests/game.test.ts` — `autoAdvanceAst`, `checkAndSetLateIronAgeBonus`, `checkAndSetFinalRound`, `playerTotalVp`, `sortCensusOrder`, `computeTieGroupMeta`, `advanceRound` orchestration (basic LIA end, expert `is_final_round` flag, `cities_phase`/`census_revealed` reset) + census prune, static-row cache reset.
-- `tests/auth.test.ts` — Login flow (correct / wrong / **empty** — regression for the bypass fix), `verifyAdminPassword`, `setAdminPassword` (hashing + reject empty), `isAdminAuthed` cookie validation, `isUsingDefaultPassword`, `/admin/change-password`. Drives Hono in-process via `app.request()`.
+- `tests/auth.test.ts` — Login flow (correct / wrong / **empty** — regression for the bypass fix), `verifyAdminPassword`, `setAdminPassword` (hashing + reject empty), `isAdminAuthed` session validation (expiry, password-as-cookie rejected), `Secure` flag behind HTTPS, the per-client login throttle, `isUsingDefaultPassword`, `/admin/change-password` (logs out other sessions). Drives Hono in-process via `app.request()`.
 - `tests/password.test.ts` — `hashPassword` / `verifyPassword` / `isLegacyPlaintext` round-trips.
-- `tests/api.test.ts` — API auth middleware classification (GET-bypass, public-action whitelist, admin-only POSTs return 401), `POST /api/players/:id/rank` sibling-clear + auto-resolve, `WEST_SCENARIOS`/`EAST_SCENARIOS`/`SETUP_RECOMMENDATIONS` shape.
-- `tests/ws.test.ts` — `broadcastState` payload contract (`game`/`players`/`census`/`astLevels`/`astStatus`/`targetPlayerId`) and per-player routing (targeted broadcast skips civ-page sockets owned by other players; non-civ sockets and the targeted player's own tabs always receive).
-- `tests/client-build.test.ts` — rebuilds `src/client/civ.ts` and byte-compares the committed `public/js/civ.js`, so a forgotten `bun run build:client` fails the suite instead of shipping a stale player page.
+- `tests/api.test.ts` — API auth middleware classification (GET-bypass, public-action whitelist, admin-only POSTs return 401), `POST /api/players/:id/rank` sibling-clear + auto-resolve, `WEST_SCENARIOS`/`EAST_SCENARIOS`/`SETUP_RECOMMENDATIONS` shape, input validation (400/404/409), no password hash in `/api/state`, and HTML-escaped player names on every page.
+- `tests/ws.test.ts` — `broadcastState` payload contract (`game`/`players`/`census`/`astStatus`/`targetPlayerId`, never the password hash), per-player routing (targeted broadcast skips civ-page sockets owned by other players; non-civ sockets and the targeted player's own tabs always receive) and ping-only clients.
+- `tests/client-build.test.ts` — rebuilds `src/client/civ.ts` and `src/client/admin.ts` and byte-compares the committed bundles, so a forgotten `bun run build:client` fails the suite instead of shipping a stale page; also checks the Dockerfile's Bun version matches `.bun-version`.
 
-All seven files must pass before committing. The full suite (~163 tests) runs in ~2.5 s; the cost is dominated by scrypt operations in `auth.test.ts` — that's intentional.
+Every `tests/*.test.ts` file runs (new files are picked up automatically) and all must pass before committing. The full suite (~270 tests) runs in ~5 s; the cost is dominated by scrypt operations (every test DB seeds a hashed admin password) — that's intentional.
 
 ### Browser tests (Playwright)
 
@@ -312,21 +320,24 @@ Specs live under `tests/browser/`:
 - `admin.spec.ts` — admin page behaviour.
 - `civ-ast-strip.spec.ts` — civ-page A.S.T. strip layout.
 - `civ-live-update.spec.ts` — proves the civ page's live update preserves focus on a typed input, and that `#civ-content` is not swapped on state events.
+- `status-live.spec.ts` — the status page receives payload-free `state_changed` frames and re-fetches its HTML on each.
+
+The seed fixture logs its request context in through `POST /login` (`adminLogin()` in `fixtures.ts`).
 
 For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun -e` with the Playwright API directly — see `CLAUDE.md` for the pattern.
 
 ### Continuous integration
 
-`.github/workflows/test.yml` runs four jobs in parallel on every push to `main` and every PR:
+`.github/workflows/test.yml` runs four jobs in parallel on every PR, and — via `workflow_call` from `build.yml` — on every push to `main`:
 
 | Job | Command | Purpose |
 |---|---|---|
 | `bun test` | `bun run test` | Unit + integration suite (`tests/*.test.ts` glob; `tests/browser/` excluded) |
 | `tsc --noEmit` | `bunx tsc --noEmit` | TypeScript strict typecheck |
-| `yamllint` | over `.github/workflows/`, `docker/docker-compose.yml` | YAML formatting / structure |
-| `hadolint` | `hadolint-action@v3.1.0` on `docker/Dockerfile` | Dockerfile best practices |
+| `playwright` | `bun run test:browser` | Browser suite against a fresh `:3100` instance |
+| `lint` | yamllint, `hadolint-action@v3.5.0`, shellcheck | Workflows/compose, Dockerfile, `docker/entrypoint.sh` |
 
-Concurrency group cancels in-flight runs when a new push lands on the same ref. Five-minute timeout per job. Browser tests are run on demand, not in CI (the Playwright `webServer` would let them run there, but that's not wired up yet).
+`build.yml` only builds and pushes the image after every job above passes. All jobs use the Bun version in `.bun-version`. Concurrency groups cancel in-flight runs when a new push lands on the same ref.
 
 `.yamllint` at the repo root relaxes line-length to 140 and keeps the rest of yamllint's defaults, including the `truthy` check that makes us quote `"on":` in workflow files.
 
@@ -352,7 +363,9 @@ METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml pull
 METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml up -d
 ```
 
-(Once 1.0.0 ships, `:1.2.3` / `:1.2` / `:1` semver tags become available alongside `:latest`. Default of `:latest` is fine for the demo / dev; production should pin.)
+`build.yml` publishes `:<version>`, `:<major>.<minor>` and `:<major>` tags from `package.json` alongside `:latest` and `:<short-sha>` (the bare `:<major>` tag is only published from 1.0.0 on). Default of `:latest` is fine for the demo / dev; production should pin.
+
+The container starts as root only long enough for `docker/entrypoint.sh` to `chown` the data volume to the `bun` user (volumes from older, root-run images hold root-owned files), then runs the server unprivileged. `HEALTHCHECK` polls `/healthz`, and Caddy waits for it before starting.
 
 ### Multi-instance / multi-game on one host
 
@@ -369,7 +382,7 @@ BUILD_SHA=$(git rev-parse --short HEAD) docker compose -f docker/docker-compose.
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer. CI's `build.yml` sets the same arg from `${{ github.sha }}`'s short form on every build.
+The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer. CI's `build.yml` sets the same arg from the commit's short SHA on every build, and passes `BUN_VERSION` from `.bun-version`.
 
 ### Tailing logs
 

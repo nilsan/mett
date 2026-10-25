@@ -2,33 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
+import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
+import { escapeHtml } from '../shared/html.js';
 import { sortCensusOrder, playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
 import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
-import { getAdvanceRequirement, advancesOfTier, renderAgeRequirementsList, type AstRequirement } from '../models/ast.js';
+import { AST_LEVELS, boardLevels, getAgeBands, civBandClass, astNodeTitle, getAdvanceRequirement, advancesOfTier, renderAgeRequirementsList, type AstRequirement } from '../models/ast.js';
 
 
 function getCivAgeBands(civNumber: number, expert: boolean) {
-  const { stoneEnd, ebaEnd } = getCivAstProfile(civNumber, expert);
-  // stoneSpan: Stone Age columns after Start (levels 5 to stoneEnd, step 5)
-  const stoneSpan = stoneEnd / 5;              // 20→4 or 25→5
-  // ebaSpan: EBA columns (from stoneEnd+5 to ebaEnd)
-  const ebaSpan   = (ebaEnd - stoneEnd) / 5;  // varies per group
-  // mbaSpan: MBA columns (from ebaEnd+5 to 50, always ends at 50)
-  const mbaSpan   = (50 - ebaEnd) / 5;
-  // EIA = 1 column (level 70) in both modes; LIA = 1 (basic) or 2 (expert)
-  const liaSpan   = expert ? 2 : 1;
-  return [
-    { label: '',          span: 1,        cls: 'age-start'   },
-    { label: 'Stone Age',         span: stoneSpan, cls: 'age-stone'   },
-    { label: 'Early Bronze Age',  span: ebaSpan,   cls: 'age-ebronze' },
-    { label: 'Middle Bronze Age', span: mbaSpan,   cls: 'age-mbronze' },
-    { label: 'Late Bronze Age',   span: 3,         cls: 'age-lbronze' },
-    { label: 'Early Iron Age',    span: 1,         cls: 'age-eiron'   },
-    { label: 'Late Iron Age',     span: liaSpan,   cls: 'age-liron'   },
-  ];
+  // Column span per age = how many of this civ's board squares fall in it
+  // (slow/late-start civs shift the Stone/EBA boundaries).
+  const levels = boardLevels(expert);
+  return getAgeBands(expert).map(b => ({
+    label: b.cls === 'age-start' ? '' : b.name,
+    span: levels.filter(l => civBandClass(civNumber, l, expert) === b.cls).length,
+    cls: b.cls,
+  }));
 }
 
 // ─── Requirement-row rendering ───────────────────────────────────────────────
@@ -103,9 +94,9 @@ function buildRequirementRows(
   return rows;
 }
 
-function astBar(levels: AstLevelRow[], currentLevel: number, expert: boolean, civNumber: number): string {
+function astBar(currentLevel: number, expert: boolean, civNumber: number): string {
   // Basic mode stops at 75 — level 80 is unreachable and not shown
-  if (!expert) levels = levels.filter(l => l.level <= 75);
+  const levels = boardLevels(expert);
   const N = levels.length;
 
   const labelDivs = getCivAgeBands(civNumber, expert).map(b =>
@@ -113,10 +104,10 @@ function astBar(levels: AstLevelRow[], currentLevel: number, expert: boolean, ci
   ).join('');
 
   const nodeDivs = levels.map(l => {
-    const active = l.level === currentLevel;
-    const past = l.level < currentLevel;
+    const active = l === currentLevel;
+    const past = l < currentLevel;
     const cls = active ? 'ast-node active' : past ? 'ast-node past' : 'ast-node future';
-    return `<div class="${cls}" title="${l.era}: ${expert ? l.expert_req : l.basic_req}">${l.level === 0 ? 'S' : l.level}</div>`;
+    return `<div class="${cls}" title="${astNodeTitle(l, expert)}">${l === 0 ? 'S' : l}</div>`;
   }).join('');
 
   return `<div class="ast-bar-wrap">
@@ -144,14 +135,13 @@ export function renderCivFragment(
   const citiesPhase = game.cities_phase === 1;
   const moved = !!census?.moved;
 
-  const levels = state.astLevels;
-  const currentLevelIdx = levels.findIndex(l => l.level === player.ast_level);
-  const nextLevel = levels[currentLevelIdx + 1] ?? null;
+  const currentLevelIdx = AST_LEVELS.indexOf(player.ast_level);
+  const nextLevel = AST_LEVELS[currentLevelIdx + 1] ?? null;
   const { stoneEnd } = getCivAstProfile(player.civ_number, expert);
 
   // Structured advance requirement from model (null = no requirement / already at max)
-  const advReq: AstRequirement | null = nextLevel
-    ? getAdvanceRequirement(player, levels, expert)
+  const advReq: AstRequirement | null = nextLevel !== null
+    ? getAdvanceRequirement(player, expert)
     : null;
 
   const regionLabel = player.region === 'west' ? 'West block' : 'East block';
@@ -199,7 +189,7 @@ export function renderCivFragment(
   <div class="civ-hero">
     <div class="civ-hero-content">
       <span class="civ-region-tag">${regionLabel}</span>
-      <h2>${player.civ_name} <span class="civ-player-name">${player.name}</span></h2>
+      <h2>${player.civ_name} <span class="civ-player-name">${escapeHtml(player.name)}</span></h2>
     </div>
   </div>
 
@@ -309,7 +299,7 @@ export function renderCivFragment(
         <span class="ast-level-value">${playerTotalVp(player, game.active ? null : census?.city_count)}</span>
       </div>
       ${player.late_iron_age_bonus ? `<div class="ast-current lia-bonus-row"><span class="ast-level-label">LIA bonus:</span> <span class="lia-bonus-chip">★ +5 VP at game end</span></div>` : ''}
-      ${nextLevel ? (() => {
+      ${nextLevel !== null ? (() => {
         // Fall back to the previous round's count so the city requirement is
         // coloured green/red (never a white "not yet submitted"), consistent
         // with the all-ages legend below — the cities on the board don't vanish
@@ -320,9 +310,9 @@ export function renderCivFragment(
 
         // Regression: expert mode, 0 effective cities, outside Stone Age
         if (expert && effectiveCities === 0 && !inStoneAge && currentLevelIdx > 0) {
-          const regressLevel = levels[currentLevelIdx - 1]?.level ?? 0;
+          const regressLevel = AST_LEVELS[currentLevelIdx - 1] ?? 0;
           return `<div class="ast-next req-not-met">
-            <h4>To advance to ${nextLevel.level}:</h4>
+            <h4>To advance to ${nextLevel}:</h4>
             <p class="ast-warn-regress">⚠ 0 cities — will regress to ${regressLevel} next round</p>
           </div>`;
         }
@@ -335,7 +325,7 @@ export function renderCivFragment(
           ? `<div class="ast-req-status">${rows.map(reqRowHtml).join('')}</div>`
           : `<p class="ast-req-text">None</p>`;
         return `<div class="ast-next${borderClass}">
-          <h4>To advance to ${nextLevel.level}:</h4>
+          <h4>To advance to ${nextLevel}:</h4>
           ${body}
         </div>`;
       })() : (() => {
@@ -344,7 +334,7 @@ export function renderCivFragment(
         if (finalRank === 3) return '<p class="ast-complete">🥉 Bronze!</p>';
         return '<p class="ast-complete">Maximum A.S.T. position reached!</p>';
       })()}
-      ${astBar(levels, player.ast_level, expert, player.civ_number)}
+      ${astBar(player.ast_level, expert, player.civ_number)}
       <ul class="ab-legend ast-req-legend">${renderAgeRequirementsList(player, census?.city_count ?? prevCensus?.city_count ?? null, expert)}</ul>
     </section>
 

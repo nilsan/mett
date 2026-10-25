@@ -11,6 +11,8 @@ declare function showToast(msg: string): void;
 
 interface Window {
   PLAYER_ID?: number;
+  /** Set by main.js on the status page: request ping-only WS frames. */
+  METT_WS_PING?: boolean;
   CURRENT_ROUND?: number;
   ALL_CIVS?: Array<{
     id: number;
@@ -18,6 +20,6 @@ interface Window {
     name: string;
     color: string;
     text: string;
-    defRegion: string;
+    defRegion: 'west' | 'east';
   }>;
 }

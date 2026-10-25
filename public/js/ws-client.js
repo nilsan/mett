@@ -46,6 +46,9 @@
   }
 
   function connect() {
+    // Never stack sockets: a pending reconnect timer and a manual reconnect()
+    // call would otherwise each open one.
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws`);
 
@@ -56,17 +59,24 @@
       // Tell the server which civ page we're on so per-player broadcasts can
       // route past unrelated civ sockets. Non-civ pages (main, admin, login)
       // leave PLAYER_ID undefined; the server's playerId stays null and they
-      // receive every broadcast (the default behaviour).
+      // receive every broadcast (the default behaviour). Pages that only
+      // re-fetch HTML on change (METT_WS_PING, the status page) ask for
+      // lightweight `state_changed` frames instead of the full state.
       const myId = window.PLAYER_ID != null ? Number(window.PLAYER_ID) : null;
-      if (myId !== null) {
-        try { ws.send(JSON.stringify({ type: 'identify', playerId: myId })); } catch {}
+      const ping = window.METT_WS_PING === true;
+      if (myId !== null || ping) {
+        try { ws.send(JSON.stringify({ type: 'identify', playerId: myId, ping })); } catch {}
       }
     });
 
     ws.addEventListener('message', (event) => {
       let msg;
       try { msg = JSON.parse(event.data); } catch { return; }
-      if (msg.type === 'state_update') {
+      if (msg.type === 'state_changed') {
+        // Ping-only client: no payload, just re-fetch.
+        window.dispatchEvent(new CustomEvent('mett:state'));
+        window.dispatchEvent(new CustomEvent('mett:my-state'));
+      } else if (msg.type === 'state_update') {
         const targetPlayerId = msg.data?.targetPlayerId ?? null;
         window.dispatchEvent(new CustomEvent('mett:state', { detail: msg.data }));
         // mett:my-state: only fires when relevant to this player page (or for global events)

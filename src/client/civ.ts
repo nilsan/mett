@@ -14,10 +14,11 @@
  * server and client are guaranteed to use identical rules.
  */
 
-import type { FullState, PlayerRow, AstLevelRow } from '../types.js';
+import type { FullState, PlayerRow } from '../types.js';
 import { playerTotalVp, makeScoreEntry, compareScores, sameScoreGroup, sortCensusOrder, ordinal } from '../shared/scoring.js';
-import { advancesOfTier, getAdvanceRequirement, renderAgeRequirementsList, type AstRequirement } from '../shared/ast-pure.js';
+import { AST_LEVELS, boardLevels, astNodeTitle, advancesOfTier, getAdvanceRequirement, renderAgeRequirementsList, type AstRequirement } from '../shared/ast-pure.js';
 import { getCivAstProfile } from '../civs.js';
+import { escapeHtml } from '../shared/html.js';
 
 const civEl = document.getElementById('civ-content');
 if (civEl) {
@@ -440,13 +441,12 @@ if (civEl) {
       ? `<div class="ast-current lia-bonus-row"><span class="ast-level-label">LIA bonus:</span> <span class="lia-bonus-chip">★ +5 VP at game end</span></div>`
       : '';
 
-    const levels = state.astLevels ?? [];
-    const curIdx = levels.findIndex(l => l.level === player.ast_level);
-    const nextLevel = curIdx >= 0 ? levels[curIdx + 1] : null;
+    const curIdx = AST_LEVELS.indexOf(player.ast_level);
+    const nextLevel = curIdx >= 0 ? AST_LEVELS[curIdx + 1] ?? null : null;
     const stoneEnd = getCivAstProfile(player.civ_number, expert).stoneEnd;
 
     let middle = '';
-    if (nextLevel) {
+    if (nextLevel !== null) {
       // Use the last-known city count (this round's, else previous round's) so
       // the city requirement is coloured green/red — never a white "not yet
       // submitted" — matching the all-ages legend below.
@@ -455,14 +455,14 @@ if (civEl) {
         : null;
       const inStoneAge = player.ast_level <= stoneEnd;
       if (expert && effectiveCities === 0 && !inStoneAge && curIdx > 0) {
-        const regressLevel = levels[curIdx - 1]?.level ?? 0;
+        const regressLevel = AST_LEVELS[curIdx - 1] ?? 0;
         middle = `<div class="ast-next req-not-met">
-          <h4>To advance to ${nextLevel.level}:</h4>
+          <h4>To advance to ${nextLevel}:</h4>
           <p class="ast-warn-regress">⚠ 0 cities — will regress to ${regressLevel} next round</p>
         </div>`;
       } else {
-        const advReq = getAdvanceRequirement(player, levels, expert);
-        middle = renderRequirementBlock(player, { city_count: legendCityCount }, advReq, effectiveCities, nextLevel.level);
+        const advReq = getAdvanceRequirement(player, expert);
+        middle = renderRequirementBlock(player, { city_count: legendCityCount }, advReq, effectiveCities, nextLevel);
       }
     } else {
       if (finalRank === 1) middle = '<p class="ast-complete">🥇 Gold!</p>';
@@ -471,7 +471,7 @@ if (civEl) {
       else middle = '<p class="ast-complete">Maximum A.S.T. position reached!</p>';
     }
 
-    const bar = renderAstBar(levels, player.ast_level, expert);
+    const bar = renderAstBar(player.ast_level, expert);
 
     return `
       <div class="ast-current">
@@ -556,16 +556,15 @@ if (civEl) {
     </div>`;
   }
 
-  function renderAstBar(levels: AstLevelRow[], currentLevel: number, expert: boolean): string {
-    const filtered = expert ? levels : levels.filter(l => l.level <= 75);
+  function renderAstBar(currentLevel: number, expert: boolean): string {
+    const filtered = boardLevels(expert);
     const N = filtered.length;
     const nodes = filtered.map(l => {
-      const cls = l.level === currentLevel ? 'ast-node active'
-        : l.level < currentLevel ? 'ast-node past'
+      const cls = l === currentLevel ? 'ast-node active'
+        : l < currentLevel ? 'ast-node past'
         : 'ast-node future';
-      const label = l.level === 0 ? 'S' : l.level;
-      const req = expert ? l.expert_req : l.basic_req;
-      return `<div class="${cls}" title="${escapeHtml(l.era)}: ${escapeHtml(req ?? '')}">${label}</div>`;
+      const label = l === 0 ? 'S' : l;
+      return `<div class="${cls}" title="${astNodeTitle(l, expert)}">${label}</div>`;
     }).join('');
     const existing = document.querySelector('.ast-bar-wrap .ast-progress-grid');
     if (existing) {
@@ -577,9 +576,5 @@ if (civEl) {
       return `<div class="ast-bar-wrap"><div class="ast-progress-grid" style="grid-template-columns:${cols}">${labels}${nodes}</div></div>`;
     }
     return `<div class="ast-bar-wrap"><div class="ast-progress-grid" style="grid-template-columns:repeat(${N},minmax(0,1fr))">${nodes}</div></div>`;
-  }
-
-  function escapeHtml(s: string): string {
-    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
   }
 }

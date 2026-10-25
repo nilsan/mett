@@ -1,8 +1,9 @@
 ---
 # Single-instance compose for me[tt]. Pulls the upstream image from
 # ghcr.io (built + pushed by .github/workflows/build.yml on every
-# push to main), or builds locally with `docker compose build` for
-# development. Pin a specific upstream version with METT_VERSION:
+# push to main that passes the test suite), or builds locally with
+# `docker compose build` for development. Pin a specific upstream
+# version (tags come from package.json) with METT_VERSION:
 #
 #   docker compose pull
 #   docker compose up -d
@@ -44,8 +45,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
+    # The mett image's HEALTHCHECK polls /healthz; start Caddy once it passes.
     depends_on:
-      - mett
+      mett:
+        condition: service_healthy
 
 volumes:
   mett_data:

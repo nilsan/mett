@@ -2,7 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import { test as base, expect, type Page, type WebSocket } from '@playwright/test';
+import { test as base, expect, type APIRequestContext, type Page, type WebSocket } from '@playwright/test';
+
+/** Log a request context in as admin. The session cookie lands in that
+ *  context's cookie jar, so later calls through it are authenticated — for
+ *  `page.context().request` that includes the browser page itself. */
+export async function adminLogin(request: APIRequestContext): Promise<void> {
+  const res = await request.post('/login', { form: { password: 'PASSWORD' }, maxRedirects: 0 });
+  if (res.status() !== 302 || res.headers()['location'] !== '/admin') {
+    throw new Error(`admin login failed: ${res.status()} → ${res.headers()['location']}`);
+  }
+}
 
 // Every browser test runs against a freshly-seeded 18-player Expert game on the
 // dedicated :3100 test instance (see playwright.config.ts). Seeding per-test
@@ -11,10 +21,10 @@ import { test as base, expect, type Page, type WebSocket } from '@playwright/tes
 export const test = base.extend<{ autoSeed: void }>({
   autoSeed: [async ({ request }, use) => {
     // /api/debug/simulate resets + starts the game and adds the 18-player
-    // scenario (always includes Minoa, civ #1). It's an admin POST; the
-    // mett_admin cookie value is the plaintext password (default 'PASSWORD').
+    // scenario (always includes Minoa, civ #1). It's an admin POST, so log the
+    // test's request context in first (default password 'PASSWORD').
+    await adminLogin(request);
     const res = await request.post('/api/debug/simulate', {
-      headers: { cookie: 'mett_admin=PASSWORD' },
       data: { expert: 1, player_count: 18, rounds: 6 },
     });
     if (!res.ok()) {

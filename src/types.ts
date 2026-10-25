@@ -25,7 +25,6 @@ export interface GameRow {
   census_revealed: number;
   is_final_round: number;
   cities_phase: number;
-  admin_password: string | null;
   started_at: string | null;
 }
 
@@ -61,15 +60,6 @@ export interface CensusRow {
   city_count: number | null;
   moved: number;
   submitted_at: string | null;
-}
-
-export interface AstLevelRow {
-  level: number;
-  era: string;
-  basic_req: string | null;
-  expert_req: string | null;
-  basic_req_json: string | null;
-  expert_req_json: string | null;
 }
 
 export type AstStatus = 'advance' | 'stay' | 'regress' | 'unknown';
@@ -129,7 +119,6 @@ export interface FullState {
   /** Previous round's census — lets clients fall back to the last known city
    *  count (the cities actually on the board) before this round's count is in. */
   prevCensus: CensusRow[];
-  astLevels: AstLevelRow[];
   /** Per-player next-AST prediction. Keyed by player id; computed once in
    *  getFullState so render paths and the WS broadcast both read the same map. */
   astStatus: Record<number, AstStatus>;

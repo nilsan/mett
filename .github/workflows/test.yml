@@ -1,14 +1,18 @@
----
 name: test
 
 # yamllint thinks bare `on:` is a YAML 1.1 boolean; quote it to silence.
+# Pushes to main run this via build.yml (workflow_call), which only publishes
+# the image once every job here has passed.
 "on":
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
-# Cancel any in-flight run for the same ref when a new push lands.
+permissions:
+  contents: read
+
+# Cancel any in-flight run for the same ref when a new push lands. The group
+# name must differ from build.yml's, which calls this workflow.
 concurrency:
   group: test-${{ github.ref }}
   cancel-in-progress: true
@@ -19,11 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.3.11'
+          bun-version-file: .bun-version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -36,11 +40,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.3.11'
+          bun-version-file: .bun-version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -48,23 +52,42 @@ jobs:
       - name: Type-check
         run: bunx tsc --noEmit
 
-  yamllint:
-    name: yamllint
+  browser:
+    name: playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: bun run test:browser
+
+  lint:
+    name: yamllint, hadolint, shellcheck
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
+
       - name: Install yamllint
         run: pip install --quiet yamllint
+
       - name: Lint YAML files
         run: yamllint .github/workflows/ docker/docker-compose.yml
 
-  hadolint:
-    name: hadolint
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v5
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: docker/Dockerfile
+
+      - name: Lint shell scripts
+        run: shellcheck docker/entrypoint.sh

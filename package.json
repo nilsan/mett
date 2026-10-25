@@ -1,6 +1,6 @@
 {
   "name": "mett",
-  "version": "0.17.2",
+  "version": "0.18.0",
   "description": "Mega Empires Turn Tracker — real-time census, leaderboard and A.S.T. tracking",
   "module": "src/index.ts",
   "type": "module",
@@ -9,20 +9,22 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "test": "bun test tests/api.test.ts tests/ast.test.ts tests/auth.test.ts tests/client-build.test.ts tests/game.test.ts tests/password.test.ts tests/ws.test.ts",
+    "test": "bun test tests/*.test.ts",
     "test:browser": "playwright test",
     "screenshots": "bun run scripts/screenshots.ts",
-    "build:client": "bun build src/client/civ.ts --outfile public/js/civ.js --format iife --target browser"
+    "build:client": "bun build src/client/civ.ts --outfile public/js/civ.js --format iife --target browser && bun build src/client/admin.ts --outfile public/js/admin.js --format iife --target browser"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
-    "@types/bun": "latest",
-    "playwright": "^1.59.1"
+    "@playwright/test": "^1.64.1",
+    "@types/bun": "^1.4.4",
+    "playwright": "^1.64.1"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "hono": "^4.12.10"
+    "@picocss/pico": "2.1.1",
+    "hono": "^4.13.14",
+    "htmx.org": "2.0.11"
   }
 }

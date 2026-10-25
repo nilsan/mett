@@ -2,21 +2,23 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import { Hono } from 'hono';
+import { Hono, type Context, type Next } from 'hono';
 import { serveStatic } from 'hono/bun';
+import { etag } from 'hono/etag';
 import { mkdirSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
 import api from './routes/api.js';
 import pages from './routes/pages.js';
-import { addClient, removeClient, broadcastState, sendInitialState, identifyClient, type WsData } from './ws.js';
+import { addClient, removeClient, sendInitialState, identifyClient } from './ws.js';
 import { getDb } from './db.js';
 import { DB_PATH } from './services/db.js';
 
 // Ensure data directory exists alongside the DB file the service will open.
 mkdirSync(dirname(DB_PATH), { recursive: true });
 
-// Write PID file for easy process management
-writeFileSync('.pid', String(process.pid));
+// Write PID file for local dev process management. Skipped in production: the
+// container runs as an unprivileged user that can't write to /app.
+if (process.env.NODE_ENV !== 'production') writeFileSync('.pid', String(process.pid));
 
 // Initialise DB (runs schema)
 getDb();
@@ -27,7 +29,7 @@ const app = new Hono();
 // asset paths so the log isn't drowned in /css/ + /js/ noise.
 app.use('*', async (c, next) => {
   const path = c.req.path;
-  if (path.startsWith('/css/') || path.startsWith('/js/')) return next();
+  if (path.startsWith('/css/') || path.startsWith('/js/') || path.startsWith('/vendor/') || path === '/healthz') return next();
   const start = Date.now();
   await next();
   const ms = Date.now() - start;
@@ -36,11 +38,23 @@ app.use('*', async (c, next) => {
   console.log(`${new Date().toISOString()} ${c.req.method.padEnd(4)} ${path} ${status} ${ms}ms`);
 });
 
-// Static files — no-store so browsers always fetch fresh after server-side changes
-app.use('/css/*', async (c, next) => { await next(); c.res.headers.set('Cache-Control', 'no-store'); });
-app.use('/js/*', async (c, next) => { await next(); c.res.headers.set('Cache-Control', 'no-store'); });
+// Static files — ETag + no-cache: browsers keep a copy but revalidate on every
+// load, so an edited file is picked up immediately (dev, deploys) while an
+// unchanged one costs only a 304.
+const revalidate = async (c: Context, next: Next) => { await next(); c.res.headers.set('Cache-Control', 'no-cache'); };
+for (const prefix of ['/css/*', '/js/*', '/vendor/*']) app.use(prefix, revalidate, etag());
 app.use('/css/*', serveStatic({ root: './public' }));
 app.use('/js/*', serveStatic({ root: './public' }));
+// Third-party front-end libraries, served from node_modules so their versions
+// live in package.json/bun.lock (audited, updatable) and the app needs no CDN.
+app.get('/vendor/htmx.min.js', serveStatic({ path: './node_modules/htmx.org/dist/htmx.min.js' }));
+app.get('/vendor/pico.min.css', serveStatic({ path: './node_modules/@picocss/pico/css/pico.min.css' }));
+
+// Liveness probe for the container HEALTHCHECK — also proves the DB answers.
+app.get('/healthz', (c) => {
+  getDb().query('SELECT 1').get();
+  return c.text('ok');
+});
 
 // API routes
 app.route('/api', api);
@@ -77,7 +91,7 @@ const server = Bun.serve({
     // Upgrade WebSocket connections
     if (req.headers.get('upgrade') === 'websocket') {
       const id = crypto.randomUUID();
-      const upgraded = server.upgrade(req, { data: { id, playerId: null } } as never);
+      const upgraded = server.upgrade(req, { data: { id, playerId: null, pingOnly: false } } as never);
       if (upgraded) return undefined;
       return new Response('WebSocket upgrade failed', { status: 500 });
     }
@@ -89,13 +103,13 @@ const server = Bun.serve({
       sendInitialState(ws as any);
     },
     message(ws, msg) {
-      // The only client message we accept is `{type:'identify',playerId}` —
-      // sent by ws-client.js on civ pages so per-player broadcasts can route
-      // past unrelated civ sockets.
+      // The only client message we accept is `{type:'identify',playerId,ping}`
+      // — sent by ws-client.js so per-player broadcasts can route past
+      // unrelated civ sockets, and the status page gets ping frames only.
       try {
         const parsed = typeof msg === 'string' ? JSON.parse(msg) : null;
         if (parsed?.type === 'identify') {
-          identifyClient(ws as any, typeof parsed.playerId === 'number' ? parsed.playerId : null);
+          identifyClient(ws as any, typeof parsed.playerId === 'number' ? parsed.playerId : null, parsed.ping === true);
         }
       } catch {
         // Ignore malformed payloads — clients are otherwise receive-only.

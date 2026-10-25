@@ -69,24 +69,122 @@
   }
 
   // src/shared/ast-pure.ts
+  var AST_LEVELS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
+  function maxAstLevel(expert) {
+    return expert ? 80 : 75;
+  }
+  function boardLevels(expert) {
+    return AST_LEVELS.filter((l) => l <= maxAstLevel(expert));
+  }
+  var AGE_TABLE = [
+    {
+      name: "Start",
+      shortName: "",
+      levels: [0],
+      cls: "age-start",
+      req: { expert: null, basic: null }
+    },
+    {
+      name: "Stone Age",
+      shortName: "S.A.",
+      levels: [5, 10, 15, 20],
+      cls: "age-stone",
+      req: { expert: null, basic: null }
+    },
+    {
+      name: "Early Bronze Age",
+      shortName: "E.B.",
+      levels: [25, 30, 35],
+      cls: "age-ebronze",
+      req: {
+        expert: { cities: 3 },
+        basic: { cities: 2 }
+      }
+    },
+    {
+      name: "Middle Bronze Age",
+      shortName: "M.B.",
+      levels: [40, 45, 50],
+      cls: "age-mbronze",
+      req: {
+        expert: { cities: 3, advVpTotal: 5 },
+        basic: { cities: 3, advCount: 3, advTier: "any" }
+      }
+    },
+    {
+      name: "Late Bronze Age",
+      shortName: "L.B.",
+      levels: [55, 60, 65],
+      cls: "age-lbronze",
+      req: {
+        expert: { cities: 4, advCount: 12, advTier: "any" },
+        basic: { cities: 3, advCount: 3, advTier: "medium" }
+      }
+    },
+    {
+      name: "Early Iron Age",
+      shortName: "E.I.",
+      levels: [70],
+      cls: "age-eiron",
+      req: {
+        expert: { cities: 5, advCount: 10, advTier: "cheap", totalVp: 38 },
+        basic: { cities: 4, advCount: 2, advTier: "expensive" }
+      }
+    },
+    {
+      name: "Late Iron Age",
+      shortName: "L.I.",
+      levels: [75, 80],
+      cls: "age-liron",
+      req: {
+        expert: { cities: 6, advCount: 17, advTier: "cheap", totalVp: 56 },
+        basic: { cities: 5, advCount: 3, advTier: "expensive" }
+      }
+    }
+  ];
+  function ageOfLevel(level) {
+    return AGE_TABLE.find((b) => b.levels.includes(level)) ?? AGE_TABLE[AGE_TABLE.length - 1];
+  }
+  function requirementFor(level, expert) {
+    const next = level + 5;
+    if (next > maxAstLevel(expert))
+      return { cities: 0, impossible: true };
+    return ageOfLevel(next).req[expert ? "expert" : "basic"];
+  }
+  var TIER_LABEL = {
+    any: (n) => `${n} Advances`,
+    medium: (n) => `${n} Adv ≥100`,
+    expensive: (n) => `${n} Adv ≥200`,
+    cheap: (n) => `${n} Adv ≤100`
+  };
+  function requirementParts(req) {
+    if (!req || req.impossible)
+      return [];
+    const parts = [];
+    if (req.cities > 0)
+      parts.push({ type: "cities", n: req.cities, label: `${req.cities} Cities` });
+    if (req.advVpTotal !== undefined)
+      parts.push({ type: "vp", n: req.advVpTotal, label: `${req.advVpTotal} VP in Advances` });
+    if (req.advCount !== undefined) {
+      const tier = req.advTier ?? "any";
+      parts.push({ type: "adv", n: req.advCount, tier, label: TIER_LABEL[tier](req.advCount) });
+    }
+    if (req.totalVp !== undefined)
+      parts.push({ type: "vp", n: req.totalVp, label: `${req.totalVp} VP` });
+    return parts;
+  }
+  function describeRequirement(req) {
+    if (req?.impossible)
+      return "N/A";
+    const parts = requirementParts(req);
+    return parts.length ? parts.map((p) => p.label).join(" + ") : "No requirements";
+  }
+  function astNodeTitle(level, expert) {
+    const band = ageOfLevel(level);
+    return level === 0 ? band.name : `${band.name}: ${describeRequirement(band.req[expert ? "expert" : "basic"])}`;
+  }
   function ageRequirements(expert) {
-    if (expert)
-      return [
-        { cls: "age-stone", name: "Stone Age", parts: [] },
-        { cls: "age-ebronze", name: "Early Bronze Age", parts: [{ type: "cities", n: 3, label: "3 Cities" }] },
-        { cls: "age-mbronze", name: "Middle Bronze Age", parts: [{ type: "cities", n: 3, label: "3 Cities" }, { type: "vp", n: 5, label: "5 VP in Advances" }] },
-        { cls: "age-lbronze", name: "Late Bronze Age", parts: [{ type: "cities", n: 4, label: "4 Cities" }, { type: "adv", n: 12, tier: "any", label: "12 Advances" }] },
-        { cls: "age-eiron", name: "Early Iron Age", parts: [{ type: "cities", n: 5, label: "5 Cities" }, { type: "adv", n: 10, tier: "cheap", label: "10 Adv ≤100" }, { type: "vp", n: 38, label: "38 VP" }] },
-        { cls: "age-liron", name: "Late Iron Age", parts: [{ type: "cities", n: 6, label: "6 Cities" }, { type: "adv", n: 17, tier: "cheap", label: "17 Adv ≤100" }, { type: "vp", n: 56, label: "56 VP" }] }
-      ];
-    return [
-      { cls: "age-stone", name: "Stone Age", parts: [] },
-      { cls: "age-ebronze", name: "Early Bronze Age", parts: [{ type: "cities", n: 2, label: "2 Cities" }] },
-      { cls: "age-mbronze", name: "Middle Bronze Age", parts: [{ type: "cities", n: 3, label: "3 Cities" }, { type: "adv", n: 3, tier: "any", label: "3 Advances" }] },
-      { cls: "age-lbronze", name: "Late Bronze Age", parts: [{ type: "cities", n: 3, label: "3 Cities" }, { type: "adv", n: 3, tier: "medium", label: "3 Adv ≥100" }] },
-      { cls: "age-eiron", name: "Early Iron Age", parts: [{ type: "cities", n: 4, label: "4 Cities" }, { type: "adv", n: 2, tier: "expensive", label: "2 Adv ≥200" }] },
-      { cls: "age-liron", name: "Late Iron Age", parts: [{ type: "cities", n: 5, label: "5 Cities" }, { type: "adv", n: 3, tier: "expensive", label: "3 Adv ≥200" }] }
-    ];
+    return AGE_TABLE.filter((b) => b.cls !== "age-start").map((b) => ({ cls: b.cls, name: b.name, parts: requirementParts(b.req[expert ? "expert" : "basic"]) }));
   }
   function renderAgeRequirementsList(player, cityCount, expert) {
     const effCities = cityCount == null ? null : cityCount + (player.wonder ? 1 : 0);
@@ -121,20 +219,21 @@
         return player.adv_1vp + player.adv_3vp + player.adv_6vp;
     }
   }
-  function getAdvanceRequirement(player, levels, expert) {
-    const curIdx = levels.findIndex((l) => l.level === player.ast_level);
-    if (curIdx < 0 || curIdx >= levels.length - 1)
+  function civRequirementFor(civNumber, level, expert) {
+    const { stoneEnd, ebaEnd } = getCivAstProfile(civNumber, expert);
+    if (stoneEnd > 20 && level < stoneEnd)
       return null;
-    const currentLevel = levels[curIdx];
-    const { stoneEnd, ebaEnd } = getCivAstProfile(player.civ_number, expert);
-    if (stoneEnd > 20 && currentLevel.level < stoneEnd)
-      return null;
-    if (!expert && (currentLevel.level === 35 || currentLevel.level === 40)) {
-      if (currentLevel.level < ebaEnd)
-        return { cities: 2 };
-    }
-    const reqJson = expert ? currentLevel.expert_req_json : currentLevel.basic_req_json;
-    return reqJson ? JSON.parse(reqJson) : null;
+    if (!expert && (level === 35 || level === 40) && level < ebaEnd)
+      return { cities: 2 };
+    return requirementFor(level, expert);
+  }
+  function getAdvanceRequirement(player, expert) {
+    return civRequirementFor(player.civ_number, player.ast_level, expert);
+  }
+
+  // src/shared/html.ts
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
 
   // src/client/civ.ts
@@ -498,23 +597,22 @@
       const lbValue = (lb.tied && !lb.resolved ? "=" : "") + lb.pos + ordinal(lb.pos);
       const totalVp = playerTotalVp(player, game.active ? null : cityCount);
       const lia = player.late_iron_age_bonus ? `<div class="ast-current lia-bonus-row"><span class="ast-level-label">LIA bonus:</span> <span class="lia-bonus-chip">★ +5 VP at game end</span></div>` : "";
-      const levels = state.astLevels ?? [];
-      const curIdx = levels.findIndex((l) => l.level === player.ast_level);
-      const nextLevel = curIdx >= 0 ? levels[curIdx + 1] : null;
+      const curIdx = AST_LEVELS.indexOf(player.ast_level);
+      const nextLevel = curIdx >= 0 ? AST_LEVELS[curIdx + 1] ?? null : null;
       const stoneEnd = getCivAstProfile(player.civ_number, expert).stoneEnd;
       let middle = "";
-      if (nextLevel) {
+      if (nextLevel !== null) {
         const effectiveCities = legendCityCount != null ? legendCityCount + (player.wonder ? 1 : 0) : null;
         const inStoneAge = player.ast_level <= stoneEnd;
         if (expert && effectiveCities === 0 && !inStoneAge && curIdx > 0) {
-          const regressLevel = levels[curIdx - 1]?.level ?? 0;
+          const regressLevel = AST_LEVELS[curIdx - 1] ?? 0;
           middle = `<div class="ast-next req-not-met">
-          <h4>To advance to ${nextLevel.level}:</h4>
+          <h4>To advance to ${nextLevel}:</h4>
           <p class="ast-warn-regress">⚠ 0 cities — will regress to ${regressLevel} next round</p>
         </div>`;
         } else {
-          const advReq = getAdvanceRequirement(player, levels, expert);
-          middle = renderRequirementBlock(player, { city_count: legendCityCount }, advReq, effectiveCities, nextLevel.level);
+          const advReq = getAdvanceRequirement(player, expert);
+          middle = renderRequirementBlock(player, { city_count: legendCityCount }, advReq, effectiveCities, nextLevel);
         }
       } else {
         if (finalRank === 1)
@@ -526,7 +624,7 @@
         else
           middle = '<p class="ast-complete">Maximum A.S.T. position reached!</p>';
       }
-      const bar = renderAstBar(levels, player.ast_level, expert);
+      const bar = renderAstBar(player.ast_level, expert);
       return `
       <div class="ast-current">
         <span class="ast-level-label">Leaderboard position:</span>
@@ -595,14 +693,13 @@
       <h4>To advance to ${nextLevelNum}:</h4>
       ${body}
     </div>`;
-    }, renderAstBar = function(levels, currentLevel, expert) {
-      const filtered = expert ? levels : levels.filter((l) => l.level <= 75);
+    }, renderAstBar = function(currentLevel, expert) {
+      const filtered = boardLevels(expert);
       const N = filtered.length;
       const nodes = filtered.map((l) => {
-        const cls = l.level === currentLevel ? "ast-node active" : l.level < currentLevel ? "ast-node past" : "ast-node future";
-        const label = l.level === 0 ? "S" : l.level;
-        const req = expert ? l.expert_req : l.basic_req;
-        return `<div class="${cls}" title="${escapeHtml(l.era)}: ${escapeHtml(req ?? "")}">${label}</div>`;
+        const cls = l === currentLevel ? "ast-node active" : l < currentLevel ? "ast-node past" : "ast-node future";
+        const label = l === 0 ? "S" : l;
+        return `<div class="${cls}" title="${astNodeTitle(l, expert)}">${label}</div>`;
       }).join("");
       const existing = document.querySelector(".ast-bar-wrap .ast-progress-grid");
       if (existing) {
@@ -611,8 +708,6 @@
         return `<div class="ast-bar-wrap"><div class="ast-progress-grid" style="grid-template-columns:${cols}">${labels}${nodes}</div></div>`;
       }
       return `<div class="ast-bar-wrap"><div class="ast-progress-grid" style="grid-template-columns:repeat(${N},minmax(0,1fr))">${nodes}</div></div>`;
-    }, escapeHtml = function(s) {
-      return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
     };
     const playerId = Number(civEl.dataset.playerId) || window.PLAYER_ID;
     bindCensus();

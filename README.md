@@ -69,7 +69,7 @@ METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml pull
 METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml up -d
 ```
 
-`:latest` (the default) tracks `main`; semver tags follow `1.2.3` / `1.2` / `1` once 1.0.0 ships. Game data lives at the `mett_data` named volume on the host.
+`:latest` (the default) tracks `main` and is only published after the full test suite passes. Every build is also tagged with its version (`0.18.0`, `0.18`; plus `1` from 1.0.0 on) and short commit SHA. Game data lives at the `mett_data` named volume on the host.
 
 **Multi-instance / multi-game on one host:** duplicate the `mett` service in `docker-compose.yml` under different names with separate volume mounts, and add a Caddyfile block per hostname. Each instance is fully independent — separate database, separate game.
 
@@ -177,7 +177,7 @@ Find your IP in network settings. On Mac: System Settings → Wi-Fi → Details.
 
 ## Contributing and development
 
-me[tt] is built with [Bun](https://bun.sh), [Hono](https://hono.dev) and vanilla JavaScript. If you want to run it locally without Docker, explore the architecture, or contribute, see [DEV.md](DEV.md) for setup instructions, the project layout, API reference and test guide.
+me[tt] is built with [Bun](https://bun.sh), [Hono](https://hono.dev), TypeScript and [htmx](https://htmx.org). If you want to run it locally without Docker, explore the architecture, or contribute, see [DEV.md](DEV.md) for setup instructions, the project layout, API reference and test guide.
 
 ---
 

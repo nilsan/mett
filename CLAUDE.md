@@ -41,7 +41,7 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
    ```bash
    bun run test:browser    # runs `playwright test` via the package script
    ```
-   Self-contained: Playwright starts its own me[tt] instance on :3100 with a throwaway DB (`data/mett-test.db`) and auto-seeds an 18-player game before each test. It does **not** use — or disturb — the `:3000` dev server.
+   Self-contained: Playwright starts its own me[tt] instance on :3100 with a throwaway DB (`data/mett-test.db`) and auto-seeds an 18-player game before each test. Admin calls log in through `POST /login` (`adminLogin()` in `tests/browser/fixtures.ts`) — the admin cookie is a session token, not the password. It does **not** use — or disturb — the `:3000` dev server.
 
 **Notes:**
 - Playwright auto-waits for selectors; explicit `time.sleep` is not needed (use `page.waitForLoadState("networkidle")` after navigation if you need a settle moment).
@@ -50,7 +50,7 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
 
 ## Tests
 
-**Always add tests when implementing new features.** New game logic goes in `tests/game.test.ts`; new AST requirement checks go in `tests/ast.test.ts`; auth/login changes go in `tests/auth.test.ts`; REST endpoint behaviour goes in `tests/api.test.ts`; WebSocket payload/routing changes go in `tests/ws.test.ts`; new browser/layout checks go in `tests/browser/*.spec.ts`. Shared schema/migration/AST-seed factories live in `tests/_helpers.ts`.
+**Always add tests when implementing new features.** New game logic goes in `tests/game.test.ts`; new AST requirement checks go in `tests/ast.test.ts`; auth/login changes go in `tests/auth.test.ts`; REST endpoint behaviour goes in `tests/api.test.ts`; WebSocket payload/routing changes go in `tests/ws.test.ts`; schema/migration changes go in `tests/db.test.ts`; new browser/layout checks go in `tests/browser/*.spec.ts`. In-memory DB factories (built by the production `initDb()`) live in `tests/_helpers.ts`.
 
 **Always run the full test suite before committing.**
 
@@ -59,9 +59,15 @@ bun run test            # unit + integration via bun test (tests/*.test.ts glob)
 bun run test:browser    # Playwright; self-managed instance on :3100 (does not touch :3000)
 ```
 
-`bun run test` runs `tests/ast.test.ts`, `tests/game.test.ts`, `tests/password.test.ts`, `tests/auth.test.ts`, `tests/api.test.ts`, `tests/ws.test.ts` and `tests/client-build.test.ts`. All must pass before any commit. The browser suite is separate and run on demand.
+`bun run test` runs every `tests/*.test.ts` file (new files are picked up automatically). All must pass before any commit. The browser suite is separate locally and also runs in CI.
 
-**Client bundle:** `public/js/civ.js` is a committed build artifact generated from `src/client/civ.ts`. After editing anything under `src/client/`, run `bun run build:client` and commit the regenerated bundle — `tests/client-build.test.ts` fails the suite if they drift.
+**Client bundles:** `public/js/civ.js` and `public/js/admin.js` are committed build artifacts generated from `src/client/civ.ts` and `src/client/admin.ts`. After editing anything under `src/client/` or `src/shared/`, run `bun run build:client` and commit the regenerated bundles — `tests/client-build.test.ts` fails the suite if they drift.
+
+**Single sources of truth:** A.S.T. rules live only in `AGE_TABLE` (`src/shared/ast-pure.ts`); civ reference data only in `CIVS` (`src/civs.ts`, upserted into the `civs` table at boot). Don't reintroduce copies in SQL, views or tests.
+
+**Schema changes:** edit `db/schema.sql` (current shape, `CREATE IF NOT EXISTS`) *and* append a migration to `MIGRATIONS` in `src/services/db.ts` for existing databases (tracked by `PRAGMA user_version`; never edit a shipped entry).
+
+**Bun version:** pinned once in `.bun-version` (CI + Docker); the Dockerfile's `ARG BUN_VERSION` default must match (tested).
 
 ## Task List & todo.md
 

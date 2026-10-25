@@ -18,7 +18,7 @@ export function layout(title: string, body: string, activeSlug?: string, headerB
   <meta property="og:title" content="${title === 'Mega Empires Turn Tracker' ? title : `${title} — Mega Empires Turn Tracker`}">
   <meta property="og:description" content="Real-time census, leaderboard and A.S.T. tracker for Mega Empires board game sessions.">
   <meta property="og:site_name" content="me[tt]">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/vendor/pico.min.css${V}">
   <link rel="stylesheet" href="/css/style.css${V}">
 </head>
 <body>
@@ -32,7 +32,7 @@ export function layout(title: string, body: string, activeSlug?: string, headerB
   <main class="container-fluid">
     ${body}
   </main>
-  <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+  <script src="/vendor/htmx.min.js${V}"></script>
   <script src="/js/toast.js${V}"></script>
   <script src="/js/api.js${V}"></script>
   <script src="/js/ws-client.js${V}"></script>

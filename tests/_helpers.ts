@@ -3,92 +3,30 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /**
- * Shared test helpers. Underscored filename keeps it out of the
- * `bun test tests/*.test.ts` glob — this file is library code, not a suite.
+ * Shared test helpers. Underscored filename keeps it out of `bun test`
+ * discovery — this file is library code, not a suite.
  *
- * Two factories:
- *   - makeDb()        full schema + migrations + AST seed + active game
- *   - makeMinimalDb() schema only (auth/password tests don't need players)
+ * Two factories, both built by the production initDb() (schema, migrations,
+ * civ seed, admin password) so tests never carry a copy of the schema:
+ *   - makeDb()        + an active basic game
+ *   - makeMinimalDb() no game started (auth/password tests don't need players)
  *
  * Plus primitive helpers used by tests/game.test.ts.
  */
 
 import { Database } from 'bun:sqlite';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { initDb } from '../src/services/db.js';
 
-// Schema text + migrations + AST requirement seeds — read once at module load.
-export const SCHEMA_SQL = readFileSync(join(import.meta.dir, '..', 'db', 'schema.sql'), 'utf8');
-
-export const MIGRATIONS: readonly string[] = [
-  'ALTER TABLE players ADD COLUMN rank_order INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE players ADD COLUMN adv_1vp INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE players ADD COLUMN adv_3vp INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE players ADD COLUMN adv_6vp INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE census ADD COLUMN city_count INTEGER',
-  'ALTER TABLE census ADD COLUMN moved INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE game ADD COLUMN is_final_round INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE players ADD COLUMN late_iron_age_bonus INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE players ADD COLUMN regressed INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE game ADD COLUMN cities_phase INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE game ADD COLUMN admin_password TEXT',
-  'ALTER TABLE players ADD COLUMN wonder INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE players ADD COLUMN special INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE ast_levels ADD COLUMN basic_req_json TEXT',
-  'ALTER TABLE ast_levels ADD COLUMN expert_req_json TEXT',
-];
-
-export const REQS: Record<number, { basic: object | null; expert: object | null }> = {
-  0:  { basic: null,                                                expert: null },
-  5:  { basic: null,                                                expert: null },
-  10: { basic: null,                                                expert: null },
-  15: { basic: null,                                                expert: null },
-  20: { basic: { cities: 2 },                                       expert: { cities: 3 } },
-  25: { basic: { cities: 2 },                                       expert: { cities: 3 } },
-  30: { basic: { cities: 2 },                                       expert: { cities: 3 } },
-  35: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
-  40: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
-  45: { basic: { cities: 3, advCount: 3, advTier: 'any' },          expert: { cities: 3, advVpTotal: 5 } },
-  50: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
-  55: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
-  60: { basic: { cities: 3, advCount: 3, advTier: 'medium' },       expert: { cities: 4, advCount: 12, advTier: 'any' } },
-  65: { basic: { cities: 4, advCount: 2, advTier: 'expensive' },    expert: { cities: 5, advCount: 10, advTier: 'cheap', totalVp: 38 } },
-  70: { basic: { cities: 5, advCount: 3, advTier: 'expensive' },    expert: { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 } },
-  75: { basic: { impossible: true },                                 expert: { cities: 6, advCount: 17, advTier: 'cheap', totalVp: 56 } },
-  80: { basic: { impossible: true },                                 expert: { impossible: true } },
-};
-
-// Stringify each row's JSON once.
-export const REQ_ROWS: ReadonlyArray<readonly [string | null, string | null, number]> = Object.entries(REQS).map(
-  ([lvl, { basic, expert }]) => [
-    basic  ? JSON.stringify(basic)  : null,
-    expert ? JSON.stringify(expert) : null,
-    parseInt(lvl, 10),
-  ] as const,
-);
-
-/** Schema-only test DB. For auth/password tests that don't need players. */
+/** Freshly initialised in-memory DB, no game started. */
 export function makeMinimalDb(): Database {
   const db = new Database(':memory:');
-  db.exec(SCHEMA_SQL);
+  initDb(db);
   return db;
 }
 
-/** Full test DB: schema + migrations + AST requirement seed + an active basic game. */
+/** Initialised in-memory DB with an active basic game. */
 export function makeDb(): Database {
-  const db = new Database(':memory:');
-  db.exec('PRAGMA foreign_keys=ON;');
-  db.exec(SCHEMA_SQL);
-
-  for (const sql of MIGRATIONS) {
-    try { db.exec(sql); } catch (e: any) {
-      if (!String(e?.message).includes('duplicate column name')) throw e;
-    }
-  }
-
-  const stmt = db.prepare('UPDATE ast_levels SET basic_req_json=?, expert_req_json=? WHERE level=?');
-  for (const [b, e, lvl] of REQ_ROWS) stmt.run(b, e, lvl);
-
+  const db = makeMinimalDb();
   db.exec("UPDATE game SET active=1, expert=0, current_round=1 WHERE id=1");
   return db;
 }

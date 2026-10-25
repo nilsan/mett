@@ -87,8 +87,8 @@ test.describe('civ page: round number stays in sync without reload', () => {
 
     // /debug/set-round changes current_round and broadcasts globally.
     const frame = nextStateFrame(ws);
+    // `request` was logged in as admin by the autoSeed fixture.
     const res = await request.post('/api/debug/set-round', {
-      headers: { cookie: 'mett_admin=PASSWORD' },
       data: { round: target },
     });
     expect(res.ok()).toBe(true);

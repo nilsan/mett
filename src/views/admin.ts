@@ -2,13 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import type { FullState, PlayerRow, AstLevelRow, CensusRow } from '../db.js';
+import type { FullState, CensusRow } from '../db.js';
 import type { CivRefRow, RoundSummary, RoundSummaryPlayer } from '../db.js';
 import { playerTotalVp, compareScores, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
 import { empireCell } from './empire.js';
 import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
-import { LIA_THRESHOLD } from '../models/ast.js';
+import { LIA_THRESHOLD, AST_LEVELS } from '../models/ast.js';
+import { escapeHtml } from '../shared/html.js';
 
 function summaryChip(p: RoundSummaryPlayer, levelSuffix = false): string {
   // Built directly (not via empireCell) so the level can live INSIDE the
@@ -225,8 +226,8 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
     const unresolved = meta.tied && !meta.resolved;
     const medal = MEDALS[meta.displayRank] ?? '';
     const star = p.late_iron_age_bonus
-      ? `<button class="lia-star-btn lia-star-on" data-player-id="${p.id}" data-granted="1" aria-label="Remove Late Iron Age bonus (5 VP) from ${p.name}" aria-pressed="true" title="Late Iron Age bonus (5VP) — click to remove"><span aria-hidden="true">★</span></button>`
-      : `<button class="lia-star-btn lia-star-off" data-player-id="${p.id}" data-granted="0" aria-label="Grant Late Iron Age bonus (5 VP) to ${p.name}" aria-pressed="false" title="Grant Late Iron Age bonus (5VP)"><span aria-hidden="true">★</span></button>`;
+      ? `<button class="lia-star-btn lia-star-on" data-player-id="${p.id}" data-granted="1" aria-label="Remove Late Iron Age bonus (5 VP) from ${escapeHtml(p.name)}" aria-pressed="true" title="Late Iron Age bonus (5VP) — click to remove"><span aria-hidden="true">★</span></button>`
+      : `<button class="lia-star-btn lia-star-off" data-player-id="${p.id}" data-granted="0" aria-label="Grant Late Iron Age bonus (5 VP) to ${escapeHtml(p.name)}" aria-pressed="false" title="Grant Late Iron Age bonus (5VP)"><span aria-hidden="true">★</span></button>`;
     let rankCell = '<td class="go-tie"></td>';
     if (meta.tied) {
       const groupKey = meta.groupPositions.join(',');
@@ -305,7 +306,6 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
 function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
-  const AST_LEVELS = state.astLevels.map(l => l.level);
   const isFinalRound = game.is_final_round === 1;
   const revealed = game.census_revealed === 1;
   const citiesPhase = game.cities_phase === 1; // false=pre-trade, true=post-calamity
@@ -356,7 +356,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
         ${empireCell(p, 'badge')}
       </td>
       <td data-label="Player">
-        <input type="text" class="player-name-input" value="${p.name}" data-player-id="${p.id}">
+        <input type="text" class="player-name-input" value="${escapeHtml(p.name)}" data-player-id="${p.id}">
       </td>
       <td data-label="Census">
         <div class="ast-ctrl">
@@ -380,15 +380,15 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
       <td data-label="Mil / Won / Spc">
         <div class="mil-won-cell">
           <button class="mil-toggle icon-toggle ${p.military ? 'mil-on' : 'mil-off'}" data-player-id="${p.id}"
-            aria-label="${p.military ? `Remove Military from ${p.name}` : `Grant Military to ${p.name}`}"
+            aria-label="${p.military ? `Remove Military from ${escapeHtml(p.name)}` : `Grant Military to ${escapeHtml(p.name)}`}"
             aria-pressed="${p.military ? 'true' : 'false'}"
             title="${p.military ? 'Has Military — click to remove' : 'No Military — click to grant'}"><span aria-hidden="true">⚔</span></button>
           <button class="won-toggle icon-toggle ${p.wonder ? 'won-on' : 'won-off'}" data-player-id="${p.id}"
-            aria-label="${p.wonder ? `Remove Wonder from ${p.name}` : `Grant Wonder to ${p.name}`}"
+            aria-label="${p.wonder ? `Remove Wonder from ${escapeHtml(p.name)}` : `Grant Wonder to ${escapeHtml(p.name)}`}"
             aria-pressed="${p.wonder ? 'true' : 'false'}"
             title="${p.wonder ? 'Has Wonder — click to remove' : 'No Wonder — click to grant'}"><span aria-hidden="true">★</span></button>
           <button class="spc-toggle icon-toggle ${p.special ? 'spc-on' : 'spc-off'}" data-player-id="${p.id}"
-            aria-label="${p.special ? `Remove special ability from ${p.name}` : `Grant special ability to ${p.name}`}"
+            aria-label="${p.special ? `Remove special ability from ${escapeHtml(p.name)}` : `Grant special ability to ${escapeHtml(p.name)}`}"
             aria-pressed="${p.special ? 'true' : 'false'}"
             title="${p.special ? 'Has special ability — click to remove' : 'No special ability — click to grant'}"><span aria-hidden="true">⚡</span></button>
         </div>
@@ -404,13 +404,13 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
       </td>
       <td data-label="Regress">
         <button class="regress-btn${p.regressed ? ' regress-active' : ''}" data-player-id="${p.id}"${p.ast_level === 0 ? ' disabled' : ''}
-          aria-label="Regress ${p.name} one A.S.T. step (calamity)"
+          aria-label="Regress ${escapeHtml(p.name)} one A.S.T. step (calamity)"
           title="${p.ast_level === 0 ? 'Already at Stone Age — cannot regress' : `Calamity: drop ${p.civ_name} one A.S.T. step`}"><span aria-hidden="true">▼</span></button>
       </td>
       <td data-label="★">
         ${p.ast_level >= LIA_THRESHOLD
           ? `<button class="lia-star-btn ${p.late_iron_age_bonus ? 'lia-star-on' : 'lia-star-off'}" data-player-id="${p.id}" data-granted="${p.late_iron_age_bonus ? '1' : '0'}"
-              aria-label="${p.late_iron_age_bonus ? `Remove Late Iron Age bonus (5 VP) from ${p.name}` : `Grant Late Iron Age bonus (5 VP) to ${p.name}`}"
+              aria-label="${p.late_iron_age_bonus ? `Remove Late Iron Age bonus (5 VP) from ${escapeHtml(p.name)}` : `Grant Late Iron Age bonus (5 VP) to ${escapeHtml(p.name)}`}"
               aria-pressed="${p.late_iron_age_bonus ? 'true' : 'false'}"
               title="${p.late_iron_age_bonus ? 'LIA bonus (5VP) — click to remove' : 'Grant LIA bonus (5VP)'}"><span aria-hidden="true">★</span></button>`
           : `<span class="lia-star-btn lia-star-ineligible" aria-hidden="true" title="Not yet in Late Iron Age">★</span>`

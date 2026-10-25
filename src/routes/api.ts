@@ -2,7 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import * as db from '../db.js';
 import { broadcastState } from '../ws.js';
 import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS } from '../civs.js';
@@ -11,6 +12,55 @@ import { isRegion } from '../types.js';
 import { AST_LEVELS, LIA_THRESHOLD, MAX_POPULATION, MAX_CITIES } from '../models/ast.js';
 
 const api = new Hono();
+
+// JSON errors for everything under /api — HTTPExceptions thrown by the
+// validation helpers below carry their status; anything else is a 500 that
+// never leaks a stack trace. Registered on the sub-app so it applies however
+// the router is mounted (index.ts, or the bare Hono apps in tests).
+api.onError((err, c) => {
+  if (err instanceof HTTPException) return c.json({ error: err.message }, err.status);
+  console.error(`${new Date().toISOString()} ERROR ${c.req.method} ${c.req.path}`);
+  console.error(err instanceof Error ? (err.stack ?? err.message) : err);
+  return c.json({ error: 'Internal server error' }, 500);
+});
+
+// ─── Request validation helpers ───────────────────────────────────────────────
+
+function badRequest(message: string): never {
+  throw new HTTPException(400, { message });
+}
+
+/** Parse the JSON body as an object; 400 on malformed or non-object input.
+ *  Fields are typed loosely on purpose — each handler validates what it uses. */
+async function readJson(c: Context): Promise<Record<string, unknown>> {
+  let body: unknown;
+  try { body = await c.req.json(); } catch { badRequest('Invalid JSON body'); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) badRequest('Expected a JSON object');
+  return body as Record<string, unknown>;
+}
+
+/** `:id` route param as an existing player id; 404 otherwise. */
+function playerParam(c: Context): number {
+  const id = Number(c.req.param('id'));
+  if (!Number.isInteger(id) || !db.playerExists(id)) throw new HTTPException(404, { message: 'Player not found' });
+  return id;
+}
+
+/** Current game row; 409 when no game is running. */
+function requireActiveGame() {
+  const game = db.getGame();
+  if (!game.active) throw new HTTPException(409, { message: 'No game in progress' });
+  return game;
+}
+
+function isNonNegInt(v: unknown): v is number {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0;
+}
+
+function expertFlag(v: unknown): 0 | 1 {
+  if (v === 0 || v === 1 || v === true || v === false) return v ? 1 : 0;
+  badRequest('expert must be 0 or 1');
+}
 
 // Player-facing POST endpoints — no auth required (players submit from their own civ page)
 const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv', '/move']);
@@ -42,36 +92,39 @@ api.get('/setup-recommendations', (c) => {
 });
 
 api.post('/game/start', async (c) => {
-  const body = await c.req.json<{
-    expert: number;
-    players: Array<{ civ_id: number; name: string; region: string }>;
-  }>();
-
-  if (!body.players?.length) {
+  const body = await readJson(c);
+  const expert = expertFlag(body.expert);
+  const players = body.players;
+  if (!Array.isArray(players) || !players.length) {
     return c.json({ error: 'At least one player required' }, 400);
   }
 
-  // Validate region values at the boundary so PlayerRow.region can rely on
-  // the 'west' | 'east' literal type everywhere downstream.
+  // Validate at the boundary so PlayerRow.region can rely on the
+  // 'west' | 'east' literal type everywhere downstream.
+  const civIds = new Set(db.getAllCivs().map(cv => cv.id));
   const validated: Array<{ civ_id: number; name: string; region: 'west' | 'east' }> = [];
-  for (const p of body.players) {
-    if (!isRegion(p.region)) {
-      return c.json({ error: `Invalid region for civ ${p.civ_id}: ${p.region}` }, 400);
+  for (const p of players as Array<Record<string, unknown>>) {
+    if (typeof p?.civ_id !== 'number' || !civIds.has(p.civ_id)) {
+      return c.json({ error: `Unknown civ: ${String(p?.civ_id)}` }, 400);
     }
-    validated.push({ civ_id: p.civ_id, name: p.name, region: p.region });
+    if (!isRegion(p.region)) {
+      return c.json({ error: `Invalid region for civ ${p.civ_id}: ${String(p.region)}` }, 400);
+    }
+    const name = typeof p.name === 'string' ? p.name.trim() : '';
+    validated.push({ civ_id: p.civ_id, name: name || '?', region: p.region });
   }
 
-  db.startGame(body.expert);
+  db.startGame(expert);
   for (const p of validated) {
-    db.addPlayer(p.civ_id, p.name.trim() || '?', p.region);
+    db.addPlayer(p.civ_id, p.name, p.region);
   }
   broadcastState();
   return c.json({ ok: true });
 });
 
 api.post('/game/reset', async (c) => {
-  const body = await c.req.json<{ confirm: boolean }>();
-  if (!body.confirm) return c.json({ error: 'confirm required' }, 400);
+  const body = await readJson(c);
+  if (body.confirm !== true) return c.json({ error: 'confirm required' }, 400);
   db.resetGame();
   broadcastState();
   return c.json({ ok: true });
@@ -108,14 +161,14 @@ api.post('/census/reveal', () => {
 // ─── Players ──────────────────────────────────────────────────────────────────
 
 api.post('/players/:id/census', async (c) => {
-  const playerId = Number(c.req.param('id'));
-  const body = await c.req.json<{ population: number }>();
+  const playerId = playerParam(c);
+  const body = await readJson(c);
+  const game = requireActiveGame();
   let pop = Number(body.population);
   if (pop < 0) pop = MAX_POPULATION + pop; // negative shorthand: -27 → 28 tokens remaining
   if (!Number.isInteger(pop) || pop < 1 || pop > MAX_POPULATION) {
     return c.json({ error: `Invalid population (must be 1–${MAX_POPULATION})` }, 400);
   }
-  const game = db.getGame();
   db.submitCensus(playerId, game.current_round, pop);
 
   // Auto-reveal if all submitted
@@ -129,28 +182,32 @@ api.post('/players/:id/census', async (c) => {
 });
 
 api.post('/players/:id/city-count', async (c) => {
-  const playerId = Number(c.req.param('id'));
-  const body = await c.req.json<{ city_count: number }>();
+  const playerId = playerParam(c);
+  const body = await readJson(c);
   const count = Number(body.city_count);
   if (!Number.isInteger(count) || count < 0 || count > MAX_CITIES) {
     return c.json({ error: `Invalid city count (must be 0–${MAX_CITIES})` }, 400);
   }
-  const game = db.getGame();
+  const game = requireActiveGame();
+  // Cities are counted after movement, which starts once the census is out.
+  if (!game.census_revealed) {
+    return c.json({ error: 'City counts open once the census is revealed' }, 409);
+  }
   db.submitCityCount(playerId, game.current_round, count);
   broadcastState(playerId);
   return c.json({ ok: true });
 });
 
 api.post('/players/:id/military', (c) => {
-  const playerId = Number(c.req.param('id'));
+  const playerId = playerParam(c);
   const next = db.toggleMilitary(playerId);
   broadcastState(playerId);
   return c.json({ ok: true, military: next });
 });
 
 api.post('/players/:id/move', (c) => {
-  const playerId = Number(c.req.param('id'));
-  const game = db.getGame();
+  const playerId = playerParam(c);
+  const game = requireActiveGame();
   const next = db.toggleMoved(playerId, game.current_round);
   // Targeted broadcast: the status display (non-civ socket) always receives it,
   // so neighbours see the signal on the shared TV; other civ pages are skipped.
@@ -159,30 +216,31 @@ api.post('/players/:id/move', (c) => {
 });
 
 api.post('/players/:id/wonder', (c) => {
-  const playerId = Number(c.req.param('id'));
+  const playerId = playerParam(c);
   const next = db.toggleWonder(playerId);
   broadcastState(playerId);
   return c.json({ ok: true, wonder: next });
 });
 
 api.post('/players/:id/special', (c) => {
-  const playerId = Number(c.req.param('id'));
+  const playerId = playerParam(c);
   const next = db.toggleSpecial(playerId);
   broadcastState(playerId);
   return c.json({ ok: true, special: next });
 });
 
 api.post('/players/:id/ast', async (c) => {
-  const playerId = Number(c.req.param('id'));
-  const body = await c.req.json<{ level: number }>();
-  if (!AST_LEVELS.includes(body.level)) {
+  const playerId = playerParam(c);
+  const body = await readJson(c);
+  const level = body.level;
+  if (typeof level !== 'number' || !AST_LEVELS.includes(level)) {
     return c.json({ error: 'Invalid AST level' }, 400);
   }
   // setAstLevel may clear is_final_round; checkAndSetLateIronAgeBonus and
   // checkAndSetFinalRound then re-evaluate. Wrap so a partial failure can't
   // leave the game with the LIA bonus granted but the final-round flag wrong.
   db.getDb().transaction(() => {
-    db.setAstLevel(playerId, body.level);
+    db.setAstLevel(playerId, level);
     db.checkAndSetLateIronAgeBonus();
     db.checkAndSetFinalRound();
   })();
@@ -191,7 +249,7 @@ api.post('/players/:id/ast', async (c) => {
 });
 
 api.post('/players/:id/regress', (c) => {
-  const playerId = Number(c.req.param('id'));
+  const playerId = playerParam(c);
   // Calamity regression: drop the empire one AST step and flag it so the status
   // board shows a red marker on that empire's token. Admin-only (not in
   // PLAYER_PUBLIC) — the GM applies this, not the player.
@@ -201,22 +259,25 @@ api.post('/players/:id/regress', (c) => {
 });
 
 api.post('/players/:id/adv', async (c) => {
-  const playerId = Number(c.req.param('id'));
-  const body = await c.req.json<{ adv_1vp?: number; adv_3vp?: number; adv_6vp?: number }>();
+  const playerId = playerParam(c);
+  const body = await readJson(c);
   if (body.adv_1vp === undefined && body.adv_3vp === undefined && body.adv_6vp === undefined) {
     return c.json({ error: 'Provide adv_1vp, adv_3vp, and/or adv_6vp' }, 400);
   }
-  const v1 = Math.max(0, Math.floor(Number(body.adv_1vp ?? 0)));
-  const v3 = Math.max(0, Math.floor(Number(body.adv_3vp ?? 0)));
-  const v6 = Math.max(0, Math.floor(Number(body.adv_6vp ?? 0)));
+  const counts = [body.adv_1vp, body.adv_3vp, body.adv_6vp].map(v => Math.floor(Number(v ?? 0)));
+  if (counts.some(n => !Number.isFinite(n))) {
+    return c.json({ error: 'Advance counts must be numbers' }, 400);
+  }
+  const [v1, v3, v6] = counts.map(n => Math.max(0, n)) as [number, number, number];
   db.setAdvCards(playerId, v1, v3, v6);
   broadcastState(playerId);
   return c.json({ ok: true });
 });
 
 api.post('/players/:id/late-iron-age-bonus', async (c) => {
-  const playerId = Number(c.req.param('id'));
-  const body = await c.req.json<{ grant: boolean }>();
+  const playerId = playerParam(c);
+  const body = await readJson(c);
+  if (typeof body.grant !== 'boolean') return c.json({ error: 'grant must be true or false' }, 400);
   if (body.grant) {
     const player = db.getPlayers().find(p => p.id === playerId);
     if (!player || player.ast_level < LIA_THRESHOLD) {
@@ -229,9 +290,15 @@ api.post('/players/:id/late-iron-age-bonus', async (c) => {
 });
 
 api.post('/players/:id/rank', async (c) => {
-  const playerId = Number(c.req.param('id'));
-  const body = await c.req.json<{ rank_order: number; group_players?: number[]; group_positions?: number[] }>();
-  if (isNaN(body.rank_order)) return c.json({ error: 'Invalid rank_order' }, 400);
+  const playerId = playerParam(c);
+  const raw = await readJson(c);
+  if (!isNonNegInt(raw.rank_order)) return c.json({ error: 'Invalid rank_order' }, 400);
+  const intList = (v: unknown) => (Array.isArray(v) && v.every(isNonNegInt) ? v : undefined);
+  const body = {
+    rank_order: raw.rank_order,
+    group_players: intList(raw.group_players),
+    group_positions: intList(raw.group_positions),
+  };
 
   // Single fetch — both branches below need the player+civ join.
   const allPlayers = (body.group_players?.length) ? db.getPlayers() : null;
@@ -275,10 +342,11 @@ api.post('/players/:id/rank', async (c) => {
 });
 
 api.post('/players/:id/name', async (c) => {
-  const playerId = Number(c.req.param('id'));
-  const body = await c.req.json<{ name: string }>();
-  if (!body.name?.trim()) return c.json({ error: 'Name required' }, 400);
-  db.updatePlayerName(playerId, body.name.trim());
+  const playerId = playerParam(c);
+  const body = await readJson(c);
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  if (!name) return c.json({ error: 'Name required' }, 400);
+  db.updatePlayerName(playerId, name);
   broadcastState();
   return c.json({ ok: true });
 });
@@ -291,8 +359,9 @@ function weightedRandom(min: number, max: number): number {
 }
 
 api.post('/debug/set-round', async (c) => {
-  const body = await c.req.json<{ round: number }>();
-  const round = Math.max(1, Math.floor(Number(body.round)));
+  const body = await readJson(c);
+  const round = Math.floor(Number(body.round));
+  if (!Number.isFinite(round) || round < 1) return c.json({ error: 'round must be a positive integer' }, 400);
   db.setRound(round);
   broadcastState();
   return c.json({ ok: true, round });
@@ -330,8 +399,14 @@ api.post('/debug/cities', (c) => {
 });
 
 api.post('/debug/simulate', async (c) => {
-  const body = await c.req.json<{ expert: number; player_count: number; rounds: number; scenario?: string; delay_ms?: number }>();
-  const { expert, player_count, rounds, delay_ms = 0 } = body;
+  const body = await readJson(c);
+  const expert = expertFlag(body.expert);
+  const player_count = Number(body.player_count);
+  const rounds = Number(body.rounds);
+  const delay_ms = body.delay_ms === undefined ? 0 : Number(body.delay_ms);
+  if (!isNonNegInt(rounds) || !isNonNegInt(delay_ms)) {
+    return c.json({ error: 'rounds and delay_ms must be non-negative integers' }, 400);
+  }
 
   // Pick the correct scenario
   const allCivs = db.getAllCivs();

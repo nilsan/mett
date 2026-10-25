@@ -26,10 +26,10 @@ interface FakeSocket {
   sent: string[];
 }
 
-function fakeWs(playerId: number | null = null): FakeSocket & ServerWebSocket<WsData> {
+function fakeWs(playerId: number | null = null, pingOnly = false): FakeSocket & ServerWebSocket<WsData> {
   const sent: string[] = [];
   return {
-    data: { id: `id-${Math.random()}`, playerId },
+    data: { id: `id-${Math.random()}`, playerId, pingOnly },
     sent,
     send: (msg: string | Buffer) => { sent.push(typeof msg === 'string' ? msg : msg.toString()); return 1; },
   } as unknown as FakeSocket & ServerWebSocket<WsData>;
@@ -55,7 +55,6 @@ describe('broadcastState — payload contract', () => {
       game: expect.any(Object),
       players: expect.any(Array),
       census: expect.any(Array),
-      astLevels: expect.any(Array),
       astStatus: expect.any(Object),
       targetPlayerId: null,
     }));
@@ -122,5 +121,39 @@ describe('broadcastState — per-player routing', () => {
     expect(tabB.sent).toHaveLength(1);
 
     removeClient(tabA); removeClient(tabB);
+  });
+});
+
+describe('broadcastState — ping-only clients (status page)', () => {
+  beforeEach(() => { _setTestDb(makeDb()); });
+
+  it('ping-only sockets get a payload-free state_changed frame; others the full state', () => {
+    const status = fakeWs(null, true);
+    const admin = fakeWs(null);
+    addClient(status); addClient(admin);
+
+    broadcastState();
+
+    expect(lastPayload(status)).toEqual({ type: 'state_changed' });
+    expect(lastPayload(admin).type).toBe('state_update');
+
+    removeClient(status); removeClient(admin);
+  });
+
+  it('ping-only sockets still receive player-targeted broadcasts', () => {
+    const status = fakeWs(null, true);
+    addClient(status);
+    broadcastState(3);
+    expect(lastPayload(status)).toEqual({ type: 'state_changed' });
+    removeClient(status);
+  });
+
+  it('never broadcasts the admin password hash', () => {
+    const admin = fakeWs(null);
+    addClient(admin);
+    broadcastState();
+    expect(admin.sent[0]).not.toContain('admin_password');
+    expect(admin.sent[0]).not.toContain('scrypt$');
+    removeClient(admin);
   });
 });
