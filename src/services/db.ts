@@ -42,6 +42,11 @@ export function _setTestDb(db: Database | null): void {
   for (const hook of _resetHooks) hook();
 }
 
+/** True while a test has swapped in its own database (see _setTestDb). */
+export function usingTestDb(): boolean {
+  return _testDb !== null;
+}
+
 /** Ordered schema migrations, tracked with PRAGMA user_version. Migration i
  *  runs once, when the DB's user_version is below i+1. schema.sql (CREATE IF
  *  NOT EXISTS) always describes the current shape, so on a fresh DB these are

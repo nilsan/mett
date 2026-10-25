@@ -399,9 +399,33 @@ api.post('/players/:id/name', async (c) => {
 
 // ─── Debug / simulation ───────────────────────────────────────────────────────
 
+// The debug endpoints draw from `random`. Normally Math.random; an optional
+// numeric `seed` in the request body swaps in a seeded generator for that
+// request, so tests (and screenshot baselines) get the same game every time.
+let random: () => number = Math.random;
+
+/** mulberry32 — tiny, fast, good enough for fake game data. */
+function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Pick the generator for this request from an optional body `seed`. The
+ *  body is optional on these endpoints, so a missing or empty one is fine. */
+async function useSeedFrom(c: Context): Promise<Record<string, unknown>> {
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  random = typeof body.seed === 'number' && Number.isFinite(body.seed) ? seededRandom(body.seed) : Math.random;
+  return body ?? {};
+}
+
 function weightedRandom(min: number, max: number): number {
   // Triangle distribution — average of two uniforms gives bell-ish curve
-  return Math.round(min + (Math.random() + Math.random()) / 2 * (max - min));
+  return Math.round(min + (random() + random()) / 2 * (max - min));
 }
 
 api.post('/debug/set-round', async (c) => {
@@ -413,7 +437,8 @@ api.post('/debug/set-round', async (c) => {
   return c.json({ ok: true, round });
 });
 
-api.post('/debug/census', (c) => {
+api.post('/debug/census', async (c) => {
+  await useSeedFrom(c);
   const game = db.getGame();
   const players = db.getPlayers();
   for (const p of players) {
@@ -425,13 +450,14 @@ api.post('/debug/census', (c) => {
   return c.json({ ok: true });
 });
 
-api.post('/debug/cities', (c) => {
+api.post('/debug/cities', async (c) => {
+  await useSeedFrom(c);
   const game = db.getGame();
   const players = db.getPlayers();
   for (const p of players) {
     const base = Math.min(9, Math.max(1, Math.round(p.ast_level / 10) + 1));
     let count: number;
-    if (Math.random() < 0.15) {
+    if (random() < 0.15) {
       // ~1 in 7 empires hit by calamities — can drop to 0-3 regardless of AST level
       count = weightedRandom(0, 3);
     } else {
@@ -446,6 +472,7 @@ api.post('/debug/cities', (c) => {
 
 api.post('/debug/simulate', async (c) => {
   const body = await readJson(c);
+  random = typeof body.seed === 'number' && Number.isFinite(body.seed) ? seededRandom(body.seed) : Math.random;
   const expert = expertFlag(body.expert);
   const player_count = Number(body.player_count);
   const rounds = Number(body.rounds);
@@ -479,13 +506,13 @@ api.post('/debug/simulate', async (c) => {
 
   // Assign each player a speed factor [0.5, 1.5] to produce variety
   const players = db.getPlayers();
-  const speedFactors = players.map(() => 0.5 + Math.random());
+  const speedFactors = players.map(() => 0.5 + random());
 
   // Randomly assign wonder to 1 player and military to ~1 in 5 players
-  const wonderIdx = Math.floor(Math.random() * players.length);
+  const wonderIdx = Math.floor(random() * players.length);
   for (let i = 0; i < players.length; i++) {
     if (i === wonderIdx) db.toggleWonder(players[i]!.id);
-    if (Math.random() < 0.2) db.toggleMilitary(players[i]!.id);
+    if (random() < 0.2) db.toggleMilitary(players[i]!.id);
   }
 
   let roundsPlayed = 0;
@@ -508,7 +535,7 @@ api.post('/debug/simulate', async (c) => {
       // City count: scale expected value by speed factor, with calamity chance
       const base = Math.min(9, Math.max(0, Math.round(p.ast_level / 10) + 1));
       let count: number;
-      if (Math.random() < 0.12) {
+      if (random() < 0.12) {
         count = weightedRandom(0, 3);
       } else {
         const scaled = Math.round(base * sf);
@@ -518,15 +545,15 @@ api.post('/debug/simulate', async (c) => {
 
       // Advance purchases — faster players accumulate more per round
       const buyChance = Math.min(1, (r <= 3 ? 0.5 : r <= 8 ? 0.75 : 0.9) * sf);
-      if (Math.random() < buyChance) {
-        const purchases = Math.ceil(Math.random() * (r <= 5 ? 2 : 3));
+      if (random() < buyChance) {
+        const purchases = Math.ceil(random() * (r <= 5 ? 2 : 3));
         let v1 = p.adv_1vp, v3 = p.adv_3vp, v6 = p.adv_6vp;
         for (let j = 0; j < purchases; j++) {
-          const roll = Math.random();
+          const roll = random();
           if (r >= 9 && roll < 0.15) { if (v6 < 11) v6++; }
           else if (roll < 0.5)        { if (v3 < 17) v3++; }
           else {
-            v1 = Math.min(17, v1 + (r >= 8 && Math.random() < 0.3 ? 2 : 1));
+            v1 = Math.min(17, v1 + (r >= 8 && random() < 0.3 ? 2 : 1));
           }
         }
         db.setAdvCards(p.id, v1, v3, v6);
@@ -547,7 +574,8 @@ api.post('/debug/simulate', async (c) => {
   return c.json({ ok: true, rounds_played: roundsPlayed });
 });
 
-api.post('/debug/advances', (c) => {
+api.post('/debug/advances', async (c) => {
+  await useSeedFrom(c);
   const players = db.getPlayers();
   const game = db.getGame();
   const round = game.current_round;
@@ -555,10 +583,10 @@ api.post('/debug/advances', (c) => {
   for (const p of players) {
     // Probability of buying anything this round increases over time
     const buyChance = round <= 4 ? 0.5 : round <= 8 ? 0.75 : 0.85;
-    if (Math.random() > buyChance) continue;
+    if (random() > buyChance) continue;
 
     // How many purchases this turn (1-3, more likely 1-2)
-    const purchases = Math.ceil(Math.random() * (round <= 6 ? 2 : 3));
+    const purchases = Math.ceil(random() * (round <= 6 ? 2 : 3));
 
     let v1 = p.adv_1vp, v3 = p.adv_3vp, v6 = p.adv_6vp;
 
@@ -566,7 +594,7 @@ api.post('/debug/advances', (c) => {
       // Priority: push toward 3VP advances early (age requirements need 5VP total)
       // Later: mix in 1VP (tech breadth) and some 6VP
       const need3vp = v3 * 3 < 5 && round <= 10; // trying to hit 5VP threshold
-      const roll = Math.random();
+      const roll = random();
 
       if (need3vp || (round <= 8 && roll < 0.55)) {
         if (v3 < 17) v3++;
@@ -574,7 +602,7 @@ api.post('/debug/advances', (c) => {
         if (v6 < 11) v6++;
       } else {
         // 1VP cards — buy more of these in later rounds (tech breadth bonuses)
-        if (v1 < 17) v1 += round >= 10 ? (Math.random() < 0.4 ? 2 : 1) : 1;
+        if (v1 < 17) v1 += round >= 10 ? (random() < 0.4 ? 2 : 1) : 1;
         if (v1 > 17) v1 = 17;
       }
     }

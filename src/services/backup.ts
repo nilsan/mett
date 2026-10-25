@@ -16,7 +16,8 @@
 import { Database } from 'bun:sqlite';
 import { mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { getDb, DB_PATH } from './db.js';
+import { tmpdir } from 'node:os';
+import { getDb, DB_PATH, usingTestDb } from './db.js';
 import { GAME_STATE_COLUMNS, clearRoundSummaries } from '../models/game.js';
 
 /** How many backups to keep (oldest pruned first). Two days of play is ~20 rounds. */
@@ -38,10 +39,14 @@ const FILE_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)_(before-round|bef
 let _dir: string | null = null;
 
 /** Backup directory: BACKUP_DIR, else `<db name>-backups/` next to the
- *  database — per database, so the test instance (mett-test.db) never mixes
- *  its backups into the dev or production list. */
+ *  database — per database, so the browser-test instance (mett-test.db) never
+ *  mixes its backups into the dev or production list. Unit tests run on an
+ *  in-memory DB; their backups go to a temp folder, never next to DB_PATH. */
 export function backupDir(): string {
-  return _dir ?? process.env.BACKUP_DIR ?? join(dirname(DB_PATH), `${basename(DB_PATH, '.db')}-backups`);
+  if (_dir) return _dir;
+  if (process.env.BACKUP_DIR) return process.env.BACKUP_DIR;
+  if (usingTestDb()) return join(tmpdir(), `mett-unit-backups-${process.pid}`);
+  return join(dirname(DB_PATH), `${basename(DB_PATH, '.db')}-backups`);
 }
 
 /** @internal tests only */

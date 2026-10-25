@@ -61,6 +61,8 @@ bun run test:browser    # Playwright; self-managed instance on :3100 (does not t
 
 `bun run test` runs every `tests/*.test.ts` file (new files are picked up automatically). All must pass before any commit. The browser suite is separate locally and also runs in CI. Browser specs run on one worker: they share the :3100 instance and each test re-seeds the game.
 
+**Screenshot tests:** `tests/browser/visual.spec.ts` compares a seeded game (status 1080p + 4K, admin, player phone) pixel-exactly against committed baselines. After an *intended* visual change, run `bunx playwright test tests/browser/visual.spec.ts --update-snapshots`, look at the new PNGs, and commit them with the change. Local only (CI fonts differ). The debug endpoints (`/api/debug/simulate|census|cities|advances`) take an optional numeric `seed` for reproducible data.
+
 **Client bundles:** `public/js/civ.js` and `public/js/admin.js` are committed build artifacts generated from `src/client/civ.ts` and `src/client/admin.ts`. After editing anything under `src/client/` or `src/shared/`, run `bun run build:client` and commit the regenerated bundles — `tests/client-build.test.ts` fails the suite if they drift.
 
 **Single sources of truth:** A.S.T. rules live only in `AGE_TABLE` (`src/shared/ast-pure.ts`); civ reference data only in `CIVS` (`src/civs.ts`, upserted into the `civs` table at boot). Don't reintroduce copies in SQL, views or tests.

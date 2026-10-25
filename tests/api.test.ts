@@ -623,3 +623,40 @@ describe('player names are HTML-escaped', () => {
     expect(html).toContain('&quot;&gt;&lt;img src=x');
   });
 });
+
+// ─── Seeded debug data ───────────────────────────────────────────────────────
+
+describe('debug endpoints: optional seed', () => {
+  let app: Hono;
+  beforeEach(() => { setUpDbForGameTests(); app = makeApp(); });
+
+  /** Everything the screenshots show, keyed by civ (row ids change on reset). */
+  async function seededSnapshot(seed?: number): Promise<string> {
+    const s = seed === undefined ? {} : { seed };
+    await jsonReq(app, 'POST', '/api/debug/simulate', { expert: 1, player_count: 18, rounds: 6, ...s }, ADMIN);
+    await jsonReq(app, 'POST', '/api/debug/census', s, ADMIN);
+    await jsonReq(app, 'POST', '/api/debug/cities', s, ADMIN);
+    const state = await (await app.request('/api/state')).json() as { players: Array<Record<string, unknown>>; census: Array<Record<string, unknown>> };
+    const civOf = new Map(state.players.map(p => [p.id, p.civ_slug]));
+    return JSON.stringify({
+      players: state.players.map(({ id: _id, ...p }) => p),
+      census: state.census.map(c => [civOf.get(c.player_id), c.round, c.population, c.city_count]).sort(),
+    });
+  }
+
+  it('the same seed produces the same game', async () => {
+    expect(await seededSnapshot(42)).toBe(await seededSnapshot(42));
+  });
+
+  it('different seeds (or none) produce different games', async () => {
+    const a = await seededSnapshot(42);
+    expect(await seededSnapshot(7)).not.toBe(a);
+    expect(await seededSnapshot()).not.toBe(a);
+  });
+
+  it('census and cities still work with no body at all', async () => {
+    await jsonReq(app, 'POST', '/api/debug/simulate', { expert: 1, player_count: 6, rounds: 2 }, ADMIN);
+    const res = await app.request('/api/debug/census', { method: 'POST', headers: { cookie: ADMIN } });
+    expect(res.status).toBe(200);
+  });
+});

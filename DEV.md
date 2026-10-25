@@ -333,6 +333,10 @@ The seed fixture logs its request context in through `POST /login` (`adminLogin(
 
 For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun -e` with the Playwright API directly — see `CLAUDE.md` for the pattern.
 
+### Screenshot tests
+
+`tests/browser/visual.spec.ts` renders a seeded 18-player game (`seed: 42` on the debug endpoints) and compares the status board (1920×1080, 3840×2160), the admin page and a player page on a phone pixel-exactly with the PNGs in `tests/browser/visual.spec.ts-snapshots/`. The version stamp and the backup list are masked. Accept an intended change with `bunx playwright test tests/browser/visual.spec.ts --update-snapshots`. Skipped on CI: the runners render the system font differently from the machine the baselines come from.
+
 ### Continuous integration
 
 `.github/workflows/test.yml` runs four jobs in parallel on every PR, and — via `workflow_call` from `build.yml` — on every push to `main`:

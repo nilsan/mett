@@ -17,14 +17,15 @@ import { Hono } from 'hono';
 import { Database } from 'bun:sqlite';
 import { mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { makeDb, addPlayer, setAstLevel, submitCensus, getPlayer, getGame } from './_helpers.js';
 import { _setTestDb } from '../src/services/db.js';
 import { createAdminSession, isValidAdminSession } from '../src/db.js';
 import {
-  takeBackup, listBackups, restoreBackup, backupBeforeAdvanceTo, _setBackupDir, BACKUP_KEEP,
+  takeBackup, listBackups, restoreBackup, backupBeforeAdvanceTo, _setBackupDir, BACKUP_KEEP, backupDir,
 } from '../src/services/backup.js';
+import { DB_PATH } from '../src/services/db.js';
 import api from '../src/routes/api.js';
 import pages from '../src/routes/pages.js';
 
@@ -77,6 +78,14 @@ describe('takeBackup / listBackups', () => {
     const b = takeBackup('before-round');
     expect(backupBeforeAdvanceTo(7)?.file).toBe(b.file);
     expect(backupBeforeAdvanceTo(6)).toBeNull();
+  });
+});
+
+describe('backupDir', () => {
+  it('unit tests never write next to the real database', () => {
+    _setBackupDir(null);
+    expect(backupDir().startsWith(tmpdir())).toBe(true);
+    expect(backupDir().startsWith(dirname(DB_PATH))).toBe(false);
   });
 });
 
