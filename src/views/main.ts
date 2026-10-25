@@ -252,6 +252,7 @@ export function renderMain(state: FullState): string {
   <div class="phase-strip">
     <span class="phase-info">${statusLabel}</span>
     ${game.active ? `<ol class="phase-steps" aria-label="Game phase">${phaseSteps}</ol>` : ''}
+    <button type="button" id="fullscreen-toggle" class="fullscreen-toggle" title="Full screen (Esc to leave)" aria-label="Toggle full screen"><span aria-hidden="true">⛶</span></button>
   </div>
 </div>
 

@@ -230,6 +230,10 @@ Every mutating endpoint broadcasts a `state_update` WebSocket event after writin
   `fullGameState` includes `astStatus` (per-player advance/stay/regress prediction, computed once in `getFullState()`) so the WS payload and page renders agree on the same map.
 - `public/js/ws-client.js` handles reconnection with exponential backoff and dispatches `mett:state` (every event) and `mett:my-state` (only when the event affects this client's player, or is global).
 
+### Status page on the TV
+
+`public/js/main.js` holds a Screen Wake Lock while the status page is visible (re-taken after the tab returns and on any click), so the display computer doesn't dim or sleep mid-game; it needs a secure origin (HTTPS or localhost). A ⛶ button at the right end of the status header toggles full screen where the browser supports it. Both are covered by `tests/browser/status-tv.spec.ts` with stubbed browser APIs.
+
 ### How pages consume the WS feed
 
 | Page | First paint | Updates |

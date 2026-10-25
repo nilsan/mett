@@ -578,6 +578,29 @@ body {
 .status-header { margin: 0 0 0.2rem; }
 .status-header .phase-info { font-size: 1.15rem; font-weight: 700; color: var(--mett-text); }
 .status-header .phase-step { font-size: 0.9rem; padding: 0.1rem 0.65rem; }
+/* Full-screen toggle (status page) — shown only where the browser supports it
+   (main.js sets html.fs-supported). Absolutely placed at the right end of the
+   status header so it never adds height to the tightly budgeted TV chrome. */
+.status-header { position: relative; }
+.fullscreen-toggle {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  margin: 0;
+  padding: 0.1rem 0.4rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--mett-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.fs-supported .fullscreen-toggle { display: inline-block; }
+.fullscreen-toggle:hover { color: var(--mett-text); }
 
 /* Trim Pico's vertical padding on the home page so 18 empires + the AST
    legend fit a 1080p viewport without scrolling. Other pages keep Pico's
