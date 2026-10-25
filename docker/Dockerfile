@@ -1,6 +1,6 @@
 # Bun version: keep in sync with /.bun-version (CI passes it as BUN_VERSION;
 # tests/client-build.test.ts fails if this default drifts from that file).
-ARG BUN_VERSION=1.3.11
+ARG BUN_VERSION=1.4.4
 FROM oven/bun:${BUN_VERSION}-alpine
 
 WORKDIR /app
