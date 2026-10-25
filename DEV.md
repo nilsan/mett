@@ -188,8 +188,11 @@ GET  /api/state                    Full game state
 GET  /api/civs                     All 18 empires (for admin setup)
 GET  /api/setup-recommendations    West/East/Combined scenarios by player count
 POST /api/game/start               Start game {expert, players:[{civ_id,name,region}]}
-POST /api/game/round/next          Advance to next round
-POST /api/game/reset               Reset game {confirm}
+POST /api/game/round/next          Advance to next round (backup taken first)
+POST /api/game/round/undo          Undo the last round advance (restores the backup from before it)
+GET  /api/backups                  [ADMIN] List backups + the undo candidate
+POST /api/backups/restore          [ADMIN] Restore a backup {file}
+POST /api/game/reset               Reset game {confirm} (backup taken first)
 POST /api/game/cities/clear        Clear city counts, enter post-calamity phase
 POST /api/census/reveal            Force census reveal
 POST /api/players/:id/census       Submit census {population}   (public)
@@ -360,6 +363,8 @@ Commits that change no shipped behaviour (tests, CI, docs only) need no bump. Ta
 ## Deployment
 
 The shipped compose file runs a single me[tt] instance behind Caddy. The public demo at `demo.mett.games` runs from this exact configuration. Game data persists in the `mett_data` named Docker volume on the host.
+
+**Backups.** Before every round advance, game start, reset (including the debug simulation) and restore, the server writes a full copy of the database with SQLite's `VACUUM INTO` to `<db name>-backups/` next to the database (`/app/data/mett-backups/` in the container; override with `BACKUP_DIR`). The newest 30 are kept. The admin page lists them under **Backups** with a Restore button each, and shows **↶ Undo round advance** whenever a backup from right before the current round exists. A restore copies back the game state only (game row, players, census) — the admin password and sessions stay — and takes a backup first, so it can itself be undone. A failed backup is logged but never blocks the game.
 
 ### Bring it up
 

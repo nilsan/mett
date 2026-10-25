@@ -10,6 +10,34 @@ import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
 import { LIA_THRESHOLD, AST_LEVELS } from '../models/ast.js';
 import { escapeHtml } from '../shared/html.js';
+import type { BackupInfo } from '../services/backup.js';
+
+const BACKUP_LABEL: Record<BackupInfo['reason'], (round: number) => string> = {
+  'before-round': r => `Before round ${r + 1}`,
+  'before-start': () => 'Before game start',
+  'before-reset': () => 'Before reset',
+  'before-restore': r => `Before a restore (round ${r})`,
+};
+
+/** Collapsible list of game backups with a Restore button each. */
+function backupSectionHtml(backups: BackupInfo[]): string {
+  if (!backups.length) return '';
+  const rows = backups.map(b => `<tr>
+      <td><time datetime="${b.createdAt}" data-local>${b.createdAt.slice(0, 16).replace('T', ' ')}</time></td>
+      <td>${BACKUP_LABEL[b.reason](b.round)}</td>
+      <td><button class="btn-danger backup-restore" data-file="${escapeHtml(b.file)}" data-label="${escapeHtml(BACKUP_LABEL[b.reason](b.round))}">Restore</button></td>
+    </tr>`).join('');
+  return `<details class="admin-section backup-section">
+    <summary><h3>Backups (${backups.length})</h3></summary>
+    <p class="setup-hint">Taken automatically before every round advance, game start, reset and restore. Restoring replaces the game state (players, census, round, A.S.T.); the admin password stays.</p>
+    <div class="table-scroll">
+      <table class="mett-table admin-table backup-table">
+        <thead><tr><th>Taken</th><th>What</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </details>`;
+}
 
 function summaryChip(p: RoundSummaryPlayer, levelSuffix = false): string {
   // Built directly (not via empireCell) so the level can live INSIDE the
@@ -91,14 +119,14 @@ function pwdFormHtml(query: string): string {
   </div>`;
 }
 
-export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false): string {
+export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false, backups: BackupInfo[] = [], undoBackup: BackupInfo | null = null): string {
   const { game, players } = state;
 
   if (!game.active) {
-    if (players.length > 0) return renderGameOver(state, allCivs, query, defaultPassword);
-    return renderSetup(allCivs, query, defaultPassword);
+    if (players.length > 0) return renderGameOver(state, allCivs, query, defaultPassword, backups);
+    return renderSetup(allCivs, query, defaultPassword, backups);
   }
-  return renderActiveAdmin(state, allCivs, query, prevCensus, defaultPassword);
+  return renderActiveAdmin(state, allCivs, query, prevCensus, defaultPassword, backups, undoBackup);
 }
 
 /** Small informational strip shown when the admin password is still the default 'PASSWORD'. */
@@ -110,7 +138,7 @@ function defaultPasswordNag(show: boolean): string {
   </p>`;
 }
 
-function renderSetup(allCivs: CivRefRow[], query = '', defaultPassword = false): string {
+function renderSetup(allCivs: CivRefRow[], query = '', defaultPassword = false, backups: BackupInfo[] = []): string {
   // Embed all civ data as JSON for JS to use — no visible grid needed
   const civData = JSON.stringify(allCivs.map(c => ({
     id: c.id, number: c.number, name: c.name,
@@ -182,6 +210,8 @@ function renderSetup(allCivs: CivRefRow[], query = '', defaultPassword = false):
     </div>
   </section>
 
+  ${backupSectionHtml(backups)}
+
   <section class="setup-section danger-section">
     <h3>Danger Zone</h3>
     <div class="danger-row">
@@ -197,7 +227,7 @@ function renderSetup(allCivs: CivRefRow[], query = '', defaultPassword = false):
 `;
 }
 
-function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defaultPassword = false): string {
+function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defaultPassword = false, backups: BackupInfo[] = []): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
 
@@ -288,6 +318,8 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
     <p class="table-hint">★ = Late Iron Age bonus (5VP, first to reach Late Iron Age). Click ★ to reassign manually.</p>
   </section>
 
+  ${backupSectionHtml(backups)}
+
   <section class="admin-section danger-section">
     <h3>Danger Zone</h3>
     <div class="danger-row">
@@ -303,7 +335,7 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
 `;
 }
 
-function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false): string {
+function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false, backups: BackupInfo[] = [], undoBackup: BackupInfo | null = null): string {
   const { game, players, census } = state;
   const expert = game.expert === 1;
   const isFinalRound = game.is_final_round === 1;
@@ -437,15 +469,15 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
     <div class="round-controls">
       <span class="round-phase-progress">${phaseProgressLabel} <span id="round-progress-count">${phaseProgressCount}/${n}</span> submitted</span>
       ${phaseButton}
+      ${undoBackup
+        ? `<button id="undo-round" class="btn-danger" data-file="${escapeHtml(undoBackup.file)}" title="Restore the backup taken right before this round started — undoes A.S.T. moves, bonuses and phase flags too">↶ Undo round advance</button>`
+        : ''}
       <span class="round-hint">${phaseHint}</span>
     </div>
     <div id="sim-controls" style="display:none">
       <button id="debug-census" class="btn-danger"${adminPhase === 0 ? '' : ' disabled'} title="${adminPhase === 0 ? 'Fill random populations' : 'Only during the Census phase'}">⚄ Random Census</button>
       <button id="debug-cities" class="btn-danger"${adminPhase >= 1 ? '' : ' disabled'} title="${adminPhase >= 1 ? 'Fill random city counts' : 'Only after census is revealed'}">⚄ Random Cities</button>
       <button id="debug-advances" class="btn-danger">⚄ Simulate Advances</button>
-      ${game.current_round > 1
-        ? `<button id="debug-prev-round" class="btn-danger" title="Undo the last round-advance — primarily for misclick recovery">← Round ${game.current_round - 1}</button>`
-        : ''}
     </div>
   </section>
 
@@ -471,6 +503,8 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
 
   ${roundSummaryPanelHtml(state.roundSummaries ?? [])}
 
+  ${backupSectionHtml(backups)}
+
   <section class="admin-section danger-section">
     <h3>Danger Zone</h3>
     <div class="danger-row">
@@ -482,9 +516,6 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
   </section>
   ${defaultPasswordNag(defaultPassword)}
 </div>
-<script>
-  window.CURRENT_ROUND = ${game.current_round};
-</script>
 <script src="/js/admin.js${V}"></script>
 `;
 }

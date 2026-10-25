@@ -2002,6 +2002,12 @@ th.ab-player-col {
   font-weight: 700;
 }
 
+/* ─── Admin: backups list (collapsed by default) ───────────────────────────── */
+.backup-section summary { cursor: pointer; }
+.backup-section summary h3 { display: inline; margin: 0; }
+.backup-section[open] summary { margin-bottom: 0.4rem; }
+.backup-table td { white-space: nowrap; }
+
 /* ─── Admin: round-transition summary panel (item 11.10) ────────────────────
    Surfaces what changed at the previous advanceRound. Admin-only — the
    status page deliberately stays clean. Tight by design — the panel

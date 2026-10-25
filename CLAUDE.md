@@ -50,7 +50,7 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
 
 ## Tests
 
-**Always add tests when implementing new features.** New game logic goes in `tests/game.test.ts`; new AST requirement checks go in `tests/ast.test.ts`; auth/login changes go in `tests/auth.test.ts`; REST endpoint behaviour goes in `tests/api.test.ts`; WebSocket payload/routing changes go in `tests/ws.test.ts`; schema/migration changes go in `tests/db.test.ts`; new browser/layout checks go in `tests/browser/*.spec.ts`. In-memory DB factories (built by the production `initDb()`) live in `tests/_helpers.ts`.
+**Always add tests when implementing new features.** New game logic goes in `tests/game.test.ts`; new AST requirement checks go in `tests/ast.test.ts`; auth/login changes go in `tests/auth.test.ts`; REST endpoint behaviour goes in `tests/api.test.ts`; WebSocket payload/routing changes go in `tests/ws.test.ts`; schema/migration changes go in `tests/db.test.ts`; backups and restore go in `tests/backup.test.ts`; new browser/layout checks go in `tests/browser/*.spec.ts`. In-memory DB factories (built by the production `initDb()`) live in `tests/_helpers.ts`.
 
 **Always run the full test suite before committing.**
 

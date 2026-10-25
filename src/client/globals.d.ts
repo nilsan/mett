@@ -13,7 +13,6 @@ interface Window {
   PLAYER_ID?: number;
   /** Set by main.js on the status page: request ping-only WS frames. */
   METT_WS_PING?: boolean;
-  CURRENT_ROUND?: number;
   ALL_CIVS?: Array<{
     id: number;
     number: number;

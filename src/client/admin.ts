@@ -247,15 +247,25 @@ function initActive(): void {
   byId('debug-cities')?.addEventListener('click', () => mettPost('/api/debug/cities', {}));
   byId('debug-advances')?.addEventListener('click', () => mettPost('/api/debug/advances', {}));
 
-  // Misclick recovery: roll the round counter back by one. Only present
-  // when current_round > 1 (the server endpoint also rejects < 1).
-  // This is the manual "undo the last round-advance" action.
-  byId('debug-prev-round')?.addEventListener('click', async () => {
-    if (!confirm('Roll the round counter back by one? Census + city counts for the current round will not be reverted.')) return;
-    const cur = window.CURRENT_ROUND;
-    if (typeof cur !== 'number' || cur < 2) return;
-    const res = await mettPost('/api/debug/set-round', { round: cur - 1 });
+  // Misclick recovery: restore the backup taken right before this round
+  // started, which undoes the whole advance (A.S.T. moves, bonuses, flags).
+  byId('undo-round')?.addEventListener('click', async () => {
+    if (!confirm('Undo the last round advance? The game goes back to exactly how it was before "Next round" was clicked.')) return;
+    const res = await mettPost('/api/game/round/undo', {});
     if (res.ok) location.reload();
+  });
+
+  // Backups: restore any listed snapshot (a backup of the current state is
+  // taken first, so this is itself undoable from the same list).
+  qsa<HTMLButtonElement>('.backup-restore').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Restore the backup "${btn.dataset.label}"? The current game state is backed up first.`)) return;
+      const res = await mettPost('/api/backups/restore', { file: btn.dataset.file });
+      if (res.ok) location.reload();
+    });
+  });
+  qsa<HTMLTimeElement>('time[data-local]').forEach(t => {
+    t.textContent = new Date(t.dateTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
   });
 
   // Player name edits (on blur)

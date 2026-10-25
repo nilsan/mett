@@ -198,15 +198,24 @@
     byId("debug-census")?.addEventListener("click", () => mettPost("/api/debug/census", {}));
     byId("debug-cities")?.addEventListener("click", () => mettPost("/api/debug/cities", {}));
     byId("debug-advances")?.addEventListener("click", () => mettPost("/api/debug/advances", {}));
-    byId("debug-prev-round")?.addEventListener("click", async () => {
-      if (!confirm("Roll the round counter back by one? Census + city counts for the current round will not be reverted."))
+    byId("undo-round")?.addEventListener("click", async () => {
+      if (!confirm('Undo the last round advance? The game goes back to exactly how it was before "Next round" was clicked.'))
         return;
-      const cur = window.CURRENT_ROUND;
-      if (typeof cur !== "number" || cur < 2)
-        return;
-      const res = await mettPost("/api/debug/set-round", { round: cur - 1 });
+      const res = await mettPost("/api/game/round/undo", {});
       if (res.ok)
         location.reload();
+    });
+    qsa(".backup-restore").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm(`Restore the backup "${btn.dataset.label}"? The current game state is backed up first.`))
+          return;
+        const res = await mettPost("/api/backups/restore", { file: btn.dataset.file });
+        if (res.ok)
+          location.reload();
+      });
+    });
+    qsa("time[data-local]").forEach((t) => {
+      t.textContent = new Date(t.dateTime).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
     });
     qsa(".player-name-input").forEach((inp) => {
       let originalValue = inp.value;

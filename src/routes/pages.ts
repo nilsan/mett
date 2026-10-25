@@ -11,6 +11,7 @@ import { renderCiv, renderCivFragment } from '../views/civ.js';
 import { renderMain } from '../views/main.js';
 import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, setAdminPassword, verifyAdminPassword, isUsingDefaultPassword, createAdminSession, isValidAdminSession, clearAdminSessions, ADMIN_SESSION_TTL_MS } from '../db.js';
 import { CIVS } from '../civs.js';
+import { listBackups, backupBeforeAdvanceTo } from '../services/backup.js';
 import pkg from '../../package.json' with { type: 'json' };
 
 const COOKIE_NAME = 'mett_admin';
@@ -145,7 +146,9 @@ pages.get('/admin', (c) => {
   const allCivs = getAllCivs();
   const prevCensus = state.game.current_round > 1 ? getCensusForRound(state.game.current_round - 1) : [];
   const defaultPwd = isUsingDefaultPassword();
-  const html = layout('Admin', renderAdmin(state, allCivs, c.req.url, prevCensus, defaultPwd), 'admin');
+  const backups = listBackups();
+  const undo = backupBeforeAdvanceTo(state.game.current_round);
+  const html = layout('Admin', renderAdmin(state, allCivs, c.req.url, prevCensus, defaultPwd, backups, undo), 'admin');
   return c.html(html);
 });
 

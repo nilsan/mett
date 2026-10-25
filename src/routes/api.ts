@@ -10,6 +10,7 @@ import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS } from '../civs.j
 import { isAdminAuthed } from './pages.js';
 import { isRegion } from '../types.js';
 import { AST_LEVELS, LIA_THRESHOLD, MAX_POPULATION, MAX_CITIES } from '../models/ast.js';
+import { takeBackup, listBackups, restoreBackup, backupBeforeAdvanceTo, type BackupReason } from '../services/backup.js';
 
 const api = new Hono();
 
@@ -55,6 +56,18 @@ function requireActiveGame() {
 
 function isNonNegInt(v: unknown): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v >= 0;
+}
+
+/** Back up before a game-rewriting action. A failed backup is logged but
+ *  never blocks the table — losing the safety net beats stopping the game. */
+function safeBackup(reason: BackupReason): void {
+  try { takeBackup(reason); } catch (err) {
+    console.error(`${new Date().toISOString()} BACKUP FAILED (${reason}):`, err instanceof Error ? err.message : err);
+  }
+}
+
+function requireAdmin(c: Context): void {
+  if (!isAdminAuthed(c.req.raw)) throw new HTTPException(401, { message: 'Unauthorized' });
 }
 
 function expertFlag(v: unknown): 0 | 1 {
@@ -114,6 +127,7 @@ api.post('/game/start', async (c) => {
     validated.push({ civ_id: p.civ_id, name: name || '?', region: p.region });
   }
 
+  safeBackup('before-start');
   db.startGame(expert);
   for (const p of validated) {
     db.addPlayer(p.civ_id, p.name, p.region);
@@ -125,6 +139,7 @@ api.post('/game/start', async (c) => {
 api.post('/game/reset', async (c) => {
   const body = await readJson(c);
   if (body.confirm !== true) return c.json({ error: 'confirm required' }, 400);
+  safeBackup('before-reset');
   db.resetGame();
   broadcastState();
   return c.json({ ok: true });
@@ -137,10 +152,41 @@ api.post('/game/round/next', (c) => {
   // advanceRoundWithSummary captures a pre/post snapshot, computes the
   // round-transition summary, and pushes it onto the ring buffer that
   // surfaces through getFullState (admin page reads state.roundSummaries).
+  safeBackup('before-round');
   const round = db.advanceRoundWithSummary();
   broadcastState();
   // round === null means game ended (basic hit 75, or expert final round completed)
   return c.json(round === null ? { ok: true, ended: true } : { ok: true, round });
+});
+
+// ─── Backups ──────────────────────────────────────────────────────────────────
+
+api.get('/backups', (c) => {
+  requireAdmin(c);
+  const game = db.getGame();
+  return c.json({ backups: listBackups(), undoRound: backupBeforeAdvanceTo(game.current_round)?.file ?? null });
+});
+
+api.post('/backups/restore', async (c) => {
+  const body = await readJson(c);
+  if (typeof body.file !== 'string') badRequest('file required');
+  try {
+    restoreBackup(body.file);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Restore failed';
+    return c.json({ error: message }, message === 'Unknown backup' ? 404 : 409);
+  }
+  broadcastState();
+  return c.json({ ok: true, round: db.getGame().current_round });
+});
+
+/** Undo the last round advance: restore the backup taken right before it. */
+api.post('/game/round/undo', (c) => {
+  const backup = backupBeforeAdvanceTo(db.getGame().current_round);
+  if (!backup) return c.json({ error: 'No backup from before this round started' }, 409);
+  restoreBackup(backup.file);
+  broadcastState();
+  return c.json({ ok: true, round: db.getGame().current_round });
 });
 
 api.post('/game/cities/clear', (c) => {
@@ -418,6 +464,7 @@ api.post('/debug/simulate', async (c) => {
       : WEST_SCENARIOS[player_count];
   if (!rec) return c.json({ error: `No scenario for ${player_count} players` }, 400);
 
+  safeBackup('before-reset');
   db.resetGame();
   db.startGame(expert);
 
