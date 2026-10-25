@@ -107,7 +107,7 @@ mett/
     │                       ping-only clients
     ├── client-build.test.ts Rebuilds src/client/{civ,admin}.ts and byte-compares
     │                       the committed bundles; Bun version pin in sync
-    └── browser/            Playwright specs (self-managed :3100 instance)
+    └── browser/            Playwright specs (one self-managed instance per worker)
         ├── fixtures.ts             Auto-seed fixture (fresh 18-player game)
         ├── layout.spec.ts          1080p / 4K layout regression
         ├── civ-viewport.spec.ts    Civ page fits phones/laptops + font scaling
@@ -290,7 +290,7 @@ Environment variables:
 
 ## Tests
 
-Test workflow has two layers: fast unit/integration in Bun (always), and browser checks in Playwright (on demand; self-managed test instance on `:3100`).
+Test workflow has two layers: fast unit/integration in Bun (always), and browser checks in Playwright (on demand; one self-managed test instance per worker).
 
 ### Unit and integration tests (Bun)
 
@@ -314,7 +314,7 @@ Every `tests/*.test.ts` file runs (new files are picked up automatically) and al
 
 ### Browser tests (Playwright)
 
-Self-contained — no dev server needed. Playwright's `webServer` config boots a dedicated me[tt] instance on `:3100` with a throwaway DB (`data/mett-test.db`, gitignored), and an auto-applied fixture seeds a fresh 18-player Expert game before every test via `/api/debug/simulate`. Your `:3000` dev session is never touched. Locally an existing `:3100` instance is reused; CI always starts fresh.
+Self-contained — no dev server needed. The worker-scoped `workerServer` fixture (`tests/browser/fixtures.ts`) boots one me[tt] instance per Playwright worker — port 3100 + worker index, with its database and backups in a temp folder removed afterwards — and an auto-applied fixture seeds a fresh 18-player Expert game before every test via `/api/debug/simulate`. Workers never share game state, so the suite runs fully parallel (~20 s locally, 2 workers on CI). The servers run with `NODE_ENV=production`, so they never write the repo's `.pid` (the dev server's). Your `:3000` dev session is never touched.
 
 ```bash
 bun run test:browser  # bunx playwright test
@@ -349,7 +349,7 @@ For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun
 |---|---|---|
 | `bun test` | `bun run test` | Unit + integration suite (`tests/*.test.ts` glob; `tests/browser/` excluded) |
 | `tsc --noEmit` | `bunx tsc --noEmit` | TypeScript strict typecheck |
-| `playwright` | `bun run test:browser` | Browser suite against a fresh `:3100` instance |
+| `playwright` | `bun run test:browser` | Browser suite, one fresh instance per worker |
 | `lint` | yamllint, `hadolint-action@v3.5.0`, shellcheck | Workflows/compose, Dockerfile, `docker/entrypoint.sh` |
 
 `build.yml` only builds and pushes the image after every job above passes. All jobs use the Bun version in `.bun-version`. Concurrency groups cancel in-flight runs when a new push lands on the same ref.

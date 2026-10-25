@@ -41,7 +41,7 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
    ```bash
    bun run test:browser    # runs `playwright test` via the package script
    ```
-   Self-contained: Playwright starts its own me[tt] instance on :3100 with a throwaway DB (`data/mett-test.db`) and auto-seeds an 18-player game before each test. Admin calls log in through `POST /login` (`adminLogin()` in `tests/browser/fixtures.ts`) — the admin cookie is a session token, not the password. It does **not** use — or disturb — the `:3000` dev server.
+   Self-contained: every Playwright worker starts its own me[tt] instance (port 3100 + worker index, throwaway DB in a temp folder; `workerServer` fixture in `tests/browser/fixtures.ts`) and auto-seeds an 18-player game before each test. Admin calls log in through `POST /login` (`adminLogin()` in `tests/browser/fixtures.ts`) — the admin cookie is a session token, not the password. It does **not** use — or disturb — the `:3000` dev server.
 
 **Notes:**
 - Playwright auto-waits for selectors; explicit `time.sleep` is not needed (use `page.waitForLoadState("networkidle")` after navigation if you need a settle moment).
@@ -56,10 +56,10 @@ Playwright with headless Chromium is used to inspect rendered CSS layout — pix
 
 ```bash
 bun run test            # unit + integration via bun test (tests/*.test.ts glob)
-bun run test:browser    # Playwright; self-managed instance on :3100 (does not touch :3000)
+bun run test:browser    # Playwright; one self-managed instance per worker on :3100+ (does not touch :3000)
 ```
 
-`bun run test` runs every `tests/*.test.ts` file (new files are picked up automatically). All must pass before any commit. The browser suite is separate locally and also runs in CI. Browser specs run on one worker: they share the :3100 instance and each test re-seeds the game.
+`bun run test` runs every `tests/*.test.ts` file (new files are picked up automatically). All must pass before any commit. The browser suite is separate locally and also runs in CI. Browser specs run in parallel, one me[tt] instance per worker, so a test may freely mutate its game (the next test re-seeds it).
 
 **Unused CSS:** `bun run css:usage` walks every page through every game state at phone/1080p/4K on a throwaway instance and fails if any selector in `style.css` never matches (also runs in CI). When it flags a selector, either delete the rule or — only for DOM that exists solely at runtime — add it to `KNOWN_DYNAMIC` in `scripts/css-usage.ts` with the reason.
 
