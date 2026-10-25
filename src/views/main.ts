@@ -256,7 +256,7 @@ export function renderMain(state: FullState): string {
   </div>
 </div>
 
-<div class="status-grid" id="main-tables">
+<div class="status-grid" id="main-tables" style="--players:${Math.max(players.length, 1)}">
   <section class="table-section">
     <h3>Census — Round ${game.current_round}</h3>
     <table class="mett-table census-table">

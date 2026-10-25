@@ -2766,17 +2766,33 @@ button.secondary {
 .status-grid .lb-table .lb-group-start td::before { content: none; }
 
 /* ─── Board type scale ───────────────────────────────────────────────────────
-   One set of viewport-height tokens for the TV board (≥ 700 px wide). Rows use
-   the height that was spare at 1080p; text is ~20 % larger than before (the
-   condensed face keeps the widths), numbers most of all — they are what
-   players scan for mid-round. The tall-4K block only re-values the tokens. */
+   One set of viewport-height tokens for the TV board (≥ 700 px wide). The
+   *-base values are tuned for a full 18-player game at 1080p; breakpoints (the
+   tall-4K block below) only re-value the bases.
+
+   Smaller games fill the board: main.ts sets --players on .status-grid and
+   rows grow by 18 / players (up to 3×), so the same height is used by fewer,
+   taller rows. Width is fixed by the five side-by-side tables, so text grows
+   less: civ names (which have spare width in their box) up to 1.3×, numbers
+   up to 1.15× (three-digit totals must still fit their column), player names
+   not at all (the longest already fills the box). Trade chips follow the
+   numbers, not the rows, so the trade column barely widens. */
 @media (min-width: 43.76em) {
   .status-grid {
-    --board-row: clamp(1.1rem, 3.65vh, 4.2rem);
-    --board-name: clamp(0.8rem, 1.5vh, 1.8rem);
+    --board-row-base: clamp(1.1rem, 3.65vh, 4.2rem);
+    --board-name-base: clamp(0.8rem, 1.5vh, 1.8rem);
+    --board-num-base: clamp(0.85rem, 1.6vh, 1.9rem);
     --board-sub: clamp(0.55rem, 0.85vh, 1.05rem);
-    --board-num: clamp(0.85rem, 1.6vh, 1.9rem);
     --board-head: clamp(0.55rem, 0.95vh, 1.1rem);
+
+    --text-scale-max: 1.3;
+    --num-scale-max: 1.15;
+    --row-scale: clamp(1, calc(18 / var(--players, 18)), 3);
+    --text-scale: clamp(1, calc(1 + (var(--row-scale) - 1) * 0.3), var(--text-scale-max));
+    --num-scale: min(var(--text-scale), var(--num-scale-max));
+    --board-row: calc(var(--board-row-base) * var(--row-scale));
+    --board-name: calc(var(--board-name-base) * var(--text-scale));
+    --board-num: calc(var(--board-num-base) * var(--num-scale));
   }
   .status-grid .mett-table td,
   .status-ast .ab-cell                { height: var(--board-row); }
@@ -2794,12 +2810,12 @@ button.secondary {
   .status-grid td.trade-card-col.not-submitted,
   .status-grid td.trade-card-col.submitted-hidden { font-size: var(--board-num); }
 
-  /* Trade-card chips follow the row height, so they can never make a trade
-     row taller than the rows in the other tables (they once did on a 4K
-     screen at 125 %, where width-based chip sizes outgrew the rows). The
-     column holds 9 chips + gaps + the cell's 2 × 0.4rem padding. */
+  /* Trade-card chips are sized from the row height (never the viewport
+     width), so they can never make a trade row taller than the rows in the
+     other tables — width-based chip sizes once did on a 4K screen at 125 %.
+     The column holds 9 chips + gaps + the cell's 2 × 0.4rem padding. */
   .status-grid {
-    --chip-h: calc(var(--board-row) * 0.66);
+    --chip-h: calc(var(--board-row-base) * 0.66 * var(--num-scale));
     --chip-w: calc(var(--chip-h) * 0.62);
     --chip-gap: max(1px, calc(var(--chip-w) * 0.08));
     --trade-chip-col-w: calc(9 * var(--chip-w) + 8 * var(--chip-gap) + 0.8rem);
@@ -2812,10 +2828,13 @@ button.secondary {
 }
 @media (min-width: 192rem) and (min-height: 115rem) {
   .status-grid {
-    --board-row: clamp(2.5rem, 4.3vh, 6rem);
-    --board-name: clamp(1rem, 1.62vh, 2rem);
+    --board-row-base: clamp(2.5rem, 4.3vh, 6rem);
+    --board-name-base: clamp(1rem, 1.62vh, 2rem);
+    --board-num-base: clamp(1rem, 1.75vh, 2.1rem);
     --board-sub: clamp(0.72rem, 1.02vh, 1.3rem);
-    --board-num: clamp(1rem, 1.75vh, 2.1rem);
     --board-head: clamp(0.75rem, 1.05vh, 1.3rem);
+    /* 4K type already uses most of each column's width. */
+    --text-scale-max: 1.1;
+    --num-scale-max: 1;
   }
 }

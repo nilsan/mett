@@ -73,6 +73,41 @@ test.describe('main display layout', () => {
     }
   }
 
+  // Smaller games fill the board: rows grow by 18 / players (up to 3×) and
+  // text a little, without clipping names or numbers or breaking alignment.
+  for (const players of [6, 12]) {
+    for (const vp of [{ width: 1920, height: 1080 }, { width: 3840, height: 2160 }]) {
+      test(`${players} players at ${vp.width}×${vp.height}: rows fill the board, nothing clipped`, async ({ page, request }) => {
+        expect((await request.post('/api/debug/simulate', { data: { expert: 1, player_count: players, rounds: 6 } })).ok()).toBe(true);
+        await fillTradeChips(request);
+        await page.setViewportSize(vp);
+        await page.goto('/');
+        await expect(page.locator('.census-table tbody tr')).toHaveCount(players);
+
+        const r = await page.evaluate(() => {
+          const rows = Array.from(document.querySelectorAll('.census-table tbody tr'));
+          return {
+            filled: rows[rows.length - 1]!.getBoundingClientRect().bottom / window.innerHeight,
+            clippedPanels: Array.from(document.querySelectorAll('.table-section'))
+              .filter(el => el.getBoundingClientRect().bottom > window.innerHeight + 1).length,
+            rowHeights: Array.from(new Set(
+              ['.census-table', '.trade-table', '.ast-order-table', '.lb-table'].map(sel =>
+                Math.round(document.querySelector(`${sel} tbody tr`)!.getBoundingClientRect().height)),
+            )),
+            // Text cut off inside a cell: names, player names and every number.
+            cutText: Array.from(document.querySelectorAll('.status-grid .empire-civ, .status-grid .empire-player-name, .status-grid td:not(.empire-cell):not(.trade-region)'))
+              .filter(el => el.scrollWidth > el.clientWidth + 1)
+              .map(el => el.textContent?.trim()),
+          };
+        });
+        expect(r.filled, 'rows should use most of the screen height').toBeGreaterThan(0.7);
+        expect(r.clippedPanels).toBe(0);
+        expect(r.rowHeights).toHaveLength(1);
+        expect(r.cutText).toEqual([]);
+      });
+    }
+  }
+
   // Phones are supported too: the status page stacks and scrolls table by
   // table, and the admin page must stay usable — but neither may ever scroll
   // horizontally.
