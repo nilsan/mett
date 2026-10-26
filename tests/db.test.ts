@@ -11,6 +11,8 @@ import { describe, it, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { initDb } from '../src/services/db.js';
 import { CIVS } from '../src/civs.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const userVersion = (db: Database) =>
   db.query<{ user_version: number }, []>('PRAGMA user_version').get()!.user_version;
@@ -80,6 +82,16 @@ describe('initDb', () => {
     const minoa = db.query<{ id: number; color: string }, []>("SELECT id, color FROM civs WHERE slug='minoa'").get()!;
     expect(minoa.id).toBe(1);
     expect(minoa.color).toBe(CIVS.find(c => c.slug === 'minoa')!.color);
+  });
+
+  it('schema.sql alone has every column the migrations add', () => {
+    const fromSchema = new Database(':memory:');
+    fromSchema.exec(readFileSync(join(import.meta.dir, '..', 'db', 'schema.sql'), 'utf8'));
+    const migrated = new Database(':memory:');
+    initDb(migrated);
+    for (const table of ['game', 'players', 'census']) {
+      expect(columns(fromSchema, table).sort()).toEqual(columns(migrated, table).sort());
+    }
   });
 
   it('is idempotent across reboots', () => {

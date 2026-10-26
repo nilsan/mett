@@ -1,12 +1,10 @@
 # me[tt] — Mega Empires Turn Tracker
 
-**me[tt]** keeps the books for **Mega Empires: The West & The East**, the 3–18 player civilization board game that runs over a long weekend. One shared screen shows the whole table at a glance — census and move order, trade cards, A.S.T. order and progress, the leaderboard — and every player updates their own empire from their phone. No paper census, no arithmetic, no "who moves next?".
-
-me[tt] is made out of love for Mega Empires: for the long weekends, the crowded tables and the eighteen empires rising and falling around one big map. It is free and always will be. It exists so the people around the table can spend their time on the game, not on the bookkeeping.
+**me[tt]** keeps the books for **Mega Empires: The West & The East**, the 3–18 player board game that runs over a long weekend. One shared screen shows the whole table (census and move order, trade cards, A.S.T. progress, the leaderboard), and every player updates their own empire from their phone. It is made out of love for the game, free and always will be, so the people around the table can spend their time on Mega Empires, not on the bookkeeping.
 
 If me[tt] has saved your table some time, you can [buy me a coffee on Ko-fi](https://ko-fi.com/nilsan). It is never expected, and always appreciated.
 
-**Try it:** [demo.mett.games](https://demo.mett.games) is a 12-empire game in round 7. Open it on a big screen, open an empire's page such as [demo.mett.games/rome](https://demo.mett.games/rome) on your phone, and play. The admin page is at [/admin](https://demo.mett.games/admin) (password `demo`). The demo resets every night.
+**Try it:** [demo.mett.games](https://demo.mett.games) is a 12-empire game in round 7. Open it on a big screen, open an empire's page such as [demo.mett.games/rome](https://demo.mett.games/rome) on your phone, and play. The admin page is at [/admin](https://demo.mett.games/admin) (password `demo`). Every night at 03:00 UTC the demo starts over from the same game, whatever visitors did to it.
 
 ![Status display](docs/img/screenshot-status.jpg)
 
@@ -79,7 +77,7 @@ The game ends by itself: in Basic when an empire reaches Late Iron Age, in Exper
 
 Bug reports and ideas are welcome as [issues](https://github.com/nilsan/mett/issues). For code, see [CONTRIBUTING.md](CONTRIBUTING.md) and [DEV.md](DEV.md) (setup, architecture, API, tests). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
-Built with [Bun](https://bun.sh), [Hono](https://hono.dev), TypeScript, SQLite, [htmx](https://htmx.org) and [Pico CSS](https://picocss.com).
+Built with [Bun](https://bun.sh), [Hono](https://hono.dev), TypeScript, SQLite, [htmx](https://htmx.org) and [Pico CSS](https://picocss.com), and written together with [Claude](https://claude.com/product/claude-code), Anthropic's AI, in Claude Code: I decide what me[tt] should do and how it should look, test it at real tables, and Claude writes most of the code and the tests.
 
 ---
 

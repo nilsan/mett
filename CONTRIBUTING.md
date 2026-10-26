@@ -32,3 +32,5 @@ Before opening a pull request:
 7. **License:** contributions are under the [Mozilla Public License 2.0](LICENSE). New source files start with the MPL notice (a test checks this).
 
 Keep pull requests small and about one thing; screenshots help for anything visible.
+
+me[tt] is written with [Claude Code](https://claude.com/product/claude-code). [CLAUDE.md](CLAUDE.md) holds the project instructions it follows; they double as a checklist for anyone, with or without an AI assistant. Whoever or whatever writes the code, the pull request is yours: you have run it and checked what it does.

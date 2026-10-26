@@ -2,6 +2,15 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 1.6.1 — 2026-10-26
+
+### Fixed
+- The Expert Iron Age requirement on the player page and board read "10 Adv ≤100"; the rulebook says *less than* 100, which is what me[tt] always counted. It now reads "10 Adv <100".
+- `db/schema.sql` was missing the `special` column (databases got it from a migration, so nothing broke).
+
+### Changed
+- README, RULES.md and DEV.md rewritten and brought up to date.
+
 ## 1.6.0 — 2026-10-26
 
 ### Added

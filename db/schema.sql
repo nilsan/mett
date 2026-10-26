@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS players (
   name                 TEXT    NOT NULL,
   military             INTEGER NOT NULL DEFAULT 0,
   wonder               INTEGER NOT NULL DEFAULT 0,
+  special              INTEGER NOT NULL DEFAULT 0,  -- 1 = holds the empire's special ability
   ast_level            INTEGER NOT NULL DEFAULT 0,  -- current AST points (0,5,10...80)
   adv_points           INTEGER NOT NULL DEFAULT 0,  -- total civilization advance VP
   adv_1vp              INTEGER NOT NULL DEFAULT 0,  -- count of <100 VP advances

@@ -155,7 +155,7 @@
     any: (n) => `${n} Advances`,
     medium: (n) => `${n} Adv ≥100`,
     expensive: (n) => `${n} Adv ≥200`,
-    cheap: (n) => `${n} Adv ≤100`
+    cheap: (n) => `${n} Adv <100`
   };
   function requirementParts(req) {
     if (!req || req.impossible)

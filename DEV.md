@@ -1,26 +1,22 @@
-# me[tt] — Developer Documentation
+# me[tt] — Developer Guide
 
-This document covers the architecture, technology choices, and how to build, run and test the application.
-
-For the user-facing guide see [README.md](README.md). For which game rules are implemented see [RULES.md](RULES.md).
+How me[tt] is built, run, tested and released. For using it see [README.md](README.md); for the game rules it implements see [RULES.md](RULES.md); for how to send a change see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-## Technology stack
+## Stack
 
-| Concern | Choice | Reason |
+| Concern | Choice | Why |
 |---|---|---|
-| Runtime | **Bun** | Built-in SQLite, built-in WebSocket, TypeScript without a build step |
-| Web framework | **Hono** | Lightweight, TypeScript-first, first-class Bun support |
-| Database | **bun:sqlite** | Zero extra dependencies; Bun includes it natively |
-| Password hashing | **node:crypto scrypt** | OWASP-recommended; sync; no extra dep |
-| CSS | **Pico CSS + custom** | Dark-mode baseline out of the box; served from `node_modules` (no CDN), version pinned in `package.json` |
-| Frontend JS | **TypeScript bundles + vanilla JS + HTMX** | No framework needed at this scale; HTMX (served from `node_modules`) for the status page |
-| Browser tests | **Playwright** | Auto-wait, browser bundled, TypeScript-native |
-| Container | **Docker + Docker Compose** | Volume-mounted SQLite for persistence |
-| TLS | **Caddy** | Automatic Let's Encrypt certificates, bundled in compose |
-| CI | **GitHub Actions** | bun test + tsc + Playwright + linters on every PR; the image is only published when they pass |
-| Deployment | **Docker Compose** | `docker compose pull` from GHCR + recreate; pin via `METT_VERSION` (no git pull on remote — image-only swap). Multi-instance Ansible automation lives in the private `mett-deploy` repo. |
+| Runtime | **Bun** (version pinned in `.bun-version`) | SQLite, WebSockets and TypeScript built in; no build step for the server |
+| Web framework | **Hono** | Small, TypeScript-first, runs on Bun |
+| Database | **bun:sqlite**, one file per game | No database server; a game is one file you can copy |
+| Pages | Server-rendered HTML, **htmx** on the status board, small TypeScript bundles on the player and admin pages | No front-end framework needed at this size |
+| CSS | **Pico CSS** plus one shared `public/css/style.css` | Dark baseline; Pico and htmx are served from `node_modules`, no CDN |
+| Passwords | `node:crypto` scrypt | No extra dependency |
+| Tests | `bun test`, **Playwright** | Unit, integration, whole-game simulations; real-browser layout and screenshot checks |
+| Container | Docker, Compose, **Caddy** for HTTPS | Automatic certificates; one container per game |
+| CI | GitHub Actions | Every push is tested; the image is published only when everything passes |
 
 ---
 
@@ -29,456 +25,278 @@ For the user-facing guide see [README.md](README.md). For which game rules are i
 ```
 mett/
 ├── src/
-│   ├── index.ts            Entry point: Hono app + Bun server, error/404 handlers
-│   ├── db.ts               Re-export barrel + CRUD for players/census/civs;
-│   │                       getFullState() (precomputes per-player astStatus)
-│   ├── civs.ts             Static civ data + official scenario tables
-│   ├── types.ts            Shared TypeScript types (FullState, AstStatus, …)
-│   ├── version.ts          Reads package.json + BUILD_SHA env → footer string
-│   ├── ws.ts               WebSocket clients set + broadcast/sendInitialState
-│   ├── client/
-│   │   ├── civ.ts          Empire-page client source ┐ compiled to public/js/
-│   │   └── admin.ts        Admin-page client source  ┘ via `bun run build:client`
-│   ├── shared/
-│   │   ├── ast-pure.ts     AGE_TABLE — the single source of A.S.T. rules — plus
-│   │   │                   pure AST helpers shared by server + client bundles
-│   │   ├── html.ts         escapeHtml (server views + client bundles)
-│   │   └── scoring.ts      Pure scoring/sort helpers shared by server + client
+│   ├── index.ts            Server entry: Hono app, static files, /healthz, WebSocket upgrade
+│   ├── db.ts               Data access for players, census, civs; getFullState()
+│   ├── civs.ts             CIVS (the 18 empires), scenario tables, per-empire A.S.T. rows
+│   ├── types.ts            Shared types (PlayerRow, FullState, …)
+│   ├── version.ts          Version string for the header (package.json + BUILD_SHA)
+│   ├── ws.ts               WebSocket clients and broadcasts
+│   ├── shared/             Pure code used by both the server and the browser bundles
+│   │   ├── ast-pure.ts     AGE_TABLE, the single source of A.S.T. rules, and helpers
+│   │   ├── scoring.ts      Totals, tie-breaks, move order
+│   │   └── html.ts         escapeHtml
 │   ├── models/
-│   │   ├── ast.ts          autoAdvanceAst (re-exports shared/ast-pure.ts)
-│   │   └── game.ts         advanceRound, scoring, computeTieGroupMeta
+│   │   ├── ast.ts          autoAdvanceAst: moves every marker at the end of a round
+│   │   └── game.ts         Start, reset, advance a round, final round, LIA bonus, round summaries
 │   ├── services/
-│   │   ├── db.ts           initDb (schema, versioned migrations, civ seed,
-│   │   │                   password seed), PLAYER_SELECT, _onReset, DB_PATH
-│   │   └── password.ts     scrypt hashPassword / verifyPassword
+│   │   ├── db.ts           initDb: schema, MIGRATIONS, civ data, admin password
+│   │   ├── backup.ts       Backups (VACUUM INTO), restore, undo
+│   │   ├── password.ts     scrypt hashing
+│   │   ├── simulate.ts     Seeded fake games (debug endpoints, demo, tests)
+│   │   └── demo.ts         Demo mode (DEMO=1)
 │   ├── routes/
-│   │   ├── api.ts          REST API routes (admin auth, input validation,
-│   │   │                   public submissions)
-│   │   └── pages.ts        Server-rendered pages (login + session cookie,
-│   │                       login throttle, /admin, /:slug)
-│   └── views/
-│       ├── layout.ts       Base HTML shell (/vendor Pico + htmx, toast.js, api.js,
-│       │                   ws-client.js, version footer)
-│       ├── main.ts         Main display (5-section status grid)
-│       ├── admin.ts        Admin (setup wizard / active game / game over)
-│       └── civ.ts          Individual empire page (initial render only —
-│                           updates flow from WS via civ.js)
+│   │   ├── api.ts          REST API
+│   │   └── pages.ts        Pages, login and sessions
+│   ├── views/              HTML for the layout, status board (main.ts), admin and player pages
+│   └── client/             Browser TypeScript for the player (civ.ts) and admin pages
 ├── public/
-│   ├── css/style.css       Civ colour vars, Pico overrides, breakpoint sizing
-│   └── js/
-│       ├── ws-client.js    Shared WebSocket client (auto-reconnect)
-│       ├── toast.js        Error toast helper (window.showToast)
-│       ├── api.js          Shared mettPost helper (JSON + toast on error)
-│       ├── main.js         Main page JS (asks ws-client for ping-only frames)
-│       ├── admin.js        GENERATED from src/client/admin.ts ┐ committed build
-│       └── civ.js          GENERATED from src/client/civ.ts   ┘ artifacts
-│                           (`bun run build:client`). Never edit directly;
-│                           tests/client-build.test.ts fails on drift
-├── db/
-│   └── schema.sql          Current schema (CREATE IF NOT EXISTS); no seed data —
-│                           civs come from src/civs.ts, A.S.T. rules from
-│                           src/shared/ast-pure.ts
-├── docker/
-│   ├── Dockerfile          Bun image (version from .bun-version); runs as the
-│   │                       unprivileged `bun` user; HEALTHCHECK on /healthz
-│   ├── entrypoint.sh       Hands the data volume to `bun`, drops privileges
-│   ├── docker-compose.yml  Single mett service + Caddy; pin via $METT_VERSION
-│   └── Caddyfile           One reverse-proxy block (demo.mett.games by default)
-├── .github/
-│   └── workflows/
-│       ├── test.yml        CI: bun test, tsc, Playwright, yamllint/hadolint/shellcheck
-│       └── build.yml       On push to main: runs test.yml, then builds + pushes
-│                           ghcr.io/nilsan/mett (:latest, semver, short SHA)
-├── .bun-version            The one pinned Bun version (CI + Docker)
-├── playwright.config.ts    Browser-test config (testDir tests/browser/)
-├── .yamllint               Project-wide yamllint config (line-length 140)
-└── tests/
-    ├── _helpers.ts         In-memory DB factories (via initDb) + DB helpers
-    ├── ast.test.ts         A.S.T. requirement unit tests + golden age table
-    ├── db.test.ts          initDb: fresh DB, legacy upgrade, idempotence
-    ├── game.test.ts        Game flow integration (AST, LIA, ties,
-    │                       advanceRound orchestration + census prune,
-    │                       cities_phase reset, computeTieGroupMeta)
-    ├── auth.test.ts        Login, change-password, isAdminAuthed, scrypt
-    ├── password.test.ts    hashPassword / verifyPassword round-trip
-    ├── api.test.ts         Auth middleware classification, /rank tie resolution,
-    │                       input validation, secret + XSS regressions
-    ├── ws.test.ts          broadcastState payload contract, per-player routing,
-    │                       ping-only clients
-    ├── client-build.test.ts Rebuilds src/client/{civ,admin}.ts and byte-compares
-    │                       the committed bundles; Bun version pin in sync
-    └── browser/            Playwright specs (one self-managed instance per worker)
-        ├── fixtures.ts             Auto-seed fixture (fresh 18-player game)
-        ├── layout.spec.ts          1080p / 4K layout regression
-        ├── civ-viewport.spec.ts    Civ page fits phones/laptops + font scaling
-        ├── admin.spec.ts           Admin page behaviour
-        ├── civ-ast-strip.spec.ts   Civ-page A.S.T. strip layout
-        ├── civ-live-update.spec.ts Civ-page live update preserves focus
-        └── status-live.spec.ts     Status page gets ping-only WS frames
+│   ├── css/style.css       The one stylesheet for every page
+│   └── js/                 Small hand-written scripts, plus civ.js and admin.js, which are
+│                           built from src/client/ and committed (see Client bundles)
+├── db/schema.sql           The current database shape (CREATE IF NOT EXISTS)
+├── docker/                 Dockerfile, entrypoint.sh, docker-compose.yml, Caddyfile
+├── scripts/
+│   ├── css-usage.ts        Fails if style.css has a selector no page uses
+│   └── screenshots.ts      Regenerates the README screenshots in docs/img/
+├── tests/                  bun tests (*.test.ts) and Playwright specs (browser/)
+└── .github/                CI workflows, issue templates, FUNDING.yml
 ```
 
 ---
 
-## Database schema
+## How it works
 
-```sql
--- Static reference, upserted at startup from CIVS in src/civs.ts
-CREATE TABLE civs (
-  id INTEGER PRIMARY KEY,
-  number INTEGER NOT NULL UNIQUE,   -- official number 1–18
-  name TEXT NOT NULL UNIQUE,
-  slug TEXT NOT NULL UNIQUE,        -- URL path segment
-  color TEXT NOT NULL,
-  text_color TEXT NOT NULL,
-  def_region TEXT NOT NULL          -- "west" or "east"
-);
+### One game per instance
 
--- One row; reset on new game
-CREATE TABLE game (
-  id INTEGER PRIMARY KEY DEFAULT 1,
-  expert INTEGER NOT NULL DEFAULT 1,
-  current_round INTEGER NOT NULL DEFAULT 1,
-  active INTEGER NOT NULL DEFAULT 0,
-  census_revealed INTEGER NOT NULL DEFAULT 0,
-  is_final_round INTEGER NOT NULL DEFAULT 0,
-  cities_phase INTEGER NOT NULL DEFAULT 0,
-  admin_password TEXT,              -- scrypt hash; never selected into GameRow
-  started_at TEXT
-);
+Each me[tt] instance runs one game, stored in one SQLite file (`DATABASE_PATH`). Several tables means several instances, for example one container and subdomain each. The tables are:
 
--- Active players for the current game
-CREATE TABLE players (
-  id INTEGER PRIMARY KEY,
-  civ_id INTEGER NOT NULL REFERENCES civs(id),
-  name TEXT NOT NULL,
-  military INTEGER NOT NULL DEFAULT 0,
-  wonder INTEGER NOT NULL DEFAULT 0,
-  ast_level INTEGER NOT NULL DEFAULT 0,
-  adv_points INTEGER NOT NULL DEFAULT 0,
-  adv_1vp INTEGER NOT NULL DEFAULT 0,
-  adv_3vp INTEGER NOT NULL DEFAULT 0,
-  adv_6vp INTEGER NOT NULL DEFAULT 0,
-  region TEXT NOT NULL,
-  rank_order INTEGER NOT NULL DEFAULT 0,
-  late_iron_age_bonus INTEGER NOT NULL DEFAULT 0
-);
+| Table | Holds |
+|---|---|
+| `civs` | The 18 empires, refreshed from `CIVS` at every boot |
+| `game` | One row: mode, round, phase flags, the admin password hash |
+| `players` | The empires in this game: player name, A.S.T. square, advance cards, Military, Wonder, special ability, tie-break rank, LIA bonus |
+| `census` | Population and city count per player per round. Older rounds are pruned when a round advances |
+| `admin_sessions` | Login sessions; only a hash of each token is stored |
 
--- One row per player per round
-CREATE TABLE census (
-  id INTEGER PRIMARY KEY,
-  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-  round INTEGER NOT NULL,
-  population INTEGER,               -- NULL until submitted
-  city_count INTEGER,               -- NULL until submitted; re-entered post-calamity
-  submitted_at TEXT,
-  UNIQUE(player_id, round)
-);
-```
+`db/schema.sql` is the current shape. Existing databases are brought up to date by `MIGRATIONS` in `src/services/db.ts`, tracked with `PRAGMA user_version`. A test checks that the schema file alone has every column the migrations add.
+
+### Rules in code
+
+- **A.S.T. requirements** live only in `AGE_TABLE` (`src/shared/ast-pure.ts`). Legends, tooltips, the player-page checklist, the board's predictions and the actual move are all derived from it. Per-empire rows (longer Stone Age or Early Bronze Age) come from `getCivAstProfile` in `src/civs.ts`.
+- **Markers move once, at the end of the round**: `advanceRound()` → `autoAdvanceAst()`, using the post-calamity city counts (plus 1 for the Wonder). In between, `getFullState()` predicts each empire's move (`astStatus`) so the board and the player pages can show it.
+- **Scoring, tie-breaks and move order** are in `src/shared/scoring.ts`, shared with the player page so both always agree.
+
+### Live updates
+
+- Every page connects to the WebSocket at `/ws` (`public/js/ws-client.js`, which reconnects with backoff).
+- After every change the server broadcasts. Player and admin pages receive the full state, `{ "type": "state_update", "data": … }`. The status board only receives `{ "type": "state_changed" }` and then re-fetches its HTML with htmx.
+- Changes from one player's page skip the other players' pages; the board and admin always get them.
+
+| Page | First load | Updates |
+|---|---|---|
+| `/` status board | Server-rendered | htmx swap of `#main-content` on each `state_changed` |
+| `/admin` | Server-rendered | `admin.js` patches the page in place; a few changes (new round, setup ↔ game) reload it |
+| `/<empire>` player page | Server-rendered | `civ.js` re-renders from the WebSocket state, keeping focus and scroll position |
+
+On the TV, the status board holds a screen wake lock while visible and has a full-screen button.
+
+### Client bundles
+
+`public/js/civ.js` and `public/js/admin.js` are built from `src/client/` (which imports `src/shared/`) and committed, so the server needs no build step. After changing either folder run `bun run build:client` and commit the bundles; `tests/client-build.test.ts` fails if they are out of date.
 
 ---
 
 ## REST API
 
-All mutating endpoints require the `mett_admin` session cookie (an opaque random token issued by `POST /login`; only its SHA-256 is stored, in `admin_sessions`, and all sessions are cleared on a password change). Player census and city-count submissions are public (players act on their own pages without admin access).
+Reading is public. Of the changes, those a player makes on their own page are public: census, city count, units moved, Military, Wonder, special ability and advance cards. Everything else needs the admin session cookie `mett_admin`, which `POST /login` sets.
 
-Requests are validated at the boundary: malformed JSON → `400`, unknown player → `404`, census/city-count/move with no game running → `409`, city count before the census is revealed → `409`. Errors are always `{ "error": "…" }`.
+Input is checked at the boundary: bad JSON is `400`, an unknown player `404`, and a submission with no game running (or a city count before the census reveal) `409`. Errors look like `{ "error": "…" }`. Every change is followed by a WebSocket broadcast.
 
 ```
-GET  /api/state                    Full game state
-GET  /api/civs                     All 18 empires (for admin setup)
-GET  /api/setup-recommendations    West/East/Combined scenarios by player count
-POST /api/game/start               Start game {expert, players:[{civ_id,name,region}]}
-POST /api/game/round/next          Advance to next round (backup taken first)
-POST /api/game/round/undo          Undo the last round advance (restores the backup from before it)
-GET  /api/backups                  [ADMIN] List backups + the undo candidate
-POST /api/backups/restore          [ADMIN] Restore a backup {file}
-POST /api/game/reset               Reset game {confirm} (backup taken first)
-POST /api/game/cities/clear        Clear city counts, enter post-calamity phase
-POST /api/census/reveal            Force census reveal
-POST /api/players/:id/census       Submit census {population}   (public)
-POST /api/players/:id/city-count   Update city count {city_count}  (public)
-POST /api/players/:id/military     Toggle Military advance       (public)
-POST /api/players/:id/wonder       Toggle Wonder of the World    (public)
-POST /api/players/:id/adv          Set Advance cards {adv_1vp, adv_3vp, adv_6vp}  (public)
-POST /api/players/:id/ast          Set A.S.T. level {level}
-POST /api/players/:id/name         Rename player {name}
-POST /api/players/:id/rank         Set tie-break rank {rank_order, …}
-POST /api/players/:id/late-iron-age-bonus  Grant/revoke 5 VP LIA bonus
-POST /api/debug/simulate           [DEV] Simulate N rounds
-POST /api/debug/census             [DEV] Randomise current-round census
-POST /api/debug/cities             [DEV] Randomise current-round cities
-POST /api/debug/advances           [DEV] Simulate advance purchases
-POST /api/debug/set-round          [DEV] Jump to round N
+GET  /api/state                         Full game state
+GET  /api/civs                          The 18 empires
+GET  /api/setup-recommendations         Official scenarios by player count
+GET  /healthz                           "ok" when the server and database respond
+
+POST /api/game/start                    {expert, players:[{civ_id, name, region}]}
+POST /api/game/reset                    New game (backup first)
+POST /api/game/round/next               Advance the round (backup first)
+POST /api/game/round/undo               Undo the last advance
+POST /api/game/cities/clear             Trading done: clear city counts for the recount
+POST /api/census/reveal                 Reveal the census early
+GET  /api/backups                       List backups and the undo candidate
+POST /api/backups/restore               {file}
+
+POST /api/players/:id/census            {population}                      public
+POST /api/players/:id/city-count        {city_count}                      public
+POST /api/players/:id/move              Toggle "units moved"              public
+POST /api/players/:id/military          Toggle Military                   public
+POST /api/players/:id/wonder            Toggle Wonder of the World        public
+POST /api/players/:id/special           Toggle special ability            public
+POST /api/players/:id/adv               {adv_1vp, adv_3vp, adv_6vp}       public
+POST /api/players/:id/ast               {level}: set the A.S.T. square
+POST /api/players/:id/regress           Calamity regression, one square back
+POST /api/players/:id/name              {name}
+POST /api/players/:id/rank              Settle a final tie
+POST /api/players/:id/late-iron-age-bonus   Grant or remove the 5 VP bonus
+
+POST /api/debug/simulate                {expert, player_count, rounds, seed?}: play a fake game
+POST /api/debug/census                  {seed?}: random census for this round
+POST /api/debug/cities                  {seed?}: random city counts
+POST /api/debug/advances                {seed?}: random advance purchases
+POST /api/debug/set-round               {round}
 ```
 
-Endpoints marked (public) are callable without the admin cookie so players can submit from their own page. All others require the `mett_admin` session cookie.
-
-Every mutating endpoint broadcasts a `state_update` WebSocket event after writing to the database.
+The debug endpoints also need the admin cookie. With a `seed` they produce the same data every time.
 
 ---
 
-## WebSocket
+## Running it
 
-- Endpoint: `/ws`
-- The server tracks all connected clients in `src/ws.ts`.
-- On client `open`, the server immediately sends one `state_update` so reconnecting tabs are fresh without waiting for the next mutation.
-- Clients identify with `{ "type": "identify", "playerId": n|null, "ping": bool }`. Ping-only clients (the status page, which re-fetches HTML and never reads the JSON) receive `{ "type": "state_changed" }` instead of the full state.
-- After any state-changing API call the server broadcasts:
-  ```json
-  { "type": "state_update", "data": { ...fullGameState, "targetPlayerId": null|number } }
-  ```
-  `fullGameState` includes `astStatus` (per-player advance/stay/regress prediction, computed once in `getFullState()`) so the WS payload and page renders agree on the same map.
-- `public/js/ws-client.js` handles reconnection with exponential backoff and dispatches `mett:state` (every event) and `mett:my-state` (only when the event affects this client's player, or is global).
-
-### Status page on the TV
-
-`public/js/main.js` holds a Screen Wake Lock while the status page is visible (re-taken after the tab returns and on any click), so the display computer doesn't dim or sleep mid-game; it needs a secure origin (HTTPS or localhost). A ⛶ button at the right end of the status header toggles full screen where the browser supports it. Both are covered by `tests/browser/status-tv.spec.ts` with stubbed browser APIs.
-
-### How pages consume the WS feed
-
-| Page | First paint | Updates |
-|---|---|---|
-| `/` (status display) | Server-rendered | HTMX swap of `#main-content` on every `mett:state` (ping-only WS frames) |
-| `/admin` | Server-rendered | In-place DOM patch on `mett:state` in `admin.js` (TypeScript source `src/client/admin.ts`) (sub-prog bar, AST status dots, census/city icons, LIA stars, mil/won classes). Five reloads remain by design — round transitions and setup ↔ active page-shape changes |
-| `/<slug>` (player) | Server-rendered (`renderCivFragment`) | **Full client-side render from WS state** in `civ.js`'s `renderFromState()`. No HTMX swap → focused inputs and scroll position are preserved. The client is TypeScript (`src/client/civ.ts`, compiled to `public/js/civ.js` by `bun run build:client`) and imports the same pure helpers (`compareScores`, `playerTotalVp`, `getCivAstProfile`, etc.) from `src/shared/` as the server, so the leaderboard sort and requirement-row formatting are identical by construction |
-
----
-
-## Move order logic
-
-```
-sort players by:
-  1. military ASC    (non-military moves first)
-  2. population DESC (highest population moves first within each group)
-```
-
-Census is hidden from all clients until every player in the game has submitted, at which point the server reveals it and the sort order updates live.
-
----
-
-## A.S.T. advancement
-
-A.S.T. rules live in one place: `AGE_TABLE` in `src/shared/ast-pure.ts`. Each age lists its board squares and the structured requirement (cities, advance counts by tier, VP totals) to move onto them, per mode; the requirement to advance from level L is that of the age holding L+5. Legends, tooltips, the player-page checklist and the rule checks are all derived from it, and per-civ era shifts come from `getCivAstProfile` in `src/civs.ts`. Auto-advancement runs server-side after each VP or city-count update: if a player meets the next level's requirements they are automatically bumped up. In Expert mode, a player with 0 effective cities outside the Stone Age automatically regresses one level.
-
-Each round has a two-phase city count: players submit a pre-trade count, then re-submit a post-calamity count after calamities resolve. The post-calamity count is what drives A.S.T. checks. The admin uses "Prepare for A.S.T." to transition between phases.
-
-The Wonder of the World grants +1 effective city toward all A.S.T. requirements (advancement and regression checks), but does not count as a city for final VP scoring.
-
----
-
-## Running locally (without Docker)
-
-**Prerequisites:** [Bun](https://bun.sh) — the version in `.bun-version` (CI and the Docker image use exactly that one)
+You need [Bun](https://bun.sh), the version in `.bun-version`.
 
 ```bash
 bun install
-bun run dev          # starts with --watch auto-reload on file changes
+bun run dev          # http://localhost:3000, restarts on every save
 ```
 
-The server listens on **http://localhost:3000** by default.
-
-Environment variables:
-
-| Variable | Default | Description |
+| Variable | Default | |
 |---|---|---|
-| `DATABASE_PATH` | `./data/mett.db` | Path to the SQLite database file |
-| `PORT` | `3000` | Port the HTTP server listens on |
-| `ADMIN_PASSWORD` | `PASSWORD` | Seeded on first boot; persisted in DB and changeable from the admin UI |
-| `NODE_ENV` | — | `production` (set in the image) skips writing the dev `.pid` file |
-| `BACKUP_DIR` | `<db name>-backups/` next to the database | Where automatic backups go |
-| `DEMO` | — | `1` = public demo instance: at boot and every night at 03:00 UTC the game is reset to the same 12-empire round-7 table (`src/services/demo.ts`), the admin password is `demo` (shown on the login page, cannot be changed), and the header says "demo · resets nightly" |
+| `DATABASE_PATH` | `./data/mett.db` | The game's SQLite file |
+| `PORT` | `3000` | |
+| `ADMIN_PASSWORD` | `PASSWORD` | Only used on first boot; change it from the admin page |
+| `BACKUP_DIR` | `<db name>-backups/` next to the database | Where backups go |
+| `DEMO` | unset | `1` makes a public demo (below) |
+| `NODE_ENV` | unset | `production` (set in the image) skips writing the dev `.pid` file |
 
-**README screenshots:** `bun run screenshots` starts its own demo-mode instance on a throwaway database (port 3302), fills in the census and city counts, and writes `docs/img/`. It never touches the dev server.
+**Backups.** Before every round advance, game start, reset, simulation and restore, the server copies the database with `VACUUM INTO` and keeps the newest 30. The admin page lists them with a Restore button, and offers **Undo round advance** when a backup from just before the current round exists. A restore brings back the game, but keeps the admin password and sessions. It takes a backup first, so it can be undone too. A failed backup is logged and never stops the game.
+
+**Demo mode** (`DEMO=1`, used by demo.mett.games):
+- At boot the server replaces the game with the same seeded table every time: a 12-empire Expert game played to round 7, with half the census in. It does this again every night at 03:00 UTC, using a timer in the server process (`src/services/demo.ts`).
+- The admin password is `demo`, shown on the login page, and can't be changed.
+
+**Screenshots.** `bun run screenshots` starts its own demo instance on a throwaway database and rewrites `docs/img/`. It doesn't touch your dev server.
 
 ---
 
 ## Tests
 
-Test workflow has two layers: fast unit/integration in Bun (always), and browser checks in Playwright (on demand; one self-managed test instance per worker).
-
-### Unit and integration tests (Bun)
-
 ```bash
-bun run test          # tests/*.test.ts only — does not pick up Playwright specs
-bunx tsc --noEmit     # TypeScript strict check
+bun run test            # unit, integration and simulations: ~300 tests, ~10 s
+bunx tsc --noEmit       # type check
+bun run test:browser    # Playwright
+bun run css:usage       # unused-CSS check
 ```
 
-Everything in `tests/*.test.ts` runs against an in-memory SQLite DB (`_setTestDb()` from `services/db.ts` for isolation):
+All of them run in CI, and all must pass before a commit.
 
-- `tests/ast.test.ts` — A.S.T. requirement unit tests (all level transitions, Expert vs Basic, Wonder bonus, slow-start civs) and a golden check that `AGE_TABLE` reproduces the historical per-level requirements.
-- `tests/db.test.ts` — `initDb` on a fresh DB, an upgrade from a pre-versioning legacy DB (columns added, `ast_levels` dropped, plaintext password hashed), and idempotence.
-- `tests/game.test.ts` — `autoAdvanceAst`, `checkAndSetLateIronAgeBonus`, `checkAndSetFinalRound`, `playerTotalVp`, `sortCensusOrder`, `computeTieGroupMeta`, `advanceRound` orchestration (basic LIA end, expert `is_final_round` flag, `cities_phase`/`census_revealed` reset) + census prune, static-row cache reset.
-- `tests/auth.test.ts` — Login flow (correct / wrong / **empty** — regression for the bypass fix), `verifyAdminPassword`, `setAdminPassword` (hashing + reject empty), `isAdminAuthed` session validation (expiry, password-as-cookie rejected), `Secure` flag behind HTTPS, the per-client login throttle, `isUsingDefaultPassword`, `/admin/change-password` (logs out other sessions). Drives Hono in-process via `app.request()`.
-- `tests/password.test.ts` — `hashPassword` / `verifyPassword` / `isLegacyPlaintext` round-trips.
-- `tests/api.test.ts` — API auth middleware classification (GET-bypass, public-action whitelist, admin-only POSTs return 401), `POST /api/players/:id/rank` sibling-clear + auto-resolve, `WEST_SCENARIOS`/`EAST_SCENARIOS`/`SETUP_RECOMMENDATIONS` shape, input validation (400/404/409), no password hash in `/api/state`, and HTML-escaped player names on every page.
-- `tests/ws.test.ts` — `broadcastState` payload contract (`game`/`players`/`census`/`astStatus`/`targetPlayerId`, never the password hash), per-player routing (targeted broadcast skips civ-page sockets owned by other players; non-civ sockets and the targeted player's own tabs always receive) and ping-only clients.
-- `tests/backup.test.ts` — backups, pruning, restore (game state back, password and sessions kept, refuses another schema version), undo of a round advance, and the backup endpoints.
-- `tests/simulate.test.ts` — whole games over the API, from an official setup to game over: seeded tables (Expert and Basic; West, East and combined) play census → city counts → trading done → calamities → advance, with an undo and replay mid-game. After every advance it checks that each A.S.T. moved exactly as the player pages predicted, the Late Iron Age bonus (lone arrival only, never moves), the ending rules, census pruning, and that every page renders. Scripted games cover the Late Iron Age endings: lone and joint arrival, late arrival, a calamity cancelling the final round, and Basic ending on arrival.
-- `tests/demo.test.ts` — demo mode: the starting table, the fixed password, the nightly schedule, the login hint.
-- `tests/license.test.ts` — every tracked source file starts with the MPL 2.0 notice.
-- `tests/client-build.test.ts` — rebuilds `src/client/civ.ts` and `src/client/admin.ts` and byte-compares the committed bundles, so a forgotten `bun run build:client` fails the suite instead of shipping a stale page; also checks the Dockerfile's Bun version matches `.bun-version`.
+### bun test (`tests/*.test.ts`)
 
-Every `tests/*.test.ts` file runs (new files are picked up automatically) and all must pass before committing. The full suite (~300 tests) runs in ~10 s; the cost is dominated by scrypt operations (every test DB seeds a hashed admin password) — that's intentional.
+Each test gets an in-memory database built by the real `initDb()` (`tests/_helpers.ts`). `tests/_preload.ts` sends backups to a temporary folder.
 
-### Browser tests (Playwright)
+| File | Covers |
+|---|---|
+| `ast.test.ts` | Every A.S.T. requirement in both modes, per-empire rows, Wonder, regression |
+| `game.test.ts` | Round advance, LIA bonus, final round, scoring, tie-breaks, move order, census pruning |
+| `simulate.test.ts` | Whole games over the HTTP API (Expert and Basic; West, East and combined; 5–18 empires), with every rule checked after every round, an undo and replay, and scripted Late Iron Age endings |
+| `api.test.ts` | Which endpoints need admin, input validation, tie resolution, no secrets in the state, escaped names on every page |
+| `auth.test.ts` | Login, sessions, throttling, password change |
+| `password.test.ts` | Hashing |
+| `ws.test.ts` | What each kind of client receives |
+| `backup.test.ts` | Backups, pruning, restore, undo |
+| `db.test.ts` | Fresh databases, upgrades from old ones, schema file complete |
+| `demo.test.ts` | Demo table, password, nightly schedule |
+| `client-build.test.ts` | Committed bundles up to date; Bun version pin consistent |
+| `license.test.ts` | Every source file carries the MPL notice |
 
-Self-contained — no dev server needed. The worker-scoped `workerServer` fixture (`tests/browser/fixtures.ts`) boots one me[tt] instance per Playwright worker — port 3100 + worker index, with its database and backups in a temp folder removed afterwards — and an auto-applied fixture seeds a fresh 18-player Expert game before every test via `/api/debug/simulate`. Workers never share game state, so the suite runs fully parallel (~20 s locally, 2 workers on CI). The servers run with `NODE_ENV=production`, so they never write the repo's `.pid` (the dev server's). Your `:3000` dev session is never touched.
+### Browser tests (`tests/browser/`)
 
-```bash
-bun run test:browser  # bunx playwright test
-```
+Each Playwright worker starts its own me[tt] on port 3100+ with a throwaway database, and a fresh 18-empire game is seeded before every test, so tests run in parallel and never touch your dev server (`fixtures.ts`).
 
-Specs live under `tests/browser/`:
+| Spec | Checks |
+|---|---|
+| `layout.spec.ts` | The status board fits without scrolling or clipping from 1920×1080 to 5120×2160 (including 4K at 125 %), with empty and full trade tables, and with 6, 12 and 18 empires. Also runs with the wide DejaVu Sans font (`wide-font.conf`), as on many Linux TVs |
+| `civ-viewport.spec.ts` | Player page on phones (390–440 px wide), with OS font scaling, never scrolls sideways |
+| `civ-ast-strip.spec.ts` | The player page's A.S.T. strip |
+| `civ-live-update.spec.ts` | Live updates keep focus in a field being typed in |
+| `status-live.spec.ts` | The board updates from `state_changed` |
+| `status-tv.spec.ts` | Wake lock and full screen |
+| `admin.spec.ts` | Admin page behaviour |
+| `admin-round.spec.ts` | A whole round driven from the admin page, then undone |
+| `visual.spec.ts` | Pixel-exact screenshots of a seeded game: board at 1080p and 4K, admin, a player page on a phone |
 
-- `layout.spec.ts` — at 1080 p and 4 K, asserts the main display fits without overflow and shows 18 leaderboard rows.
-- `civ-viewport.spec.ts` — civ page fits without overflow across the modern phone fleet (375×667 legacy through 440×956) and 1366×768, plus OS font-scaling cases via CDP: Pixel 8 at 1.3× must fit entirely; at 2.0× vertical scroll is allowed but horizontal never is.
-- `admin.spec.ts` — admin page behaviour.
-- `civ-ast-strip.spec.ts` — civ-page A.S.T. strip layout.
-- `civ-live-update.spec.ts` — proves the civ page's live update preserves focus on a typed input, and that `#civ-content` is not swapped on state events.
-- `status-live.spec.ts` — the status page receives payload-free `state_changed` frames and re-fetches its HTML on each.
+The screenshot test only runs locally, because CI renders fonts differently. After an intended visual change: `bunx playwright test tests/browser/visual.spec.ts --update-snapshots`, look at the new images, and commit them.
 
-The seed fixture logs its request context in through `POST /login` (`adminLogin()` in `fixtures.ts`).
-
-For one-off measurements (CSS layout debugging, click-and-verify smoke) use `bun -e` with the Playwright API directly — see `CLAUDE.md` for the pattern.
+For quick measurements, run Playwright from `bun -e`; [CLAUDE.md](CLAUDE.md) has an example.
 
 ### Unused CSS
 
-`bun run css:usage` (`scripts/css-usage.ts`) starts its own instance on a throwaway database and walks it through every state — no game, round 1, census, trade (partial and full), calamities, a real round advance with a summary, final round, game over with a tie, password form, basic mode — loading the status, admin, player and login pages at phone, 1080p and 4K. It fails if any selector in `style.css` never matches. Selectors for DOM that only exists at runtime (error toast, offline pill, rare round-summary lines) are listed with a reason in `KNOWN_DYNAMIC`. Runs in CI after the browser tests.
+`bun run css:usage` walks a throwaway instance through every game state on every page at phone, 1080p and 4K sizes. It fails if a selector in `style.css` never matches. Delete such a rule, or, for elements that only exist at runtime, add it to `KNOWN_DYNAMIC` in `scripts/css-usage.ts` with the reason.
 
-### Wide system fonts
+---
 
-The board uses the platform UI font, so its text width depends on the machine: DejaVu Sans (the default sans on many Linux installs and on the CI runners) is ~10 % wider than Noto Sans. `layout.spec.ts` therefore runs twice — the `chromium` project with the local font, and `chromium-wide-font`, which points Chromium's fontconfig at `tests/browser/wide-font.conf` so `system-ui`/`sans-serif` render as DejaVu Sans. Number columns are sized from the number font with room for wide digits, and the timeline's axis labels never wrap.
+## Screens
 
-### Screenshot tests
+Supported: **phones** (every page) and **1920×1080 at 100 % and up** (every page). Nothing in between.
 
-`tests/browser/visual.spec.ts` renders a seeded 18-player game (`seed: 42` on the debug endpoints) and compares the status board (1920×1080, 3840×2160), the admin page and a player page on a phone pixel-exactly with the PNGs in `tests/browser/visual.spec.ts-snapshots/`. The version stamp and the backup list are masked. Accept an intended change with `bunx playwright test tests/browser/visual.spec.ts --update-snapshots`. Skipped on CI: the runners render the system font differently from the machine the baselines come from.
+- **Status board:** never scrolls or clips from 1080p up, including 4K at 125 % OS scaling (3072×1600). On phones it shows the tables one under the other.
+- **Player page:** may scroll down on phones, never sideways, even with large OS fonts.
 
-### Continuous integration
+**The board's type scale** is a set of `--board-*` tokens on `.status-grid`, at the end of `style.css`. The breakpoints only change the `*-base` values:
 
-`.github/workflows/test.yml` runs four jobs in parallel on every PR, and — via `workflow_call` from `build.yml` — on every push to `main`:
+| Width | Change |
+|---|---|
+| ≤ 700 px | Phone: one column |
+| ≥ 1200 px and < 2560 px | Tighter admin rows, so 18 players fit at 1080p |
+| ≥ 2560 px | Larger rows and fonts |
+| ≥ 3072 px | Wider empire cells; taller rows only from 1840 px tall, so 4K at 125 % still fits |
 
-| Job | Command | Purpose |
-|---|---|---|
-| `bun test` | `bun run test` | Unit + integration suite (`tests/*.test.ts` glob; `tests/browser/` excluded) |
-| `tsc --noEmit` | `bunx tsc --noEmit` | TypeScript strict typecheck |
-| `playwright` | `bun run test:browser` | Browser suite, one fresh instance per worker |
-| `lint` | yamllint, `hadolint-action@v3.5.0`, shellcheck | Workflows/compose, Dockerfile, `docker/entrypoint.sh` |
+Smaller games fill the board: `--players` scales rows (up to 3×) and type.
 
-`build.yml` only builds and pushes the image after every job above passes. All jobs use the Bun version in `.bun-version`. Concurrency groups cancel in-flight runs when a new push lands on the same ref.
+Colours, panels and stripes are shared tokens (`--mett-text`, `--mett-stripe`, `--radius-panel`, …) used by every page. Change the token, not a page-specific copy.
 
-`.yamllint` at the repo root relaxes line-length to 140 and keeps the rest of yamllint's defaults, including the `truthy` check that makes us quote `"on":` in workflow files.
+Media-query `rem` is the browser's 16 px, not Pico's larger root size.
 
 ---
 
 ## Versioning
 
-me[tt] follows [semantic versioning](https://semver.org). The version lives in `package.json`, shows in the page footer (with the build SHA), and becomes the Docker image tags. Every push to `main` publishes an image, so **every commit that changes behaviour is a release**: bump the version in that same commit and put it in the subject, e.g. `fix(ui): … (1.0.1)`.
+[Semantic versioning](https://semver.org). The version is in `package.json`, appears in the page header with the commit, and becomes the Docker image tags. Every push to `main` publishes an image, so **every commit that changes behaviour is a release**: bump the version in that commit, put it in the subject (e.g. `fix(admin): … (1.6.1)`), add a line to [CHANGELOG.md](CHANGELOG.md), and tag it (`git tag v1.6.1`).
 
-The "public API" is what operators and players rely on: the compose file, environment variables, volume and port; player and admin URLs (bookmarks); and that an upgrade is just *pull and restart*.
+What operators and players rely on is the compose file, environment variables, volume and port, the player and admin URLs, and that an upgrade is just *pull and restart*.
 
 | Bump | When | Examples |
 |---|---|---|
-| **Major** `x.0.0` | Upgrading needs manual work, or breaks something people rely on | Compose/env/volume/port change; player URLs change; a DB change that can't migrate automatically; dropping an advertised feature |
-| **Minor** `1.x.0` | New features or visible changes; upgrade is still pull-and-restart | New feature or redesign; any new entry in `MIGRATIONS` (rolling back past it is unsafe); dropping support for a screen size |
-| **Patch** `1.0.x` | Fixes with no new behaviour and no schema change | Bug fixes, styling tweaks, dependency patch updates |
+| **Major** | Upgrading needs manual work or breaks something people rely on | Compose, env or URL changes; a database change that can't migrate itself; a game in progress that can't continue |
+| **Minor** | New features or visible changes; still pull and restart | New features, redesigns, any new `MIGRATIONS` entry (rolling back past it is unsafe), dropping a screen size |
+| **Patch** | Fixes, no schema change | Bug fixes, style tweaks, dependency patches |
 
-Commits that change no shipped behaviour (tests, CI, docs only) need no bump. Tag what you deploy (`git tag v1.0.0`) so `git log v1.0.0..main` shows exactly what is not yet live.
-
-## Deployment
-
-The shipped compose file runs a single me[tt] instance behind Caddy. The public demo at `demo.mett.games` runs from this exact configuration. Game data persists in the `mett_data` named Docker volume on the host.
-
-**Backups.** Before every round advance, game start, reset (including the debug simulation) and restore, the server writes a full copy of the database with SQLite's `VACUUM INTO` to `<db name>-backups/` next to the database (`/app/data/mett-backups/` in the container; override with `BACKUP_DIR`). The newest 30 are kept. The admin page lists them under **Backups** with a Restore button each, and shows **↶ Undo round advance** whenever a backup from right before the current round exists. A restore copies back the game state only (game row, players, census) — the admin password and sessions stay — and takes a backup first, so it can itself be undone. A failed backup is logged but never blocks the game.
-
-### Bring it up
-
-```bash
-docker compose -f docker/docker-compose.yml pull   # from ghcr.io/nilsan/mett:${METT_VERSION:-latest}
-docker compose -f docker/docker-compose.yml up -d
-```
-
-### Pin a version
-
-The `image:` line in compose is `ghcr.io/nilsan/mett:${METT_VERSION:-latest}`. In production, pin:
-
-```bash
-METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml pull
-METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml up -d
-```
-
-`build.yml` publishes `:<version>`, `:<major>.<minor>` and `:<major>` tags from `package.json` alongside `:latest` and `:<short-sha>`. Default of `:latest` is fine for the demo / dev; production should pin — `METT_VERSION=1` follows every compatible release (see [Versioning](#versioning)).
-
-The container starts as root only long enough for `docker/entrypoint.sh` to `chown` the data volume to the `bun` user (volumes from older, root-run images hold root-owned files), then runs the server unprivileged. `HEALTHCHECK` polls `/healthz`, and Caddy waits for it before starting.
-
-### Multi-instance / multi-game on one host
-
-Duplicate the `mett` service in `docker-compose.yml` under different names with separate volume mounts, and add a Caddyfile block per hostname. Each instance is fully independent — separate database, separate game.
-
-The `nilsan/mett-deploy` private repo is one example of this pattern (several named instances behind one Caddy config). It's not part of the public repo; this is the setup you'd build on top.
-
-### Local-build fallback
-
-When GHCR is unreachable, the compose file's `build:` block still works:
-
-```bash
-BUILD_SHA=$(git rev-parse --short HEAD) docker compose -f docker/docker-compose.yml build
-docker compose -f docker/docker-compose.yml up -d
-```
-
-The image carries the commit SHA via the `BUILD_SHA` build arg → `ENV`, which `src/version.ts` reads into the footer. CI's `build.yml` sets the same arg from the commit's short SHA on every build, and passes `BUN_VERSION` from `.bun-version`.
-
-### Tailing logs
-
-```bash
-docker compose -f docker/docker-compose.yml logs -f mett
-docker compose -f docker/docker-compose.yml logs -f caddy
-```
-
-### Local Docker testing
-
-You don't need Docker for local development — `bun run dev` is faster. If you do want to test the production-shaped setup locally:
-
-```bash
-docker compose -f docker/docker-compose.yml build
-docker compose -f docker/docker-compose.yml up -d
-docker compose -f docker/docker-compose.yml down
-```
-
-Caddy in the compose file expects a real DNS name (`demo.mett.games` by default), so it won't issue certificates locally — either strip the `caddy` service and add `ports: - "3000:3000"` to `mett`, or change the Caddyfile to use a local hostname with `tls internal` for a self-signed cert.
+Commits that only touch tests, CI or docs need no bump.
 
 ---
 
-## Responsive layout
+## Deployment
 
-The status page uses a CSS Grid layout in `public/css/style.css`. Supported sizes are **phones** and **1920×1080 at 100 % scaling and up**; everything in between (tablets, laptops, 1080p at 125 %) is out of scope.
+```bash
+docker compose -f docker/docker-compose.yml pull
+docker compose -f docker/docker-compose.yml up -d
+```
 
-| Breakpoint | Viewport | Layout |
-|---|---|---|
-| Phone | ≤ 700 px | Single column; the page scrolls table by table |
-| Default | ≥ 700 px (supported from 1920×1080) | 5-column grid (census, trade, A.S.T. order, timeline, leaderboard), viewport-locked, never scrolls |
-| 1080p admin | 1200 px ≤ width < 2560 px | `(min-width: 75em) and (max-width: 159.99em)` block tightens admin row density so 18 players fit at 1920×1080 without compromising WQHD |
-| WQHD | ≥ 2560 px (`160rem`) | Larger row heights, bigger fonts (TV target) |
-| 4K widths | ≥ 3072 px (`192rem`) | 13 rem empire cells |
-| 4K rows | ≥ 3072 px wide **and** ≥ 1840 px tall (`115rem`) | Re-values the board type tokens (taller rows, bigger type). Height-gated: 4K at 125 % OS scaling is 3072×~1600 and must keep the base rows to fit |
+- **Hostname:** put yours in `docker/Caddyfile`; Caddy fetches the certificate.
+- **Image:** `ghcr.io/nilsan/mett:${METT_VERSION:-latest}`. CI publishes `:latest`, `:<version>`, `:<major>.<minor>`, `:<major>` and `:<commit>`. `METT_VERSION=1` gets every compatible update.
+- **Data** is in the `mett_data` volume, backups included.
+- **Container:** it starts as root only to hand the data volume to the `bun` user, then drops privileges (`docker/entrypoint.sh`).
+- **Health:** a `HEALTHCHECK` calls `/healthz` every 30 s (the server answers and the database responds), and Caddy starts once it passes. Docker marks a failing container unhealthy but doesn't restart it, so use an outside monitor on `/healthz` if you want alerts.
+- **Resources:** one instance is small. In a load test of an 18-empire game, with everyone submitting at once, it used about 80 MB of memory (22 MB for the app itself) under a 256 MB / half-CPU limit, and answered in a few milliseconds.
 
-**Board type scale.** Row height, name/player/number/header sizes are `--board-*` tokens on `.status-grid` (vh-based clamps, end of `style.css`); breakpoints only re-value the `*-base` tokens. **Smaller games fill the board:** `main.ts` sets `--players` on `.status-grid`; rows grow by 18 ÷ players (up to 3×), civ names up to 1.3× and numbers up to 1.15× (lower caps at 4K, where the type already fills the columns); player names keep their size. `layout.spec.ts` checks 6 and 12 players at 1080p and 4K. Trade-card chips are sized from `--board-row`, so a trade row can never be taller than the other tables' rows. **Calm components** (panels, striped tables, the `.civ-num` empire badge, colour tokens such as `--mett-text`, `--mett-stripe`, `--radius-panel`) are shared by every page — change the token, not per-page copies. The app font is the platform UI font (`--mett-font`); a condensed web font was tried and dropped as blurry on desktop monitors.
+**Several tables:** copy the `mett` service under a new name with its own volume, and add a Caddyfile block per hostname. Each instance is completely separate.
 
-`rem` values in media queries use the browser default font size (16 px), not Pico's fluid root font size (~21 px at 1920 px). Keep this in mind when editing breakpoints. The status grid hides overflow, so clipping never shows up as a scrollbar — `tests/browser/layout.spec.ts` checks that every panel ends inside the viewport and rows are equally tall across tables at 1920×1080, 2560×1440, 3072×1600, 3440×1440, 3840×2160 and 5120×2160 — each both with an empty trade table and with 9 trade cards per empire (the tallest case).
+**Building the image yourself:** `BUILD_SHA=$(git rev-parse --short HEAD) docker compose -f docker/docker-compose.yml build`. The commit appears in the header.
 
-### Per-page viewport targets
-
-Layout work must respect this hierarchy — captured here so future tightening doesn't accidentally compromise the primary read target.
-
-| Page | Primary | Must work | Out of scope |
-|---|---|---|---|
-| Status display (`/`) | WQHD / 4K (TV) | Phones (scrolls table by table); 1920×1080 at 100 % and up (never scrolls) | Tablets, laptops, anything between phone and 1080p |
-| Admin (`/admin`) | WQHD / 4K (TV) | Phones; 1920×1080 at 100 % and up | Anything between phone and 1080p |
-| Player page (`/<slug>`) | Modern phones incl. large OS fonts | Phones; never scrolls horizontally | Wide desktop is fine but not optimised for |
-
-When tightening density to fit a smaller viewport, scope the change inside a media query so WQHD/4K density stays untouched. The 1080p admin block above is a worked example of the pattern.
+**Logs:** `docker compose -f docker/docker-compose.yml logs -f mett`. One line per request.
 
 ---
 
 ## License
 
-MIT — Copyright © 2026 [Nils-Anders Nøttseter](https://github.com/nilsan)
+[Mozilla Public License 2.0](LICENSE). Copyright © 2026 Nils-Anders Nøttseter. Every source file starts with the MPL notice.

@@ -76,7 +76,7 @@ describe('requirement labels', () => {
     expect(describeRequirement(null)).toBe('No requirements');
     expect(describeRequirement({ cities: 0, impossible: true })).toBe('N/A');
     expect(describeRequirement({ cities: 3, advVpTotal: 5 })).toBe('3 Cities + 5 VP in Advances');
-    expect(describeRequirement({ cities: 5, advCount: 10, advTier: 'cheap', totalVp: 38 })).toBe('5 Cities + 10 Adv ≤100 + 38 VP');
+    expect(describeRequirement({ cities: 5, advCount: 10, advTier: 'cheap', totalVp: 38 })).toBe('5 Cities + 10 Adv <100 + 38 VP');
     expect(describeRequirement({ cities: 3, advCount: 3, advTier: 'medium' })).toBe('3 Cities + 3 Adv ≥100');
     expect(describeRequirement({ cities: 4, advCount: 2, advTier: 'expensive' })).toBe('4 Cities + 2 Adv ≥200');
   });
@@ -88,7 +88,7 @@ describe('requirement labels', () => {
       const legend = reqLegendItems(expert);
       for (const n of names) expect(legend).toContain(`<strong>${n}:</strong>`);
     }
-    expect(reqLegendItems(true)).toContain('6 Cities + 17 Adv ≤100 + 56 VP');
+    expect(reqLegendItems(true)).toContain('6 Cities + 17 Adv <100 + 56 VP');
     expect(reqLegendItems(false)).toContain('5 Cities + 3 Adv ≥200');
   });
 });
@@ -344,9 +344,9 @@ describe('renderAgeRequirementsList — green/red per-age requirement colouring'
     const html = renderAgeRequirementsList(player, 5, true);
     expect(html).toContain('req-part-ok">5 VP in Advances');   // 16 ≥ 5
     expect(html).toContain('req-part-ok">12 Advances');        // any tier = 12 ≥ 12
-    expect(html).toContain('req-part-ok">10 Adv ≤100');        // cheap = 10 ≥ 10
+    expect(html).toContain('req-part-ok">10 Adv <100');        // cheap = 10 ≥ 10
     expect(html).toContain('req-part-fail">38 VP');            // 16 < 38
-    expect(html).toContain('req-part-fail">17 Adv ≤100');      // cheap 10 < 17
+    expect(html).toContain('req-part-fail">17 Adv <100');      // cheap 10 < 17
   });
 
   it('leaves city conditions neutral when no city count is submitted', () => {

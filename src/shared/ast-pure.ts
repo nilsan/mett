@@ -53,7 +53,7 @@ export function boardLevels(expert: boolean): number[] {
 // rule itself — is derived from this table.
 //
 // Tier values: 'any' = all advances, 'medium' = adv_3vp+adv_6vp (≥100 each),
-//              'expensive' = adv_6vp (≥200 each), 'cheap' = adv_1vp (<100 each).
+//              'expensive' = adv_6vp (≥200 each), 'cheap' = adv_1vp (cost under 100 each, as the rulebook says).
 
 export interface AgeBand {
   name: string;
@@ -126,7 +126,7 @@ const TIER_LABEL: Record<NonNullable<AstRequirement['advTier']>, (n: number) => 
   any:       n => `${n} Advances`,
   medium:    n => `${n} Adv ≥100`,
   expensive: n => `${n} Adv ≥200`,
-  cheap:     n => `${n} Adv ≤100`,
+  cheap:     n => `${n} Adv <100`,
 };
 
 /** Break a requirement into its labelled, individually checkable parts. */
@@ -143,7 +143,7 @@ export function requirementParts(req: AstRequirement | null): AgeReqPart[] {
   return parts;
 }
 
-/** Human-readable requirement, e.g. "5 Cities + 10 Adv ≤100 + 38 VP". */
+/** Human-readable requirement, e.g. "5 Cities + 10 Adv <100 + 38 VP". */
 export function describeRequirement(req: AstRequirement | null): string {
   if (req?.impossible) return 'N/A';
   const parts = requirementParts(req);
