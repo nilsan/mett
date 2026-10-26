@@ -2,7 +2,7 @@
 
 **me[tt]** keeps the books for **Mega Empires: The West & The East**, the 3–18 player board game that runs over a long weekend. One shared screen shows the whole table (census and move order, trade cards, A.S.T. progress, the leaderboard), and every player updates their own empire from their phone. It is made out of love for the game, free and always will be, so the people around the table can spend their time on Mega Empires, not on the bookkeeping.
 
-If me[tt] has saved your table some time, you can [buy me a coffee on Ko-fi](https://ko-fi.com/nilsan). It is never expected, and always appreciated.
+If me[tt] has saved your table some time, you can [buy me a coffee on Ko-fi](https://ko-fi.com/nilsan). It is never expected, and always appreciated. me[tt] stands on the shoulders of a great game, good friends and a lot of open source; [STANDING_ON_SHOULDERS.md](STANDING_ON_SHOULDERS.md) thanks them.
 
 **Try it:** [demo.mett.games](https://demo.mett.games) is a 12-empire game in round 7. Open it on a big screen, open an empire's page such as [demo.mett.games/rome](https://demo.mett.games/rome) on your phone, and play. The admin page is at [/admin](https://demo.mett.games/admin) (password `demo`). Every night at 03:00 UTC the demo starts over from the same game, whatever visitors did to it.
 
@@ -22,7 +22,7 @@ If me[tt] has saved your table some time, you can [buy me a coffee on Ko-fi](htt
 
 The rules me[tt] implements, and where it simplifies, are in [RULES.md](RULES.md).
 
-**Planning advance purchases:** use Matt Crawford's [Mega Empires Calculator](https://calculator.mega-empires.com/) alongside me[tt]; it makes buying decisions much easier.
+**Planning advance purchases:** use Matt Crawford's [Mega Empires Calculator](https://calculator.mega-empires.com/) alongside me[tt]; it makes buying decisions much easier (and you can [buy Matt a coffee](https://www.buymeacoffee.com/crawford)).
 
 ---
 
@@ -42,21 +42,43 @@ The rules me[tt] implements, and where it simplifies, are in [RULES.md](RULES.md
 
 ## Run your own
 
-You need a Linux server with Docker and a domain name pointing at it.
+me[tt] comes as a ready-made Docker image, `ghcr.io/nilsan/mett`. You don't need to download the code.
+
+### On a laptop, for one weekend
+
+All you need is [Docker](https://docs.docker.com/get-started/get-docker/) on a computer that the TV and the phones can reach on the same network:
 
 ```bash
-git clone https://github.com/nilsan/mett.git
-cd mett
-# Put your own hostname in docker/Caddyfile (it says demo.mett.games)
+docker run -d --name mett --restart unless-stopped -p 3000:3000 -v mett-data:/app/data ghcr.io/nilsan/mett:1
+```
+
+1. Find the laptop's address on your network, e.g. `192.168.1.20`.
+2. Open `http://192.168.1.20:3000/admin` and log in with **`PASSWORD`**. Change it from the admin page, or add `-e ADMIN_PASSWORD=…` to the command before the first start.
+3. Put `http://192.168.1.20:3000/` on the TV; the players open their empire's page on their phones.
+
+The game and its backups live in the `mett-data` volume, so they survive restarts and updates.
+
+- **Stop:** `docker stop mett`. **Start again:** `docker start mett`.
+- **Update:** `docker pull ghcr.io/nilsan/mett:1 && docker rm -f mett`, then the `docker run` line again.
+- **Keep the TV awake:** browsers only allow it over HTTPS or on the computer itself. Over plain `http://` from another device, turn off the TV's screen saver instead.
+- **Apple Silicon Macs:** the image is built for Intel/AMD; Docker Desktop runs it through emulation, which is fine for me[tt].
+- **Without Docker:** with [Bun](https://bun.sh) and a copy of the code, `bun install && bun run src/index.ts` does the same.
+
+### On a server, with HTTPS
+
+You need a Linux server with Docker and a domain name pointing at it. Download [`docker/docker-compose.yml`](docker/docker-compose.yml) and [`docker/Caddyfile`](docker/Caddyfile) into a folder named `docker`, put your own hostname in the Caddyfile (it says demo.mett.games), and start it:
+
+```bash
+docker compose -f docker/docker-compose.yml pull
 docker compose -f docker/docker-compose.yml up -d
 ```
 
 Caddy fetches the HTTPS certificate on the first visit. Open `https://<your host>/admin` and log in with **`PASSWORD`** (or set `ADMIN_PASSWORD` in the compose file before the first start), then change it from the admin page.
 
-- **Updates:** `docker compose -f docker/docker-compose.yml pull && docker compose -f docker/docker-compose.yml up -d`. Images are published only after the full test suite passes. Set `METT_VERSION=1` to get every compatible update and nothing that needs manual work ([how versions work](DEV.md#versioning)).
+- **Updates:** `docker compose -f docker/docker-compose.yml pull && docker compose -f docker/docker-compose.yml up -d`. Images are published only after the full test suite passes.
+- **Versions:** `ghcr.io/nilsan/mett:1` (or `METT_VERSION=1` with compose) gets every compatible update and nothing that needs manual work; `:latest` gets everything; `:1.6.1` stays put ([how versions work](DEV.md#versioning)).
 - **Data:** the game and its backups live in the `mett_data` volume.
 - **Several tables:** one me[tt] instance runs one game. Add a service and a Caddyfile block per table (e.g. `east.example.com`, `west.example.com`).
-- **No server?** For a single weekend on a home network, run it on a laptop with [Bun](https://bun.sh): `bun install && bun run src/index.ts`, then open `http://<laptop IP>:3000` on the other devices.
 
 ---
 
@@ -77,7 +99,7 @@ The game ends by itself: in Basic when an empire reaches Late Iron Age, in Exper
 
 Bug reports and ideas are welcome as [issues](https://github.com/nilsan/mett/issues). For code, see [CONTRIBUTING.md](CONTRIBUTING.md) and [DEV.md](DEV.md) (setup, architecture, API, tests). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
-Built with [Bun](https://bun.sh), [Hono](https://hono.dev), TypeScript, SQLite, [htmx](https://htmx.org) and [Pico CSS](https://picocss.com), and written together with [Claude](https://claude.com/product/claude-code), Anthropic's AI, in Claude Code: I decide what me[tt] should do and how it should look, test it at real tables, and Claude writes most of the code and the tests.
+Built with [Bun](https://bun.sh), [Hono](https://hono.dev), TypeScript, SQLite, [htmx](https://htmx.org) and [Pico CSS](https://picocss.com), and written together with [Claude](https://claude.com/product/claude-code), Anthropic's AI, in Claude Code.
 
 ---
 
@@ -85,4 +107,4 @@ Built with [Bun](https://bun.sh), [Hono](https://hono.dev), TypeScript, SQLite, 
 
 **Mozilla Public License 2.0** — Copyright © 2026 [Nils-Anders Nøttseter](https://github.com/nilsan). Full text in [LICENSE](LICENSE). You can use me[tt] in your own work; changes to me[tt]'s own files stay under the MPL.
 
-Inspired by the original [METool](https://github.com/roenoe/METool) by Roe Nøttseter. Mega Empires is a game by Flo de Haan and Gerart de Haan; me[tt] is an unofficial fan project.
+Mega Empires is a game by Flo de Haan and Gerart de Haan, created by Colossus Games and produced by Ares Games; me[tt] is an unofficial fan project.
