@@ -2,6 +2,8 @@
 
 **me[tt]** keeps the books for **Mega Empires: The West & The East**, the 3–18 player civilization board game that runs over a long weekend. One shared screen shows the whole table at a glance — census and move order, trade cards, A.S.T. order and progress, the leaderboard — and every player updates their own empire from their phone. No paper census, no arithmetic, no "who moves next?".
 
+me[tt] is made out of love for Mega Empires: for the long weekends, the crowded tables and the eighteen empires rising and falling around one big map. It is free and always will be. It exists so the people around the table can spend their time on the game, not on the bookkeeping.
+
 **Try it:** [demo.mett.games](https://demo.mett.games) is a 12-empire game in round 7. Open it on a big screen, open an empire's page such as [demo.mett.games/rome](https://demo.mett.games/rome) on your phone, and play. The admin page is at [/admin](https://demo.mett.games/admin) (password `demo`). The demo resets every night.
 
 ![Status display](docs/img/screenshot-status.jpg)
