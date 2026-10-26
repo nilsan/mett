@@ -308,9 +308,11 @@ Everything in `tests/*.test.ts` runs against an in-memory SQLite DB (`_setTestDb
 - `tests/password.test.ts` — `hashPassword` / `verifyPassword` / `isLegacyPlaintext` round-trips.
 - `tests/api.test.ts` — API auth middleware classification (GET-bypass, public-action whitelist, admin-only POSTs return 401), `POST /api/players/:id/rank` sibling-clear + auto-resolve, `WEST_SCENARIOS`/`EAST_SCENARIOS`/`SETUP_RECOMMENDATIONS` shape, input validation (400/404/409), no password hash in `/api/state`, and HTML-escaped player names on every page.
 - `tests/ws.test.ts` — `broadcastState` payload contract (`game`/`players`/`census`/`astStatus`/`targetPlayerId`, never the password hash), per-player routing (targeted broadcast skips civ-page sockets owned by other players; non-civ sockets and the targeted player's own tabs always receive) and ping-only clients.
+- `tests/backup.test.ts` — backups, pruning, restore (game state back, password and sessions kept, refuses another schema version), undo of a round advance, and the backup endpoints.
+- `tests/simulate.test.ts` — whole games over the API, from an official setup to game over: seeded tables (Expert and Basic; West, East and combined) play census → city counts → trading done → calamities → advance, with an undo and replay mid-game. After every advance it checks that each A.S.T. moved exactly as the player pages predicted, the Late Iron Age bonus (lone arrival only, never moves), the ending rules, census pruning, and that every page renders. Scripted games cover the Late Iron Age endings: lone and joint arrival, late arrival, a calamity cancelling the final round, and Basic ending on arrival.
 - `tests/client-build.test.ts` — rebuilds `src/client/civ.ts` and `src/client/admin.ts` and byte-compares the committed bundles, so a forgotten `bun run build:client` fails the suite instead of shipping a stale page; also checks the Dockerfile's Bun version matches `.bun-version`.
 
-Every `tests/*.test.ts` file runs (new files are picked up automatically) and all must pass before committing. The full suite (~270 tests) runs in ~5 s; the cost is dominated by scrypt operations (every test DB seeds a hashed admin password) — that's intentional.
+Every `tests/*.test.ts` file runs (new files are picked up automatically) and all must pass before committing. The full suite (~300 tests) runs in ~10 s; the cost is dominated by scrypt operations (every test DB seeds a hashed admin password) — that's intentional.
 
 ### Browser tests (Playwright)
 
