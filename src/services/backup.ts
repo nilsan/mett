@@ -39,9 +39,10 @@ const FILE_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)_(before-round|bef
 let _dir: string | null = null;
 
 /** Backup directory: BACKUP_DIR, else `<db name>-backups/` next to the
- *  database — per database, so the browser-test instance (mett-test.db) never
- *  mixes its backups into the dev or production list. Unit tests run on an
- *  in-memory DB; their backups go to a temp folder, never next to DB_PATH. */
+ *  database — per database, so a test instance on its own DB never mixes its
+ *  backups into the dev or production list. Unit tests run on an in-memory
+ *  DB; their backups never go next to DB_PATH (tests/_preload.ts points
+ *  BACKUP_DIR at a temp folder it removes afterwards). */
 export function backupDir(): string {
   if (_dir) return _dir;
   if (process.env.BACKUP_DIR) return process.env.BACKUP_DIR;

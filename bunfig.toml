@@ -2,3 +2,5 @@
 # Playwright specs in tests/browser/ are run via `bun run test:browser` (playwright test),
 # not via `bun test`. Exclude them so bun's auto-discovery doesn't pick them up.
 exclude = ["tests/browser/**"]
+# Unit-test backups go to a temp folder that is removed after the run.
+preload = ["./tests/_preload.ts"]

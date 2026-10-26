@@ -4,6 +4,8 @@
 
 import { test, expect } from 'bun:test';
 import { join } from 'path';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 const ROOT = join(import.meta.dir, '..');
 
@@ -14,16 +16,21 @@ const ROOT = join(import.meta.dir, '..');
 // Output is bun-version-sensitive; CI and Docker pin the version in .bun-version.
 for (const name of ['civ', 'admin']) {
   test(`committed public/js/${name}.js matches a fresh build of src/client/${name}.ts`, async () => {
-    const outfile = join('/tmp', `mett-${name}-build-check-${process.pid}.js`);
-    const proc = Bun.spawnSync(
-      ['bun', 'build', `src/client/${name}.ts`, '--outfile', outfile, '--format', 'iife', '--target', 'browser'],
-      { cwd: ROOT },
-    );
-    expect(proc.exitCode).toBe(0);
+    const dir = mkdtempSync(join(tmpdir(), `mett-${name}-build-check-`));
+    try {
+      const outfile = join(dir, `${name}.js`);
+      const proc = Bun.spawnSync(
+        ['bun', 'build', `src/client/${name}.ts`, '--outfile', outfile, '--format', 'iife', '--target', 'browser'],
+        { cwd: ROOT },
+      );
+      expect(proc.exitCode).toBe(0);
 
-    const fresh = await Bun.file(outfile).text();
-    const committed = await Bun.file(join(ROOT, 'public', 'js', `${name}.js`)).text();
-    expect(committed).toBe(fresh); // drifted? run: bun run build:client
+      const fresh = await Bun.file(outfile).text();
+      const committed = await Bun.file(join(ROOT, 'public', 'js', `${name}.js`)).text();
+      expect(committed).toBe(fresh); // drifted? run: bun run build:client
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 }
 

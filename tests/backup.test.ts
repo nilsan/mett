@@ -84,8 +84,14 @@ describe('takeBackup / listBackups', () => {
 describe('backupDir', () => {
   it('unit tests never write next to the real database', () => {
     _setBackupDir(null);
-    expect(backupDir().startsWith(tmpdir())).toBe(true);
-    expect(backupDir().startsWith(dirname(DB_PATH))).toBe(false);
+    const env = process.env.BACKUP_DIR;
+    delete process.env.BACKUP_DIR;  // also without tests/_preload.ts
+    try {
+      expect(backupDir().startsWith(tmpdir())).toBe(true);
+      expect(backupDir().startsWith(dirname(DB_PATH))).toBe(false);
+    } finally {
+      process.env.BACKUP_DIR = env;
+    }
   });
 });
 
