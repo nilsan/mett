@@ -414,7 +414,7 @@ The container starts as root only long enough for `docker/entrypoint.sh` to `cho
 
 Duplicate the `mett` service in `docker-compose.yml` under different names with separate volume mounts, and add a Caddyfile block per hostname. Each instance is fully independent — separate database, separate game.
 
-The `nilsan/mett-deploy` private repo is one example of this pattern (four named instances behind a wildcard Caddy config). It's not part of the public repo; this is the setup you'd build on top.
+The `nilsan/mett-deploy` private repo is one example of this pattern (several named instances behind one Caddy config). It's not part of the public repo; this is the setup you'd build on top.
 
 ### Local-build fallback
 

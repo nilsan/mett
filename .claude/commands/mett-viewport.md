@@ -1,36 +1,28 @@
 Run Playwright viewport overflow checks across all target sizes for the me[tt] app.
 
-If called with no argument (or `dev`), checks only the local dev server at http://localhost:3000/ — the server must already be running.
-
-If called with `all`, checks dev plus all 5 prod hosts: katja, arne, dag, me, roe (.mett.games).
+Checks the local dev server at http://localhost:3000/ (it must already be running). Pass one or more base URLs (e.g. `https://demo.mett.games`) to check those instances instead.
 
 Check both the status page (`/`) and the player page at the viewports below. The player slug differs per host, so the script fetches the first player's `civ_slug` from `/api/state` on each host — never hardcode a slug (and never use `/civ/1`; that route does not exist and 404s). For each viewport, measure vertical scroll (`scrollHeight - innerHeight`) and horizontal scroll (`scrollWidth - innerWidth`). Report ✓ if both are 0, ✗ with the values otherwise.
 
-Viewports follow the target hierarchy in `todo.md`:
+Viewports follow the supported screens in CLAUDE.md:
 
 - **Status `/`** — phones (scrolls table by table; horizontal must be 0) and 1920×1080 at 100 % through 5K2K (must never scroll or clip); sizes in between are out of scope:
   1920×1080, 2560×1440, 3072×1600 (4K at 125 % scaling, minus browser chrome), 3440×1440, 3840×2160, 5120×2160
-- **Player `/<slug>`** — modern phones (Pixel 6–9, iPhone 13–16) primary, legacy/tablet/desktop secondary:
-  390×844 (iPhone 13/14 — minimum supported), 393×852 (iPhone 15/16), 412×915 (Pixel 6/7/8), 440×956 (16 Pro Max), 768×1024, 1366×768, 1920×1080
+- **Player `/<slug>`** — modern phones (Pixel 6–9, iPhone 13–16), plus 1920×1080:
+  390×844 (iPhone 13/14 — minimum supported), 393×852 (iPhone 15/16), 412×915 (Pixel 6/7/8), 440×956 (16 Pro Max), 1920×1080
 - **Player with OS font scaling** (emulated via CDP `Page.setFontSizes`; default standard is 16):
   - 412×915 @ 1.3× (`standard: 21`) — Pixel "Large" text; must fit with **no overflow at all**
   - 390×844 @ 2.0× (`standard: 32`) — maximum accessibility scaling; vertical scroll is allowed by design, but **horizontal must be 0**
 
-Use this inline Playwright script (run with `bun -e`), adjusting the `hosts` array based on the argument:
+Use this inline Playwright script (run with `bun -e`), setting the `hosts` array from the arguments:
 
 ```js
 import { chromium } from "playwright";
 const browser = await chromium.launch();
 
-// For "all" mode, extend hosts with prod entries:
-// { host: "https://katja.mett.games", label: "katja" }, etc.
+// One entry per base URL given as argument; the dev server by default.
 const hosts = [
   { host: "http://localhost:3000", label: "dev" },
-  // { host: "https://katja.mett.games", label: "katja" },
-  // { host: "https://arne.mett.games",  label: "arne"  },
-  // { host: "https://dag.mett.games",   label: "dag"   },
-  // { host: "https://me.mett.games",    label: "me"    },
-  // { host: "https://roe.mett.games",   label: "roe"   },
 ];
 
 const statusViewports = [
@@ -43,13 +35,10 @@ const statusViewports = [
   { w: 5120, h: 2160 },
 ];
 const civViewports = [
-  { w: 375,  h: 667  },   // legacy small phone
   { w: 390,  h: 844  },   // iPhone 13/14
   { w: 393,  h: 852  },   // iPhone 15/16
   { w: 412,  h: 915  },   // Pixel 6/7/8
   { w: 440,  h: 956  },   // iPhone 16 Pro Max
-  { w: 768,  h: 1024 },   // tablet
-  { w: 1366, h: 768  },   // short laptop
   { w: 1920, h: 1080 },
 ];
 // Font-scaled checks: fontPx sets the CDP default font size (16 = 1.0×).

@@ -83,6 +83,6 @@ Phones (every page) and 1920×1080 at 100 % scaling and up. Nothing in between. 
 
 ## Task List & todo.md
 
-Always keep the task list (TaskCreate/TaskUpdate) and `todo.md` in sync. When a task is added, completed, or removed, update both.
+Always keep the task list (TaskCreate/TaskUpdate) and `todo.md` (a local, gitignored backlog) in sync. When a task is added, completed, or removed, update both.
 
 Task subjects must always include a sequence number prefix: `1. Subject`, `2. Subject`, etc. When tasks are added or removed, renumber all tasks to maintain a clean sequence.
