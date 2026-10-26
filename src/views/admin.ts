@@ -6,6 +6,7 @@ import type { FullState, CensusRow } from '../db.js';
 import type { CivRefRow, RoundSummary, RoundSummaryPlayer } from '../db.js';
 import { playerTotalVp, compareScores, makeScoreEntry, computeTieGroupMeta } from '../models/game.js';
 import { empireCell } from './empire.js';
+import { SUPPORT_LINE } from './layout.js';
 import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
 import { LIA_THRESHOLD, AST_LEVELS } from '../models/ast.js';
@@ -119,9 +120,6 @@ function pwdFormHtml(query: string): string {
     </form>
   </div>`;
 }
-
-/** Quiet credit line at the end of every admin view. */
-const SUPPORT_LINE = '<p class="admin-support">me[tt] is free and open source · <a href="https://github.com/nilsan/mett">source code</a> · <a href="https://ko-fi.com/nilsan">buy me a coffee</a></p>';
 
 export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false, backups: BackupInfo[] = [], undoBackup: BackupInfo | null = null): string {
   const { game, players } = state;

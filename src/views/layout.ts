@@ -8,6 +8,9 @@ import pkg from '../../package.json' with { type: 'json' };
 
 const V = `?v=${pkg.version}`;
 
+/** Quiet credit line at the end of the admin and player pages. */
+export const SUPPORT_LINE = '<p class="support-line">me[tt] is free and open source · <a href="https://github.com/nilsan/mett">source code</a> · <a href="https://ko-fi.com/nilsan">buy me a coffee</a></p>';
+
 export function layout(title: string, body: string, activeSlug?: string, headerBadge = ''): string {
   return /* html */`<!DOCTYPE html>
 <html lang="en" data-theme="dark">

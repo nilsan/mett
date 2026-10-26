@@ -48,7 +48,7 @@
   --radius-card: 0.25rem;     /* sections, cards */
   --radius-pill: 624.9375rem; /* fully-rounded badges */
   --radius-panel: 0.75rem;    /* panels / sections on every page */
-  --radius-row: 0.4rem;       /* ends of a striped table row */
+  --radius-row: 0.25rem;      /* ends of a striped table row, A.S.T. age blocks */
   --mett-stripe: rgba(255, 255, 255, 0.05); /* alternating table rows */
 
   /* AST progress strip on the civ page. Phone breakpoint below
@@ -528,8 +528,10 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    without scrolling. Row height computes to ~36 px at Pico's fluid root. */
 .status-grid .table-section   { padding: 0.25rem 0.4rem; display: flex; flex-direction: column; }
 .status-grid .table-section h3 { font-size: 0.65rem; margin-bottom: 0.15rem; line-height: 1.15; min-height: 2.3em; }
-/* The A.S.T. Progress Order title is long; cap it to the empire-box width so it
-   wraps to two lines and the card hugs the boxes (no dead space on the right).
+/* The A.S.T. Progress Order title is long. At 1080p cap it to the empire-box
+   width so it wraps to two lines and the card hugs the boxes: widening the
+   column there squeezes the timeline off-screen with wide system fonts. From
+   WQHD up there is room, so it stays on one line (see the 160rem block).
    The uniform 2-line h3 min-height above keeps every table's first row aligned. */
 .status-grid .ast-order-section h3 { max-width: var(--empire-box-w); }
 .status-grid .table-hint       { font-size: 0.58rem; margin-top: auto; margin-bottom: 0; padding-top: 0.15rem; }
@@ -693,7 +695,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 }
 .status-grid .trade-table td.trade-region { text-align: center; vertical-align: middle; }
 /* With the label column first, the empire cell starts the striped row. */
-.status-grid .trade-two-regions td.empire-cell { border-radius: 0.4rem 0 0 0.4rem; }
+.status-grid .trade-two-regions td.empire-cell { border-radius: var(--radius-row) 0 0 var(--radius-row); }
 .status-grid .trade-table .trade-region-start td {
   overflow: visible;
   position: relative;
@@ -792,6 +794,43 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    width equally across all of them, so every A.S.T. cell is exactly equal. */
 .status-ast .ab-data-col  { width: auto; }
 .status-ast .ab-cell      { width: clamp(1.9rem, 2.4vw, 3rem); height: clamp(1.1rem, 3.3vh, 3.6rem); }
+/* Softer board: in every row each age is its own rounded block, set apart from
+   the next by a small gap (ages differ per empire, so the gap follows
+   .ab-age-end). Every cell carries the same transparent right border, so all
+   columns keep identical content widths: inside an age the colour paints under
+   that border (border-box), the last cell of an age clips to padding-box and
+   leaves the gap. Faint inset dividers keep the squares countable. */
+.status-ast { --ab-age-gap: clamp(2px, 0.12vw, 4px); --ab-age-r: var(--radius-row); }
+.status-ast .ab-cell,
+.status-ast .ab-level-num,
+.status-ast .ab-round-num,
+.status-ast .ab-header {
+  border: 0 !important;
+  border-right: var(--ab-age-gap) solid transparent !important;
+  box-shadow: inset 1px 0 rgba(0,0,0,0.22);
+}
+.status-ast .ab-age-end,
+.status-ast .ab-start-col,
+.status-ast .ab-header { background-clip: padding-box; }
+.status-ast .ab-start-col + td,
+.status-ast .ab-age-end + td,
+.status-ast .ab-start-col,
+.status-ast .ab-header { box-shadow: none; }
+/* Right radius grows by the gap: the clipped background's inner corner then
+   matches the left radius. */
+.status-ast .ab-cell.ab-start-col,
+.status-ast .ab-level-num.ab-start-col,
+.status-ast .ab-header { border-radius: var(--ab-age-r) calc(var(--ab-age-r) + var(--ab-age-gap)) calc(var(--ab-age-r) + var(--ab-age-gap)) var(--ab-age-r); }
+.status-ast .ab-start-col + .ab-cell,
+.status-ast .ab-age-end + .ab-cell,
+.status-ast .ab-start-col + .ab-level-num,
+.status-ast .ab-age-end + .ab-level-num { border-top-left-radius: var(--ab-age-r); border-bottom-left-radius: var(--ab-age-r); }
+.status-ast .ab-cell.ab-age-end,
+.status-ast .ab-level-num.ab-age-end { border-top-right-radius: calc(var(--ab-age-r) + var(--ab-age-gap)); border-bottom-right-radius: calc(var(--ab-age-r) + var(--ab-age-gap)); }
+.status-ast .ab-header { padding-inline: 0; }
+/* Nothing follows Late Iron Age: the last column needs no gap (and "17+" gets
+   the room at 1080p). */
+.status-ast tr > :last-child { border-right-width: 0 !important; }
 /* Phone: the desktop board fills its grid cell and equal-splits the columns,
    but a ~390px phone cell would crush the 17 cells to ~14px. On mobile let the
    board content-size to readable fixed-width cells and scroll horizontally
@@ -913,6 +952,10 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 /* ─── S3 WQHD layout — 2560px CSS px (native 2560p, or 4K @ 1.5×) ─────────── */
 
 @media (min-width: 160rem) {
+  .status-grid .ast-order-section h3 { max-width: none; white-space: nowrap; }
+  /* …and the rows stretch to the heading's width instead of hugging the boxes. */
+  .status-grid .ast-order-table { width: auto; align-self: stretch; }
+  .status-grid .ast-order-table td { width: auto; }
   .status-grid .table-section   { padding: 0.45rem 0.55rem; }
   .status-grid .table-section h3 { font-size: 0.82rem; margin-bottom: 0.35rem; }
   .status-grid .table-hint       { font-size: 0.72rem; }
@@ -2227,14 +2270,14 @@ body:has(.civ-page) { overflow-x: hidden; }
 }
 .default-pwd-nag strong { color: var(--mett-fg); }
 
-/* Quiet credit line at the very end of the admin page. */
-.admin-support {
+/* Quiet credit line at the very end of the admin and player pages. */
+.support-line {
   margin: 1.5rem 0 0.5rem;
   text-align: center;
   font-size: 0.8rem;
   color: var(--mett-muted);
 }
-.admin-support a { color: var(--mett-muted); }
+.support-line a { color: var(--mett-muted); }
 
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 

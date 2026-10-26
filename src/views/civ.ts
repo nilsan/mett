@@ -5,6 +5,7 @@
 import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
+import { SUPPORT_LINE } from './layout.js';
 import { sortCensusOrder, playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
 import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
@@ -353,6 +354,7 @@ export function renderCiv(
   const player = state.players.find(p => p.civ_slug === slug)!;
   return `<script>window.PLAYER_ID = ${player.id};</script>
 ${fragment}
+${SUPPORT_LINE}
 <script src="/js/civ.js${V}"></script>
 `;
 }

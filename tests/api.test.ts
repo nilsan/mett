@@ -515,9 +515,18 @@ describe('POST /api/players/:id/regress — calamity AST regression', () => {
 
   it('admin page ends with the source and Ko-fi links', async () => {
     const html = await (await app.request('/admin', { headers: { cookie: ADMIN } })).text();
-    expect(html).toContain('class="admin-support"');
+    expect(html).toContain('class="support-line"');
     expect(html).toContain('href="https://github.com/nilsan/mett"');
     expect(html).toContain('href="https://ko-fi.com/nilsan"');
+  });
+
+  it('player page ends with the source and Ko-fi links, outside the swapped fragment', async () => {
+    const html = await (await app.request('/minoa')).text();
+    expect(html).toContain('class="support-line"');
+    expect(html.indexOf('class="support-line"')).toBeGreaterThan(html.indexOf('<!-- #civ-content -->'));
+    // htmx re-renders only #civ-content; the line must not be duplicated into it.
+    const fragment = await (await app.request('/minoa', { headers: { 'HX-Request': 'true' } })).text();
+    expect(fragment).not.toContain('support-line');
   });
 });
 

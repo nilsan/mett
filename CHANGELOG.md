@@ -2,6 +2,16 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 1.7.0 — 2026-10-26
+
+### Added
+- Player pages end with the same quiet source code and Ko-fi line as the admin page.
+
+### Changed
+- The A.S.T. timeline on the status board matches the softer look: each age is a rounded block per empire, with a small gap between ages.
+- The "A.S.T. Progress Order" heading stays on one line from 1440p up, with its rows as wide as the heading (it still wraps at 1080p, where the board needs the width).
+- Table rows are slightly less rounded.
+
 ## 1.6.1 — 2026-10-26
 
 ### Fixed
