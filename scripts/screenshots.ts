@@ -3,133 +3,74 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /**
- * Regenerate the README screenshots from a freshly-simulated mid-game.
+ * Regenerate the README screenshots (docs/img/) from the demo table.
  *
  *   bun run screenshots
  *
- * Requires the dev server on :3000. Captures three views into docs/img/:
+ * Starts its own me[tt] instance in demo mode on a throwaway database (never
+ * touches the dev server or its data) — the same 12-empire round-7 table as
+ * demo.mett.games — then fills in the census and city counts (seeded) so the
+ * board shows move order and trade cards, and captures:
  *   - screenshot-status.jpg   (1920×1080, JPEG q=85)  ─── status display
- *   - screenshot-admin.jpg    (1920×1080, JPEG q=85)  ─── admin / Players
- *   - screenshot-civ.png      (Pixel 7 viewport)      ─── single empire page
- *
- * Status + admin are captured at a 4K *CSS* viewport (3840×2160) with a
- * deviceScaleFactor of 0.5, so the @media (min-width: 192rem) breakpoint
- * activates and the page lays out for the TV target — but the resulting
- * image is rendered at 1920×1080 device pixels, README-friendly.
- *
- * Side effect: the simulate call resets the game on the dev DB, so don't run
- * this against an in-progress real session.
+ *   - screenshot-admin.jpg    (1920×1080, JPEG q=85)  ─── admin page
+ *   - screenshot-civ.png      (Pixel 7, full page)    ─── one empire's page
  */
 
-import { chromium, devices, type Browser, type BrowserContext } from 'playwright';
+import { chromium, devices, type Browser } from 'playwright';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-const BASE = 'http://localhost:3000';
-const ADMIN_PASSWORD = 'PASSWORD';
+const PORT = 3302;
+const BASE = `http://localhost:${PORT}`;
 const OUT_DIR = 'docs/img';
+const TV = { viewport: { width: 1920, height: 1080 } };
 
-async function loginAdmin(ctx: BrowserContext): Promise<void> {
+const dir = mkdtempSync(join(tmpdir(), 'mett-screenshots-'));
+const server = Bun.spawn(['bun', 'run', 'src/index.ts'], {
+  env: { ...process.env, PORT: String(PORT), DATABASE_PATH: join(dir, 'm.db'), DEMO: '1', NODE_ENV: 'production' },
+  stdout: 'ignore', stderr: 'inherit',
+});
+
+async function shoot(browser: Browser, path: string, file: string, opts: { admin?: string; phone?: boolean } = {}): Promise<void> {
+  const ctx = await browser.newContext(opts.phone ? { ...devices['Pixel 7'] } : TV);
+  if (opts.admin) await ctx.addCookies([{ name: 'mett_admin', value: opts.admin, url: BASE }]);
   const page = await ctx.newPage();
-  await page.goto(`${BASE}/login`);
-  await page.fill('input[name=password]', ADMIN_PASSWORD);
-  await page.click('button[type=submit]');
-  await page.waitForURL(`${BASE}/admin`);
-  await page.close();
+  await page.goto(BASE + path);
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => document.fonts.ready);
+  const out = `${OUT_DIR}/${file}`;
+  await page.screenshot(file.endsWith('.jpg') ? { path: out, type: 'jpeg', quality: 85 } : { path: out, fullPage: true });
+  await ctx.close();
+  console.log(`✓ ${out}`);
 }
 
-async function simulateMidGame(ctx: BrowserContext): Promise<void> {
-  const page = await ctx.newPage();
-  const res = await page.request.post(`${BASE}/api/debug/simulate`, {
-    data: { expert: 1, player_count: 18, rounds: 6 },
-  });
-  if (!res.ok()) {
-    throw new Error(`simulate failed: ${res.status()} ${await res.text()}`);
+try {
+  for (let i = 0; ; i++) {
+    try { if ((await fetch(BASE + '/healthz')).ok) break; } catch { /* starting */ }
+    if (i > 50) throw new Error('server did not start');
+    await Bun.sleep(100);
   }
-  await page.close();
-}
-
-async function pickCivSlug(ctx: BrowserContext): Promise<string> {
-  const page = await ctx.newPage();
-  const res = await page.request.get(`${BASE}/api/state`);
-  type Player = { name: string };
-  type Civ = { id: number; slug: string; name: string };
-  const state = (await res.json()) as { players: (Player & { civ_id: number })[] };
-  // Grab any one — pick the first whose civ name we can map to a slug.
-  const civsRes = await page.request.get(`${BASE}/api/civs`);
-  const civs = (await civsRes.json()) as Civ[];
-  const civById = new Map(civs.map(c => [c.id, c]));
-  const first = state.players.find(p => civById.has(p.civ_id));
-  if (!first) throw new Error('no players in simulated game');
-  await page.close();
-  return civById.get(first.civ_id)!.slug;
-}
-
-// 4K CSS viewport + half DPR → 4K layout, 1920×1080 image.
-const TV_CONTEXT = {
-  viewport: { width: 3840, height: 2160 },
-  deviceScaleFactor: 0.5,
-};
-
-async function captureStatus(browser: Browser): Promise<void> {
-  const ctx = await browser.newContext(TV_CONTEXT);
-  const page = await ctx.newPage();
-  await page.goto(`${BASE}/`);
-  await page.waitForLoadState('networkidle');
-  await page.screenshot({
-    path: `${OUT_DIR}/screenshot-status.jpg`,
-    type: 'jpeg',
-    quality: 85,
-    fullPage: false,
+  const login = await fetch(BASE + '/login', { method: 'POST', body: new URLSearchParams({ password: 'demo' }), redirect: 'manual' });
+  const token = login.headers.get('set-cookie')!.split(';')[0]!.split('=')[1]!;
+  const post = (path: string, body: object) => fetch(BASE + path, {
+    method: 'POST', headers: { cookie: `mett_admin=${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body),
   });
-  await ctx.close();
-  console.log(`✓ ${OUT_DIR}/screenshot-status.jpg`);
-}
+  // Census in and revealed, city counts in: move order and trade cards show.
+  await post('/api/debug/census', { seed: 7 });
+  await post('/api/debug/cities', { seed: 7 });
+  const state = await (await fetch(BASE + '/api/state')).json() as { players: Array<{ civ_slug: string }> };
 
-async function captureAdmin(browser: Browser): Promise<void> {
-  const ctx = await browser.newContext(TV_CONTEXT);
-  await ctx.addCookies([
-    { name: 'mett_admin', value: ADMIN_PASSWORD, url: BASE },
-  ]);
-  const page = await ctx.newPage();
-  await page.goto(`${BASE}/admin`);
-  await page.waitForLoadState('networkidle');
-  await page.screenshot({
-    path: `${OUT_DIR}/screenshot-admin.jpg`,
-    type: 'jpeg',
-    quality: 85,
-    fullPage: false,
-  });
-  await ctx.close();
-  console.log(`✓ ${OUT_DIR}/screenshot-admin.jpg`);
-}
-
-async function captureCiv(browser: Browser, slug: string): Promise<void> {
-  const ctx = await browser.newContext({ ...devices['Pixel 7'] });
-  const page = await ctx.newPage();
-  await page.goto(`${BASE}/${slug}`);
-  await page.waitForLoadState('networkidle');
-  await page.screenshot({
-    path: `${OUT_DIR}/screenshot-civ.png`,
-    fullPage: true,
-  });
-  await ctx.close();
-  console.log(`✓ ${OUT_DIR}/screenshot-civ.png (slug=${slug})`);
-}
-
-async function main(): Promise<void> {
   const browser = await chromium.launch();
   try {
-    const setup = await browser.newContext();
-    await loginAdmin(setup);
-    await simulateMidGame(setup);
-    const slug = await pickCivSlug(setup);
-    await setup.close();
-
-    await captureStatus(browser);
-    await captureAdmin(browser);
-    await captureCiv(browser, slug);
+    await shoot(browser, '/', 'screenshot-status.jpg');
+    await shoot(browser, '/admin', 'screenshot-admin.jpg', { admin: token });
+    await shoot(browser, `/${state.players[0]!.civ_slug}`, 'screenshot-civ.png', { phone: true });
   } finally {
     await browser.close();
   }
+} finally {
+  server.kill();
+  await server.exited;
+  rmSync(dir, { recursive: true, force: true });
 }
-
-await main();

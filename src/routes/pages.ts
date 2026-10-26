@@ -12,6 +12,7 @@ import { renderMain } from '../views/main.js';
 import { getFullState, getAllCivs, getPlayerCensus, getCensusForRound, setAdminPassword, verifyAdminPassword, isUsingDefaultPassword, createAdminSession, isValidAdminSession, clearAdminSessions, ADMIN_SESSION_TTL_MS } from '../db.js';
 import { CIVS } from '../civs.js';
 import { listBackups, backupBeforeAdvanceTo } from '../services/backup.js';
+import { isDemo, DEMO_PASSWORD } from '../services/demo.js';
 import pkg from '../../package.json' with { type: 'json' };
 
 const COOKIE_NAME = 'mett_admin';
@@ -100,6 +101,7 @@ pages.get('/login', (c) => {
       <h2>Admin Login</h2>
       ${error === 'locked' ? '<p class="login-error">Too many failed attempts — try again later.</p>'
         : error ? '<p class="login-error">Incorrect password.</p>' : ''}
+      ${isDemo() ? `<p>This is the demo — the password is <strong>${DEMO_PASSWORD}</strong>.</p>` : ''}
       <form method="POST" action="/login" class="login-form">
         <input type="password" name="password" placeholder="Password" autofocus class="login-input">
         <button type="submit" class="btn-primary">Login</button>
@@ -126,6 +128,7 @@ pages.post('/login', async (c) => {
 
 pages.post('/admin/change-password', async (c) => {
   if (!isAdminAuthed(c.req.raw)) return c.redirect('/login');
+  if (isDemo()) return c.redirect('/admin?pwd_error=3');
   const body = await c.req.parseBody();
   const current = String(body.current ?? '');
   const next = String(body.next ?? '').trim();

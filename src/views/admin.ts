@@ -105,6 +105,7 @@ function roundSummaryPanelHtml(summaries: RoundSummary[]): string {
 function pwdFormHtml(query: string): string {
   const error = query.includes('pwd_error=1') ? 'Current password is incorrect.'
     : query.includes('pwd_error=2') ? 'New password cannot be empty.'
+    : query.includes('pwd_error=3') ? 'The demo password cannot be changed.'
     : '';
   const ok = query.includes('pwd_ok=1');
   const showOpen = !!(error || ok);

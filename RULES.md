@@ -98,9 +98,11 @@ The Wonder does **not** count as a city for final VP scoring.
 
 ---
 
-## Late Iron Age (LIA) simultaneous finish bonus
+## Late Iron Age (LIA) bonus
 
-When two or more players reach the maximum A.S.T. level in the **same round**, they each receive a **+5 VP bonus** added to their final score. Players who had already reached maximum A.S.T. in an earlier round do not receive this bonus.
+When a **single** empire is the first to move into Late Iron Age (A.S.T. 75), it receives the **A.S.T. Bonus of +5 VP**, whatever happens in the final round. If two or more empires reach Late Iron Age in the **same round**, nobody gets the bonus, and nobody who arrives later can get it either. ("At Victory Determination, if a single player has moved their A.S.T.-marker into the first of the two Late Iron Age era columns, this player receives the A.S.T. Bonus of 5 Victory Points" — rulebook, A.S.T.)
+
+me[tt] grants the bonus automatically when the round advances; the admin round summary says whether it was granted or blocked by a joint arrival, and the admin can grant or remove it by hand.
 
 ---
 
@@ -121,7 +123,7 @@ When the game ends me[tt] calculates and displays a full breakdown for every pla
 | **Advance VP** | Total VP from all purchased Civilization Advances |
 | **A.S.T. VP** | VP awarded for the player's final A.S.T. position per the official table |
 | **City VP** | 1 VP per city held at the end of the final round (Wonder does not count) |
-| **LIA bonus** | +5 VP if the player reached maximum A.S.T. in the same round as at least one other player |
+| **LIA bonus** | +5 VP for the single empire that reached Late Iron Age first, alone |
 
 Players are ranked by total VP. The final scoreboard shows gold, silver and bronze medals for the top three.
 

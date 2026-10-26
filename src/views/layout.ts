@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import { VERSION_STRING } from '../version.js';
+import { isDemo } from '../services/demo.js';
 import pkg from '../../package.json' with { type: 'json' };
 
 const V = `?v=${pkg.version}`;
@@ -26,7 +27,7 @@ export function layout(title: string, body: string, activeSlug?: string, headerB
     <a href="/" class="mett-wordmark">me<span class="mw-bracket">[</span>tt<span class="mw-bracket">]</span></a>
     <span class="mett-tagline">MEGA EMPIRES TURN TRACKER</span>
     ${headerBadge}
-    <span class="mett-version" aria-hidden="true">${VERSION_STRING}</span>
+    <span class="mett-version" aria-hidden="true">${isDemo() ? 'demo · resets nightly · ' : ''}${VERSION_STRING}</span>
     <a href="/admin" class="admin-gear" title="Admin" aria-label="Admin"><span aria-hidden="true">⚙</span></a>
   </header>
   <main class="container-fluid">

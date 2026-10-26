@@ -12,6 +12,7 @@ import pages from './routes/pages.js';
 import { addClient, removeClient, sendInitialState, identifyClient } from './ws.js';
 import { getDb } from './db.js';
 import { DB_PATH } from './services/db.js';
+import { isDemo, startDemo } from './services/demo.js';
 
 // Ensure data directory exists alongside the DB file the service will open.
 mkdirSync(dirname(DB_PATH), { recursive: true });
@@ -22,6 +23,9 @@ if (process.env.NODE_ENV !== 'production') writeFileSync('.pid', String(process.
 
 // Initialise DB (runs schema)
 getDb();
+
+// Public demo instance: fresh mid-game table now and every night.
+if (isDemo()) await startDemo();
 
 const app = new Hono();
 

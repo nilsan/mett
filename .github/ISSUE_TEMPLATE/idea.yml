@@ -1,0 +1,17 @@
+---
+name: Idea or rule question
+description: A feature, a change to how something works, or a rule me[tt] gets wrong
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help your table
+      description: The situation at the table, and what you would like me[tt] to do.
+    validations:
+      required: true
+  - type: textarea
+    id: rules
+    attributes:
+      label: Rulebook reference
+      description: For a rule question, the rulebook section or quote (West or East, Basic or Expert).

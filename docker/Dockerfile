@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 # Bun version: keep in sync with /.bun-version (CI passes it as BUN_VERSION;
 # tests/client-build.test.ts fails if this default drifts from that file).
 ARG BUN_VERSION=1.4.4

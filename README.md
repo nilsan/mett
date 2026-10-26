@@ -1,191 +1,86 @@
 # me[tt] — Mega Empires Turn Tracker
 
-**me[tt]** is a real-time web app for playing **Mega Empires: The West & The East** — the empire-building board game for 3–18 players that typically runs over two full days. It replaces the manual bookkeeping of population census, move order, city count, Advance VP and A.S.T. progress with a shared live display that everyone can see and interact with from their own device.
+**me[tt]** keeps the books for **Mega Empires: The West & The East**, the 3–18 player civilization board game that runs over a long weekend. One shared screen shows the whole table at a glance — census and move order, trade cards, A.S.T. order and progress, the leaderboard — and every player updates their own empire from their phone. No paper census, no arithmetic, no "who moves next?".
 
-> **Before you start — use this alongside me[tt]:**
-> Matt Crawford's **[Mega Empires Calculator](https://calculator.mega-empires.com/)** is the best tool available for planning Civilization Advance purchases. Keep it open on a tablet or laptop throughout your session — it makes buying decisions dramatically easier.
-
----
-
-## What me[tt] tracks
-
-- **Census** — each player submits their population count from their own phone; the shared display stays hidden until everyone has reported, then reveals automatically
-- **Move order** — after reveal, players are sorted by population (highest moves first), with Military advance holders always moving last
-- **City count** — each player submits their city count before trading and again after calamities; me[tt] uses the post-calamity count to check A.S.T. requirements automatically
-- **Advance VP** — tracked by card tier (1 VP, 3 VP, 6 VP) so A.S.T. requirements like "3 advances ≥ 200 VP each" can be checked precisely
-- **A.S.T. progress** — each player's position on the Archaeological Succession Table, with next-level requirements shown on their personal page; advancement and regression are calculated automatically
-- **Wonder of the World** — grants +1 effective city toward all A.S.T. requirements
-- **Leaderboard** — live ranking by Advance VP
-- **Final scoring** — when the game ends, me[tt] shows a full breakdown: Advance VP + A.S.T. VP + city VP (1 per city) + LIA bonus (5 VP for reaching maximum A.S.T. simultaneously)
-- **Live updates** — every screen updates automatically via WebSocket; no manual refreshing
-
-For a detailed description of each implemented rule see [RULES.md](RULES.md).
-
----
-
-## What it looks like
-
-**Status display** — the shared TV view, mid-game with 12 players (Round 7, Expert):
+**Try it:** [demo.mett.games](https://demo.mett.games) is a 12-empire game in round 7. Open it on a big screen, open an empire's page such as [demo.mett.games/rome](https://demo.mett.games/rome) on your phone, and play. The admin page is at [/admin](https://demo.mett.games/admin) (password `demo`). The demo resets every night.
 
 ![Status display](docs/img/screenshot-status.jpg)
 
-**Admin** — the game master's control panel:
+---
+
+## What it does
+
+- **Census and move order.** Each player enters their population on their phone. The board shows who is still missing and reveals everything at once when the last census is in, sorted into move order (Military holders last).
+- **Trade cards.** Players enter their city count; the board shows each empire's trade-card draw, West and East side by side.
+- **A.S.T.** At the end of the round me[tt] moves every empire on the Archaeological Succession Table by the official requirements for Basic or Expert, including slow-start empires, the Wonder (+1 city), and Expert regression with no cities. Each player's page shows exactly what they still need for the next step.
+- **Calamities.** Cities are counted again after calamities; the game master can knock an empire back a step, and the board marks it.
+- **Leaderboard and the end of the game.** Live ranking by victory points, the Late Iron Age bonus, the Expert final round, final scoring with tie-breaks.
+- **Live everywhere.** Every screen updates instantly; nothing to refresh. The status board keeps the TV awake and has a full-screen button.
+- **Safety net.** A backup is taken before every round advance; the game master can undo an advance or restore any backup from the admin page.
+
+The rules me[tt] implements, and where it simplifies, are in [RULES.md](RULES.md).
+
+**Planning advance purchases:** use Matt Crawford's [Mega Empires Calculator](https://calculator.mega-empires.com/) alongside me[tt]; it makes buying decisions much easier.
+
+---
+
+## The three screens
+
+**Status board** (`/`) — the shared screen or TV. Built for 1920×1080 and up (including 4K TVs); it never scrolls. On a phone it shows the same tables one under the other.
+
+**Player page** (`/<empire>`, e.g. `/egypt`) — each player bookmarks their own. Census, city count, advance cards, Military / Wonder / special ability, and the A.S.T. requirements with what is still missing in red.
+
+<img src="docs/img/screenshot-civ.png" alt="Player page on a phone" width="300">
+
+**Admin** (`/admin`) — the game master's page: set up the game, see every empire, fill in for a player who is away, run the phases, undo, restore. Works on a laptop or a phone.
 
 ![Admin page](docs/img/screenshot-admin.jpg)
 
-**Player page** (phone) — each empire's personal page, optimised for portrait phones:
-
-<img src="docs/img/screenshot-civ.png" alt="Player page on a phone" width="320">
-
-(Regenerate from a fresh simulated game any time with `bun run screenshots`.)
-
 ---
 
-## Deployment
+## Run your own
 
-### Production (Docker)
-
-The shipped compose file runs one me[tt] instance behind a Caddy reverse proxy that handles HTTPS automatically. The public demo at **`demo.mett.games`** runs from this exact configuration.
-
-**Requirements:** a Linux server with Docker and Docker Compose installed, and a DNS A record for the chosen subdomain pointing to the server's IP.
+You need a Linux server with Docker and a domain name pointing at it.
 
 ```bash
 git clone https://github.com/nilsan/mett.git
 cd mett
-# Edit docker/Caddyfile to use your own hostname instead of demo.mett.games
+# Put your own hostname in docker/Caddyfile (it says demo.mett.games)
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-The instance is reachable at the configured hostname; Caddy obtains the TLS certificate on first request.
+Caddy fetches the HTTPS certificate on the first visit. Open `https://<your host>/admin` and log in with **`PASSWORD`** (or set `ADMIN_PASSWORD` in the compose file before the first start), then change it from the admin page.
 
-```bash
-docker compose -f docker/docker-compose.yml down   # stop
-```
-
-Pin a specific upstream image version (recommended in production):
-
-```bash
-METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml pull
-METT_VERSION=1.2.3 docker compose -f docker/docker-compose.yml up -d
-```
-
-`:latest` (the default) tracks `main` and is only published after the full test suite passes. Every build is also tagged with its version (`1.0.0`, `1.0`, `1`) and short commit SHA. Pin `METT_VERSION=1` to receive every compatible update and nothing that needs manual work (see [DEV.md › Versioning](DEV.md#versioning)). Game data lives at the `mett_data` named volume on the host, together with automatic backups taken before every round advance (restorable from the admin page).
-
-**Multi-instance / multi-game on one host:** duplicate the `mett` service in `docker-compose.yml` under different names with separate volume mounts, and add a Caddyfile block per hostname. Each instance is fully independent — separate database, separate game.
-
-### Development (Bun)
-
-For local development, Docker is not needed. Install [Bun](https://bun.sh), then:
-
-```bash
-git clone https://github.com/nilsan/mett.git
-cd mett
-bun install
-bun --watch run src/index.ts
-```
-
-The app is available at **http://localhost:3000**. The server reloads automatically on file changes.
+- **Updates:** `docker compose -f docker/docker-compose.yml pull && docker compose -f docker/docker-compose.yml up -d`. Images are published only after the full test suite passes. Set `METT_VERSION=1` to get every compatible update and nothing that needs manual work ([how versions work](DEV.md#versioning)).
+- **Data:** the game and its backups live in the `mett_data` volume.
+- **Several tables:** one me[tt] instance runs one game. Add a service and a Caddyfile block per table (e.g. `east.example.com`, `west.example.com`).
+- **No server?** For a single weekend on a home network, run it on a laptop with [Bun](https://bun.sh): `bun install && bun run src/index.ts`, then open `http://<laptop IP>:3000` on the other devices.
 
 ---
 
-## User guide
+## Playing a game with me[tt]
 
-### Admin setup
+1. **Set up** on `/admin`: Expert or Basic, number of players, **Apply recommended civs** (the official scenario table), player names, **Start Game**.
+2. Put `/` on the shared screen; every player opens their empire's page.
+3. **Census:** everyone enters their population. The move order appears when the last one is in. A player without a phone? The game master types it in on the admin page.
+4. **Trade:** everyone enters their city count; the trade cards appear on the board. When trading is done, the game master clicks **Trading done → recount**.
+5. **Calamities:** resolve them at the table, then everyone enters their city count again. The game master applies any A.S.T. regressions and clicks **Advance**.
+6. me[tt] moves the A.S.T. markers, and the next round starts. Players update their advance cards whenever they buy.
 
-Open **/admin** on the device that will act as the game master (typically a laptop). In production this is e.g. `https://demo.mett.games/admin`; in development it is `http://localhost:3000/admin`.
-
-The default admin password is **`PASSWORD`**. You can change it from the admin page once logged in.
-
-1. Choose **Expert** or **Basic** mode
-2. Enter the number of players and click **Apply recommended civs** — me[tt] pre-selects the correct empires from the official scenario table
-3. Adjust the selection manually if you want
-4. Assign a player name to each empire
-5. Click **Start Game**
-
-### The main display
-
-Put the root URL (e.g. `https://demo.mett.games` in production, or `http://localhost:3000` in development) on a shared screen or TV. It shows five panels:
-
-| Panel | What it shows |
-|---|---|
-| **Leaderboard** | Ranked by Advance VP. |
-| **Census** | Who has submitted (✓) and who hasn't (?). Population counts stay hidden until everyone has reported; after reveal players are listed in move order. |
-| **Trade cards** | Each player's trade card hand at a glance. |
-| **A.S.T. progress** | The full A.S.T. board with each player's current position highlighted. |
-| **A.S.T. order** | Players ranked by A.S.T. level, used to determine taxation order. |
-
-All panels update live as players submit.
-
-### Player pages
-
-Every player bookmarks their own empire's page, for example:
-
-```
-https://demo.mett.games/egypt
-https://demo.mett.games/rome
-https://demo.mett.games/hellas
-```
-
-From their page a player can:
-
-- **Submit census** — population count each round
-- **Submit city count** — entered before trading, and again after calamities (the second entry is used for A.S.T. checks)
-- **Update Advance VP** — by card tier: how many 1 VP, 3 VP and 6 VP cards they hold; me[tt] shows whether each A.S.T. requirement is met
-- **Toggle Wonder of the World** — when held, counts as +1 city for all A.S.T. requirements
-- **See A.S.T. status** — current level, next level's requirements with green/red indicators, and a visual progress strip across all ages
-
-In Expert mode, a player with 0 cities (and no Wonder) outside the Stone Age will see a **regression warning** — they will drop one A.S.T. level unless they acquire a city before the round ends.
-
-### Running a round
-
-1. **Census phase** — players submit their population count; the main display shows a tick as each comes in
-2. **Move order reveals** automatically once all are submitted — highest population moves first within each group, Military holders move last
-3. **Pre-trade city count** — players enter their current city count before buying trade cards
-4. **Trade and calamities** take place as normal
-5. **Post-calamity city count** — players re-enter their city count after calamities are resolved; when all are in, the admin clicks **Trading done →**
-6. **A.S.T. advancement** — me[tt] automatically advances (or regresses in Expert) each player based on their post-calamity cities and advances; the admin can override with the A.S.T. dropdown
-7. **Advance VP** — players update their card totals after purchasing
-8. **Admin advances the round** — click **Advance to Round N+1** (or **End Game** in the final round)
-
-The admin can also:
-- Toggle **Military** (⚔) and **Wonder** (★) per player
-- Edit **player names** inline
-- **Force reveal** census early if a player is unavailable
-
-### Final scores
-
-When the admin clicks **End Game**, me[tt] displays a final scoreboard with each component:
-
-- **Advance VP** — total VP from all purchased advances
-- **A.S.T. VP** — VP earned from the player's final A.S.T. position
-- **City VP** — 1 VP per city held at game end (Wonder does not count)
-- **LIA bonus** — 5 VP awarded to every player who reached maximum A.S.T. in the same round (Late Iron Age simultaneous finish)
-
-### Using phones and tablets
-
-In production, players simply open their subdomain URL on any device — no local network required.
-
-In development (Bun), all devices must be on the same Wi-Fi network. Use the computer's local IP instead of `localhost`:
-
-```
-http://192.168.1.42:3000/egypt
-```
-
-Find your IP in network settings. On Mac: System Settings → Wi-Fi → Details. On Windows: `ipconfig` in PowerShell.
+The game ends by itself: in Basic when an empire reaches Late Iron Age, in Expert one round later. The board then shows the final scores; ties are broken by the rules, and any tie the rules can't break is settled on the admin page.
 
 ---
 
-## Contributing and development
+## Contributing
 
-me[tt] is built with [Bun](https://bun.sh), [Hono](https://hono.dev), TypeScript and [htmx](https://htmx.org). If you want to run it locally without Docker, explore the architecture, or contribute, see [DEV.md](DEV.md) for setup instructions, the project layout, API reference and test guide.
+Bug reports and ideas are welcome as [issues](https://github.com/nilsan/mett/issues). For code, see [CONTRIBUTING.md](CONTRIBUTING.md) and [DEV.md](DEV.md) (setup, architecture, API, tests). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+Built with [Bun](https://bun.sh), [Hono](https://hono.dev), TypeScript, SQLite, [htmx](https://htmx.org) and [Pico CSS](https://picocss.com).
 
 ---
 
 ## License
 
-**Mozilla Public License 2.0** — Copyright © 2026 [Nils-Anders Nøttseter](https://github.com/nilsan).
+**Mozilla Public License 2.0** — Copyright © 2026 [Nils-Anders Nøttseter](https://github.com/nilsan). Full text in [LICENSE](LICENSE). You can use me[tt] in your own work; changes to me[tt]'s own files stay under the MPL.
 
-Full license text in [LICENSE](LICENSE). The MPL is a file-level copyleft licence: anyone can use me[tt] in their own work, but modifications to me[tt]'s own source files must remain MPL-licensed.
-
-Inspired by the original [METool](https://github.com/roenoe/METool) by Roe Nøttseter.
-Mega Empires is a game by Flo de Haan and Gerart de Haan.
+Inspired by the original [METool](https://github.com/roenoe/METool) by Roe Nøttseter. Mega Empires is a game by Flo de Haan and Gerart de Haan; me[tt] is an unofficial fan project.

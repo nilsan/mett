@@ -285,6 +285,10 @@ Environment variables:
 | `PORT` | `3000` | Port the HTTP server listens on |
 | `ADMIN_PASSWORD` | `PASSWORD` | Seeded on first boot; persisted in DB and changeable from the admin UI |
 | `NODE_ENV` | — | `production` (set in the image) skips writing the dev `.pid` file |
+| `BACKUP_DIR` | `<db name>-backups/` next to the database | Where automatic backups go |
+| `DEMO` | — | `1` = public demo instance: at boot and every night at 03:00 UTC the game is reset to the same 12-empire round-7 table (`src/services/demo.ts`), the admin password is `demo` (shown on the login page, cannot be changed), and the header says "demo · resets nightly" |
+
+**README screenshots:** `bun run screenshots` starts its own demo-mode instance on a throwaway database (port 3302), fills in the census and city counts, and writes `docs/img/`. It never touches the dev server.
 
 ---
 
@@ -310,6 +314,8 @@ Everything in `tests/*.test.ts` runs against an in-memory SQLite DB (`_setTestDb
 - `tests/ws.test.ts` — `broadcastState` payload contract (`game`/`players`/`census`/`astStatus`/`targetPlayerId`, never the password hash), per-player routing (targeted broadcast skips civ-page sockets owned by other players; non-civ sockets and the targeted player's own tabs always receive) and ping-only clients.
 - `tests/backup.test.ts` — backups, pruning, restore (game state back, password and sessions kept, refuses another schema version), undo of a round advance, and the backup endpoints.
 - `tests/simulate.test.ts` — whole games over the API, from an official setup to game over: seeded tables (Expert and Basic; West, East and combined) play census → city counts → trading done → calamities → advance, with an undo and replay mid-game. After every advance it checks that each A.S.T. moved exactly as the player pages predicted, the Late Iron Age bonus (lone arrival only, never moves), the ending rules, census pruning, and that every page renders. Scripted games cover the Late Iron Age endings: lone and joint arrival, late arrival, a calamity cancelling the final round, and Basic ending on arrival.
+- `tests/demo.test.ts` — demo mode: the starting table, the fixed password, the nightly schedule, the login hint.
+- `tests/license.test.ts` — every tracked source file starts with the MPL 2.0 notice.
 - `tests/client-build.test.ts` — rebuilds `src/client/civ.ts` and `src/client/admin.ts` and byte-compares the committed bundles, so a forgotten `bun run build:client` fails the suite instead of shipping a stale page; also checks the Dockerfile's Bun version matches `.bun-version`.
 
 Every `tests/*.test.ts` file runs (new files are picked up automatically) and all must pass before committing. The full suite (~300 tests) runs in ~10 s; the cost is dominated by scrypt operations (every test DB seeds a hashed admin password) — that's intentional.
