@@ -4,6 +4,8 @@
 
 me[tt] is made out of love for Mega Empires: for the long weekends, the crowded tables and the eighteen empires rising and falling around one big map. It is free and always will be. It exists so the people around the table can spend their time on the game, not on the bookkeeping.
 
+If me[tt] has saved your table some time, you can [buy me a coffee on Ko-fi](https://ko-fi.com/nilsan). It is never expected, and always appreciated.
+
 **Try it:** [demo.mett.games](https://demo.mett.games) is a 12-empire game in round 7. Open it on a big screen, open an empire's page such as [demo.mett.games/rome](https://demo.mett.games/rome) on your phone, and play. The admin page is at [/admin](https://demo.mett.games/admin) (password `demo`). The demo resets every night.
 
 ![Status display](docs/img/screenshot-status.jpg)

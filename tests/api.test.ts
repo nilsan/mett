@@ -512,6 +512,13 @@ describe('POST /api/players/:id/regress — calamity AST regression', () => {
     // Both players start at level 0 → both buttons disabled.
     expect(html).toMatch(/regress-btn[^>]*disabled/);
   });
+
+  it('admin page ends with the source and Ko-fi links', async () => {
+    const html = await (await app.request('/admin', { headers: { cookie: ADMIN } })).text();
+    expect(html).toContain('class="admin-support"');
+    expect(html).toContain('href="https://github.com/nilsan/mett"');
+    expect(html).toContain('href="https://ko-fi.com/nilsan"');
+  });
 });
 
 // ─── Request validation, game-state guards, secrets, escaping ────────────────

@@ -120,6 +120,9 @@ function pwdFormHtml(query: string): string {
   </div>`;
 }
 
+/** Quiet credit line at the end of every admin view. */
+const SUPPORT_LINE = '<p class="admin-support">me[tt] is free and open source · <a href="https://github.com/nilsan/mett">source code</a> · <a href="https://ko-fi.com/nilsan">buy me a coffee</a></p>';
+
 export function renderAdmin(state: FullState, allCivs: CivRefRow[], query = '', prevCensus: CensusRow[] = [], defaultPassword = false, backups: BackupInfo[] = [], undoBackup: BackupInfo | null = null): string {
   const { game, players } = state;
 
@@ -222,6 +225,7 @@ function renderSetup(allCivs: CivRefRow[], query = '', defaultPassword = false, 
     ${pwdFormHtml(query)}
   </section>
   ${defaultPasswordNag(defaultPassword)}
+  ${SUPPORT_LINE}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
 <script src="/js/admin.js${V}"></script>
@@ -330,6 +334,7 @@ function renderGameOver(state: FullState, allCivs: CivRefRow[], query = '', defa
     ${pwdFormHtml(query)}
   </section>
   ${defaultPasswordNag(defaultPassword)}
+  ${SUPPORT_LINE}
 </div>
 <script>window.ALL_CIVS = ${civData};</script>
 <script src="/js/admin.js${V}"></script>
@@ -516,6 +521,7 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
     ${pwdFormHtml(query)}
   </section>
   ${defaultPasswordNag(defaultPassword)}
+  ${SUPPORT_LINE}
 </div>
 <script src="/js/admin.js${V}"></script>
 `;

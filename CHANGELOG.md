@@ -2,6 +2,14 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 1.6.0 — 2026-10-26
+
+### Added
+- The admin page ends with a quiet line linking the source code and a Ko-fi tip jar; the repository has a Sponsor button.
+
+### Changed
+- me[tt] is now public on GitHub, and the README says why it exists.
+
 ## 1.5.0 — 2026-10-26
 
 ### Added

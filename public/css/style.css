@@ -2227,6 +2227,15 @@ body:has(.civ-page) { overflow-x: hidden; }
 }
 .default-pwd-nag strong { color: var(--mett-fg); }
 
+/* Quiet credit line at the very end of the admin page. */
+.admin-support {
+  margin: 1.5rem 0 0.5rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--mett-muted);
+}
+.admin-support a { color: var(--mett-muted); }
+
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 
 .btn-primary {
