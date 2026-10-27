@@ -2,6 +2,14 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.2 — 2026-10-27
+
+### Added
+- The Cards tab can sort the cards by colour (default), A–Z, cost after credits (cheapest first) or VP (most first). The choice applies to the picker and All cards, and the browser remembers it.
+
+### Changed
+- All cards shows each card's price after credits, as the picker does.
+
 ## 2.0.0-beta.1 — 2026-10-27
 
 A beta for review on beta.mett.games; the image is tagged `:beta` only, never `:latest`. Start a new game on it: cards entered mid-game replace the hand-entered advance counts.

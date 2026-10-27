@@ -132,6 +132,25 @@ test.describe('civ page: tabs', () => {
     await expect(monument).toHaveAttribute('open', '');
   });
 
+  test('Cards: the chosen order applies to both lists and is kept on reload', async ({ page }) => {
+    await page.goto('/minoa#cards');
+    const first = () => page.locator('.adv-pick').first();
+    const firstRef = () => page.locator('#adv-ref details').first();
+    await expect(page.locator('[data-card-sort="group"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('[data-card-sort="name"]').click();
+    await expect(page.locator('[data-card-sort="name"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(first()).toHaveAttribute('data-advance', 'advanced-military');
+    await expect(firstRef()).toHaveAttribute('data-advance-ref', 'advanced-military');
+    await expect(page.locator('#adv-picker h4')).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator('[data-card-sort="name"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(first()).toHaveAttribute('data-advance', 'advanced-military');
+    await page.locator('[data-card-sort="vp"]').click();
+    await expect(first().locator('.adv-pick-meta')).toContainText('6 VP');
+    await page.locator('[data-card-sort="group"]').click();
+    await expect(page.locator('#adv-picker h4').first()).toHaveText('Science');
+  });
+
   test('the summary line and the tab bar sit above every panel', async ({ page }) => {
     await page.goto('/minoa#ast');
     await expect(page.locator('#civ-summary')).toBeVisible();

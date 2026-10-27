@@ -642,27 +642,47 @@
     const rows = ADVANCE_GROUPS.map((g) => `<div class="adv-choice-row adv-${g}">` + `<span class="adv-choice-group">${GROUP_LABEL[g]}</span>` + `<button type="button" class="adv-btn" data-choice-step="-5" data-group="${g}" aria-label="5 less ${GROUP_LABEL[g]}">−</button>` + `<output class="adv-choice-val" data-group="${g}">${values[g] ?? 0}</output>` + `<button type="button" class="adv-btn" data-choice-step="5" data-group="${g}" aria-label="5 more ${GROUP_LABEL[g]}">+</button>` + `</div>`).join("");
     return `<div class="adv-choice" data-choice-for="${card.id}" data-total="${total}">` + `<p class="adv-choice-intro"><strong>${escapeHtml(card.name)}</strong>: choose the colours of ${total} extra credits. You keep them all game.</p>` + rows + `<button type="button" class="btn-submit adv-choice-save"${sum === total ? "" : " disabled"}>Save <span class="adv-choice-sum">${sum}</span> of ${total}</button>` + `</div>`;
   }
+  var CARD_SORTS = [
+    { id: "group", label: "Colour" },
+    { id: "name", label: "A–Z" },
+    { id: "cost", label: "Cost" },
+    { id: "vp", label: "VP" }
+  ];
+  var isCardSort = (s) => CARD_SORTS.some((o) => o.id === s);
   var groupCards = (g) => ADVANCES.filter((c) => c.groups[0] === g).sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
-  function renderAdvancePicker(held, round, { canBuy = true, drafts = new Map, gm = false } = {}) {
+  function cardPrice(c, held, round) {
+    const h = held.find((x) => x.id === c.id);
+    return h && advanceLocked(h, round) ? c.cost : advanceCost(c.id, held, round);
+  }
+  var priceHtml = (c, price) => price < c.cost ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
+  function sections(sort, held, round) {
+    if (sort === "group")
+      return ADVANCE_GROUPS.map((g) => ({ group: g, cards: groupCards(g) }));
+    const price = new Map(ADVANCES.map((c) => [c.id, cardPrice(c, held, round)]));
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    const byPrice = (a, b) => price.get(a.id) - price.get(b.id);
+    const cmp = sort === "name" ? byName : sort === "cost" ? (a, b) => byPrice(a, b) || byName(a, b) : (a, b) => b.vp - a.vp || byPrice(a, b) || byName(a, b);
+    return [{ cards: [...ADVANCES].sort(cmp) }];
+  }
+  var section = (group, inner) => group ? `<section class="adv-group adv-${group}"><h4>${GROUP_LABEL[group]}</h4>${inner}</section>` : `<section class="adv-group">${inner}</section>`;
+  function renderAdvancePicker(held, round, { canBuy = true, drafts = new Map, gm = false, sort = "group" } = {}) {
     const heldById = new Map(held.map((h) => [h.id, h]));
     const t = advanceTotals(heldById.keys());
     const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${gm ? "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round." : canBuy ? "Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends." : "Cards are bought after calamities are resolved."}</p>`;
-    const groups = ADVANCE_GROUPS.map((g) => {
-      const cards = groupCards(g);
+    const groups = sections(sort, held, round).map(({ group, cards }) => {
       const buttons = cards.map((c) => {
         const h = heldById.get(c.id);
         const bought = h ? advanceLocked(h, round) : false;
         const locked = bought && !gm;
         const closed = !locked && !canBuy && !gm;
-        const price = bought ? c.cost : advanceCost(c.id, held, round);
-        const cost = price < c.cost ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
+        const cost = priceHtml(c, cardPrice(c, held, round));
         const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
         const chooser = open && (!h.choice || drafts.has(c.id)) ? renderChooser(c, drafts.get(c.id) ?? h.choice ?? {}) : "";
         const change = open && h.choice && !drafts.has(c.id) ? `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>` : "";
-        const cls = `adv-pick${h ? " adv-held" : ""}${locked ? " adv-locked" : ""}${closed ? " adv-closed" : ""}`;
+        const cls = `adv-pick adv-${c.groups[0]}${h ? " adv-held" : ""}${locked ? " adv-locked" : ""}${closed ? " adv-closed" : ""}`;
         return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}"${locked || closed ? ' aria-disabled="true"' : ""}>` + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-pick-meta">${cost} · ${c.vp} VP${h && h.round === round ? " · <em>new</em>" : ""}</span>` + `</button>` + change + chooser;
       }).join("");
-      return `<section class="adv-group adv-${g}"><h4>${GROUP_LABEL[g]}</h4><div class="adv-pick-grid">${buttons}</div></section>`;
+      return section(group, `<div class="adv-pick-grid">${buttons}</div>`);
     }).join("");
     return summary + groups + basket(held, round);
   }
@@ -696,11 +716,11 @@
       return to ? [credit(to.groups[0], `${n} to ${to.name}`)] : [];
     })) + line("Cheaper with", (CREDITS_FROM.get(c.id) ?? []).map(({ from, n }) => credit(from.groups[0], `${from.name} −${n}`))) + (held ? `<p class="adv-ref-bought">Bought in round ${held.round}</p>` : "");
   }
-  function renderAdvanceReference(held, open = new Set) {
+  function renderAdvanceReference(held, open = new Set, round = 0, sort = "group") {
     const heldById = new Map(held.map((h) => [h.id, h]));
-    return ADVANCE_GROUPS.map((g) => {
-      const rows = groupCards(g).map((c) => `<details class="adv-ref-item" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-ref-meta">${c.cost} · ${c.vp} VP</span>` + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : "") + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join("");
-      return `<section class="adv-group adv-${g}"><h4>${GROUP_LABEL[g]}</h4><div class="adv-ref-list">${rows}</div></section>`;
+    return sections(sort, held, round).map(({ group, cards }) => {
+      const rows = cards.map((c) => `<details class="adv-ref-item adv-${c.groups[0]}" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-ref-meta">${priceHtml(c, cardPrice(c, held, round))} · ${c.vp} VP</span>` + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : "") + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join("");
+      return section(group, `<div class="adv-ref-list">${rows}</div>`);
     }).join("");
   }
 
@@ -915,6 +935,22 @@
         },
         drafts: choiceDrafts
       });
+      const bar = document.querySelector(".adv-sort");
+      bar?.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-card-sort]");
+        if (!btn || !isCardSort(btn.dataset.cardSort))
+          return;
+        cardSort = btn.dataset.cardSort;
+        try {
+          localStorage.setItem(CARD_SORT_KEY, cardSort);
+        } catch {}
+        showCardSort();
+        if (lastState)
+          syncPicker(lastState.advances[playerId] ?? [], lastState.game);
+      });
+      showCardSort();
+    }, showCardSort = function() {
+      document.querySelectorAll("[data-card-sort]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.cardSort === cardSort)));
     }, bindMov = function() {
       const movBtn = document.getElementById("mov-toggle");
       if (!movBtn)
@@ -965,11 +1001,11 @@
       const picker = document.getElementById("adv-picker");
       if (picker) {
         const focused = document.activeElement?.dataset?.advance;
-        picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts });
+        picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts, sort: cardSort });
         if (focused)
           picker.querySelector(`[data-advance="${focused}"]`)?.focus();
       }
-      rerenderKeepingOpen("adv-ref", "advanceRef", (open) => renderAdvanceReference(held, open));
+      rerenderKeepingOpen("adv-ref", "advanceRef", (open) => renderAdvanceReference(held, open, game.current_round, cardSort));
     }, rerenderKeepingOpen = function(id, key, render) {
       const el = document.getElementById(id);
       if (!el)
@@ -1233,6 +1269,13 @@
     };
     const playerId = Number(civEl.dataset.playerId) || window.PLAYER_ID;
     const choiceDrafts = new Map;
+    const CARD_SORT_KEY = "mett.cardSort";
+    let cardSort = "group";
+    try {
+      const saved = localStorage.getItem(CARD_SORT_KEY);
+      if (isCardSort(saved))
+        cardSort = saved;
+    } catch {}
     bindTabs();
     bindCensus();
     bindCity();

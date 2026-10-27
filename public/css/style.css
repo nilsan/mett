@@ -1291,6 +1291,21 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 /* Cards tab: every advance as a tap-to-toggle button, grouped by colour. */
 .adv-picker { grid-column: 1 / -1; }
+/* Card order: by colour (default), A–Z, cost after credits, VP. */
+.adv-sort { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.adv-sort-label { color: var(--mett-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; margin-right: 0.2rem; }
+.adv-sort-btn {
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  min-height: 2.4rem;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: var(--radius-row);
+  background: var(--mett-surface2);
+  color: var(--mett-muted);
+  font-size: 0.85rem;
+  transition: none;
+}
+.adv-sort-btn[aria-pressed="true"] { border-color: var(--mett-accent); color: var(--mett-text); font-weight: 700; }
 .adv-pick-summary { margin: 0 0 0.5rem; }
 .adv-pick-tiers { color: var(--mett-muted); font-size: 0.85rem; }
 /* The running total of this round's cards, pinned to the bottom of the screen

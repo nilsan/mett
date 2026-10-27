@@ -19,7 +19,7 @@ import { playerTotalVp, makeScoreEntry, compareScores, sameScoreGroup, sortCensu
 import { AST_LEVELS, boardLevels, astNodeTitle, advancesOfTier, getAdvanceRequirement, renderAgeRequirementsList, type AstRequirement } from '../shared/ast-pure.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
-import { renderAdvancePicker, renderAdvanceReference } from '../shared/advance-picker.js';
+import { isCardSort, renderAdvancePicker, renderAdvanceReference, type CardSort } from '../shared/advance-picker.js';
 import type { CreditChoice } from '../shared/advances.js';
 import { bindPicker } from './picker.js';
 import { renderCivSummary } from '../shared/civ-summary.js';
@@ -32,6 +32,15 @@ if (civEl) {
   // Colour splits being edited in a Monument / Written Record chooser, kept
   // here so a live re-render of the Cards tab doesn't wipe them.
   const choiceDrafts = new Map<string, CreditChoice>();
+
+  // The card order this viewer picked on the Cards tab, remembered in this
+  // browser. The server renders by colour; the first state applies the choice.
+  const CARD_SORT_KEY = 'mett.cardSort';
+  let cardSort: CardSort = 'group';
+  try {
+    const saved = localStorage.getItem(CARD_SORT_KEY);
+    if (isCardSort(saved)) cardSort = saved;
+  } catch { /* storage blocked: default order */ }
 
   bindTabs();
   bindCensus();
@@ -132,6 +141,21 @@ if (civEl) {
       rerender: () => { if (lastState) syncPicker(lastState.advances[playerId] ?? [], lastState.game); },
       drafts: choiceDrafts,
     });
+    const bar = document.querySelector<HTMLElement>('.adv-sort');
+    bar?.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-card-sort]');
+      if (!btn || !isCardSort(btn.dataset.cardSort)) return;
+      cardSort = btn.dataset.cardSort;
+      try { localStorage.setItem(CARD_SORT_KEY, cardSort); } catch { /* private window: this visit only */ }
+      showCardSort();
+      if (lastState) syncPicker(lastState.advances[playerId] ?? [], lastState.game);
+    });
+    showCardSort();
+  }
+
+  function showCardSort(): void {
+    document.querySelectorAll<HTMLButtonElement>('[data-card-sort]')
+      .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cardSort === cardSort)));
   }
 
   function bindMov(): void {
@@ -195,10 +219,10 @@ if (civEl) {
     const picker = document.getElementById('adv-picker');
     if (picker) {
       const focused = (document.activeElement as HTMLElement | null)?.dataset?.advance;
-      picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts });
+      picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts, sort: cardSort });
       if (focused) picker.querySelector<HTMLElement>(`[data-advance="${focused}"]`)?.focus();
     }
-    rerenderKeepingOpen('adv-ref', 'advanceRef', open => renderAdvanceReference(held, open));
+    rerenderKeepingOpen('adv-ref', 'advanceRef', open => renderAdvanceReference(held, open, game.current_round, cardSort));
   }
 
   /** Re-render a list of <details> rows; the rows the player has expanded

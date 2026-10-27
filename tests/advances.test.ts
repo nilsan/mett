@@ -379,7 +379,7 @@ describe('renderCalamityReference', () => {
 
 import { advanceLocked, playerAdvanceChangeError } from '../src/shared/advances.js';
 import { ADVANCE_TEXT } from '../src/shared/advance-text.js';
-import { renderAdvancePicker, renderAdvanceReference } from '../src/shared/advance-picker.js';
+import { CARD_SORTS, renderAdvancePicker, renderAdvanceReference } from '../src/shared/advance-picker.js';
 
 describe('playerAdvanceChangeError', () => {
   const held = [{ id: 'pottery', round: 2 }, { id: 'masonry', round: 3 }];
@@ -469,6 +469,33 @@ describe('renderAdvancePicker: locks and the buying window', () => {
         expect(costs).toEqual([...costs].sort((a, b) => a - b));
       }
     }
+  });
+
+  it('the player can sort by A–Z, cost after credits or VP, in the picker and in All cards', () => {
+    // Pottery bought in round 1 makes Agriculture cheaper in round 2.
+    const mine = [{ id: 'pottery', round: 1 }];
+    const ids = (html: string) => [...html.matchAll(/data-advance(?:-ref)?="([^"]+)"/g)].map(m => m[1]!);
+    const price = (id: string) => advanceCost(id, mine, 2);
+    expect(price('agriculture')).toBeLessThan(ADVANCE_BY_ID.get('agriculture')!.cost);
+    for (const render of [
+      (sort: (typeof CARD_SORTS)[number]['id']) => renderAdvancePicker(mine, 2, { sort }),
+      (sort: (typeof CARD_SORTS)[number]['id']) => renderAdvanceReference(mine, new Set(), 2, sort),
+    ]) {
+      expect(render('group')).toContain('<h4>Science</h4>');
+      const byName = ids(render('name'));
+      expect(byName).toHaveLength(51);
+      expect(render('name')).not.toContain('<h4>');
+      expect(byName.map(id => ADVANCE_BY_ID.get(id)!.name)).toEqual(ADVANCES.map(c => c.name).sort((a, b) => a.localeCompare(b)));
+      // Cost: what the card costs now (Pottery itself is held from round 1, so its print).
+      const byCost = ids(render('cost')).filter(id => id !== 'pottery').map(price);
+      expect(byCost).toEqual([...byCost].sort((a, b) => a - b));
+      const vps = ids(render('vp')).map(id => ADVANCE_BY_ID.get(id)!.vp);
+      expect(vps).toEqual([...vps].sort((a, b) => b - a));
+    }
+    // A tile outside a colour section keeps its colour.
+    expect(renderAdvancePicker(mine, 2, { sort: 'name' })).toContain('class="adv-pick adv-crafts');
+    // All cards shows the price after credits, as the picker does.
+    expect(renderAdvanceReference(mine, new Set(), 2)).toMatch(new RegExp(`data-advance-ref="agriculture"[^]*?<s>${ADVANCE_BY_ID.get('agriculture')!.cost}</s> <strong class="adv-price">${price('agriculture')}</strong>`));
   });
 
   it('GM correction: nothing is locked or closed, and the hint says so', () => {
