@@ -11,7 +11,7 @@ import { test, expect } from './fixtures';
 // Age, narrow Early Bronze) — the case that used to clip labels.
 test.describe('civ page: A.S.T. strip layout', () => {
   test('age bands fill the width and are equal height', async ({ page }) => {
-    await page.goto('/iberia');
+    await page.goto('/iberia#ast');
     await expect(page.locator('.ast-progress-grid')).toBeVisible();
 
     // Grid stretches to its container — not a fixed max-content block.

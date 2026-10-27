@@ -10,13 +10,13 @@ import { test, expect, gotoCiv, nextStateFrame } from './fixtures';
 // its typed value AND its focus, and #civ-content must NOT be swapped out.
 // Previously HTMX replaced the whole #civ-content div, destroying focus.
 //
-// The trigger must target THIS player: /military broadcasts state targeted to
-// the toggled player (broadcastState(playerId)), and the WS layer skips civ
-// sockets owned by *other* players — so toggling someone else would never push
+// The trigger must target THIS player: /advances broadcasts state targeted to
+// that player (broadcastState(playerId)), and the WS layer skips civ sockets
+// owned by *other* players — so changing someone else's cards would never push
 // a frame here and the re-render under test would never happen.
 
 test.describe('civ page: live update preserves user input', () => {
-  test('focused adv input keeps value and focus when state updates', async ({ page, request }) => {
+  test('focused census input keeps value and focus when state updates', async ({ page, request }) => {
     const ws = await gotoCiv(page, 'minoa');
 
     // Sanity-check: civ.js is wired and #civ-content carries no HTMX trigger
@@ -31,30 +31,30 @@ test.describe('civ page: live update preserves user input', () => {
     const myId = await page.locator('#civ-content').evaluate(el => el.dataset.playerId);
     expect(myId).toBeTruthy();
 
-    // Focus the 3 VP input and type a value, but do NOT blur.
-    const adv3 = page.locator('#adv-3vp');
-    await adv3.focus();
-    await adv3.fill('');
-    await adv3.pressSequentially('7', { delay: 30 });
+    // Focus the census input and type a value, but do NOT blur or submit.
+    const pop = page.locator('#pop-input');
+    await pop.focus();
+    await pop.fill('');
+    await pop.pressSequentially('37', { delay: 30 });
 
-    // Trigger a state_update this socket will actually receive: toggle our own
-    // military (a public endpoint, no admin cookie needed). Wait for the frame
-    // so we know renderFromState has run — no arbitrary sleeps.
+    // Trigger a state_update this socket will actually receive: set our own
+    // cards (a public endpoint). Wait for the frame so we know renderFromState
+    // has run — no arbitrary sleeps.
     const frame = nextStateFrame(ws);
-    const r = await request.post(`/api/players/${myId}/military`);
+    const r = await request.post(`/api/players/${myId}/advances`, { data: { ids: [] } });
     expect(r.ok()).toBe(true);
     await frame;
 
-    // Our typed value must survive the re-render, and we must still have focus.
-    await expect(adv3).toHaveValue('7');
+    await expect(pop).toHaveValue('37');
     await expect
-      .poll(() => adv3.evaluate(el => el === document.activeElement),
-        { message: 'adv-3vp must still be focused after the WS update' })
+      .poll(() => pop.evaluate(el => el === document.activeElement),
+        { message: 'pop-input must still be focused after the WS update' })
       .toBe(true);
   });
 
-  test('mil toggle updates in place without swapping #civ-content', async ({ page, request }) => {
+  test('a card change updates in place: no #civ-content swap, the open tab stays open', async ({ page, request }) => {
     const ws = await gotoCiv(page, 'minoa');
+    await page.locator('#tab-btn-cards').click();
 
     // Tag the node so we can prove it's the SAME DOM element after the update.
     await page.locator('#civ-content').evaluate(el =>
@@ -64,13 +64,14 @@ test.describe('civ page: live update preserves user input', () => {
     const myId = await page.locator('#civ-content').evaluate(el => el.dataset.playerId);
 
     const frame = nextStateFrame(ws);
-    await request.post(`/api/players/${myId}/military`);
+    await request.post(`/api/players/${myId}/advances`, { data: { ids: [] } });
     await frame;
 
     // Same node (tag survived) ⇒ no swap happened.
     await expect(page.locator('#civ-content')).toHaveAttribute('data-test-tag', 'pre-swap-check');
-    // The mil button reflects the toggled state.
-    await expect(page.locator('#mil-toggle')).toHaveClass(/mil-(on|off)/);
+    await expect(page.locator('#tab-btn-cards')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#tab-cards')).toBeVisible();
+    await expect(page.locator('#civ-summary')).toBeVisible();
   });
 });
 

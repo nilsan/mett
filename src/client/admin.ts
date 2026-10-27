@@ -9,6 +9,9 @@
 
 import type { FullState, Region } from '../types.js';
 import type { SetupRecommendation } from '../civs.js';
+import type { CreditChoice } from '../shared/advances.js';
+import { renderAdvancePicker } from '../shared/advance-picker.js';
+import { bindPicker } from './picker.js';
 
 type AdminCiv = NonNullable<Window['ALL_CIVS']>[number];
 type SelectedCiv = AdminCiv & { region: Region };
@@ -279,24 +282,6 @@ function initActive(): void {
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
   });
 
-  // Military / Wonder / Special toggles — fire POST, let WS broadcast own the visual update.
-  // No local optimistic update: the mett:state handler below re-syncs all three buttons
-  // from the authoritative server state, so the click handler only needs to disable the
-  // button (feedback while in-flight) and re-enable it if the request fails.
-  for (const [cls, path] of [
-    ['.mil-toggle', 'military'],
-    ['.won-toggle', 'wonder'],
-    ['.spc-toggle', 'special'],
-  ] as const) {
-    qsa<HTMLButtonElement>(cls).forEach(btn => {
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        const res = await mettPost(`/api/players/${btn.dataset.playerId}/${path}`, {});
-        if (!res.ok) btn.disabled = false;
-      });
-    });
-  }
-
   // AST controls
   qsa<HTMLSelectElement>('.ast-select').forEach(sel => {
     sel.value = sel.dataset.serverValue ?? '';  // bypass browser form restoration
@@ -385,10 +370,45 @@ function initActive(): void {
     });
   });
 
+  // GM card correction: Adv VP opens a player's cards in a dialog, where
+  // every card can be ticked or unticked (locked or not, in any phase) and
+  // a colour choice changed. Saves go through the admin session.
+  const gmDialog = document.getElementById('gm-cards') as HTMLDialogElement | null;
+  const gmPicker = document.getElementById('gm-picker');
+  let gmPlayer = 0;
+  let gmState: FullState | null = null;
+  const gmDrafts = new Map<string, CreditChoice>();
+  const renderGmCards = () => {
+    if (!gmPicker || !gmState || !gmDialog?.open) return;
+    gmPicker.innerHTML = renderAdvancePicker(gmState.advances[gmPlayer] ?? [], gmState.game.current_round,
+      { canBuy: true, gm: true, drafts: gmDrafts });
+  };
+  if (gmDialog && gmPicker) {
+    bindPicker(gmPicker, {
+      playerId: () => gmPlayer,
+      held: () => gmState?.advances[gmPlayer] ?? [],
+      rerender: renderGmCards,
+      drafts: gmDrafts,
+    });
+    qsa<HTMLButtonElement>('.adv-pts-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        gmPlayer = Number(btn.dataset.playerId);
+        gmDrafts.clear();
+        document.getElementById('gm-cards-title')!.textContent = `Correct cards: ${btn.dataset.civName}`;
+        gmState = await (await fetch('/api/state')).json() as FullState;
+        gmDialog.showModal();
+        renderGmCards();
+      });
+    });
+    gmDialog.querySelector('.gm-cards-close')!.addEventListener('click', () => gmDialog.close());
+  }
+
   // React to state updates from WebSocket — update in place instead of reloading
   window.addEventListener('mett:state', (e: Event) => {
     const data = (e as CustomEvent<FullState | undefined>).detail;
     if (!data?.game || !data?.census || !data?.players) return;
+    gmState = data;
+    renderGmCards();
 
     const n = data.players.length;
     const censusCount = data.census.filter(c => c.population != null).length;
@@ -442,24 +462,10 @@ function initActive(): void {
         reg.classList.toggle('regress-active', !!p.regressed);
       }
 
-      // Mil/won/spc toggles, so changes from player pages are reflected here
-      // without a full reload.
-      const toggles = [
-        { sel: '.mil-toggle', val: p.military, onTitle: 'Has Military — click to remove',        offTitle: 'No Military — click to grant' },
-        { sel: '.won-toggle', val: p.wonder,   onTitle: 'Has Wonder — click to remove',          offTitle: 'No Wonder — click to grant' },
-        { sel: '.spc-toggle', val: p.special,  onTitle: 'Has special ability — click to remove', offTitle: 'No special ability — click to grant' },
-      ];
-      for (const { sel, val, onTitle, offTitle } of toggles) {
-        const btn = row.querySelector<HTMLButtonElement>(sel);
-        if (!btn || btn.tagName !== 'BUTTON') continue;
-        const prefix = sel.slice(1, 4); // 'mil', 'won', 'spc'
-        const on = !!val;
-        btn.classList.toggle(`${prefix}-on`, on);
-        btn.classList.toggle(`${prefix}-off`, !on);
-        btn.title = on ? onTitle : offTitle;
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.disabled = false;
-      }
+      // The advance VP follows the player's cards, which change on the
+      // player pages.
+      const pts = row.querySelector<HTMLElement>('.adv-pts-btn');
+      if (pts) pts.textContent = String(p.adv_points);
 
       // LIA-star buttons. Granting the bonus to one player clears it from any
       // others, so every eligible button is refreshed on every broadcast.

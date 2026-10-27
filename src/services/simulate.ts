@@ -13,6 +13,7 @@
  */
 
 import * as db from '../db.js';
+import { ADVANCES, type AdvanceCard } from '../shared/advances.js';
 import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS, type SetupRecommendation } from '../civs.js';
 
 let random: () => number = Math.random;
@@ -107,13 +108,6 @@ export async function simulateGame({ expert, playerCount, rounds, scenario, onSt
   const players = db.getPlayers();
   const speedFactors = players.map(() => 0.5 + random());
 
-  // Randomly assign wonder to 1 player and military to ~1 in 5 players
-  const wonderIdx = Math.floor(random() * players.length);
-  for (let i = 0; i < players.length; i++) {
-    if (i === wonderIdx) db.toggleWonder(players[i]!.id);
-    if (random() < 0.2) db.toggleMilitary(players[i]!.id);
-  }
-
   let roundsPlayed = 0;
   for (let r = 0; r < rounds; r++) {
     const game = db.getGame();
@@ -146,16 +140,17 @@ export async function simulateGame({ expert, playerCount, rounds, scenario, onSt
       const buyChance = Math.min(1, (r <= 3 ? 0.5 : r <= 8 ? 0.75 : 0.9) * sf);
       if (random() < buyChance) {
         const purchases = Math.ceil(random() * (r <= 5 ? 2 : 3));
-        let v1 = p.adv_1vp, v3 = p.adv_3vp, v6 = p.adv_6vp;
+        const tiers: AdvanceCard['vp'][] = [];
         for (let j = 0; j < purchases; j++) {
           const roll = random();
-          if (r >= 9 && roll < 0.15) { if (v6 < 11) v6++; }
-          else if (roll < 0.5)        { if (v3 < 17) v3++; }
+          if (r >= 9 && roll < 0.15) tiers.push(6);
+          else if (roll < 0.5)        tiers.push(3);
           else {
-            v1 = Math.min(17, v1 + (r >= 8 && random() < 0.3 ? 2 : 1));
+            tiers.push(1);
+            if (r >= 8 && random() < 0.3) tiers.push(1);
           }
         }
-        db.setAdvCards(p.id, v1, v3, v6);
+        buyCards(p.id, roundNum, tiers);
       }
     }
 
@@ -170,6 +165,19 @@ export async function simulateGame({ expert, playerCount, rounds, scenario, onSt
   return roundsPlayed;
 }
 
+/** Buy one random card the player doesn't hold yet per entry in `tiers` (a
+ *  tier with nothing left is skipped). Tier counts, Military, Wonder and the
+ *  special ability follow from the cards. */
+function buyCards(playerId: number, round: number, tiers: readonly AdvanceCard['vp'][]): void {
+  if (!tiers.length) return;
+  const held = new Set(db.getPlayerAdvances(playerId).map(h => h.id));
+  for (const vp of tiers) {
+    const open = ADVANCES.filter(a => a.vp === vp && !held.has(a.id));
+    if (open.length) held.add(open[Math.floor(random() * open.length)]!.id);
+  }
+  db.setPlayerAdvances(playerId, [...held], round);
+}
+
 /** One round of advance purchases for every empire. */
 export function fakeAdvances(): void {
   const round = db.getGame().current_round;
@@ -182,7 +190,8 @@ export function fakeAdvances(): void {
     // How many purchases this turn (1-3, more likely 1-2)
     const purchases = Math.ceil(random() * (round <= 6 ? 2 : 3));
 
-    let v1 = p.adv_1vp, v3 = p.adv_3vp, v6 = p.adv_6vp;
+    const tiers: AdvanceCard['vp'][] = [];
+    let v3 = p.adv_3vp;
 
     for (let i = 0; i < purchases; i++) {
       // Priority: push toward 3VP advances early (age requirements need 5VP total)
@@ -191,16 +200,17 @@ export function fakeAdvances(): void {
       const roll = random();
 
       if (need3vp || (round <= 8 && roll < 0.55)) {
-        if (v3 < 17) v3++;
+        tiers.push(3);
+        v3++;
       } else if (round >= 9 && roll < 0.20) {
-        if (v6 < 11) v6++;
+        tiers.push(6);
       } else {
         // 1VP cards — buy more of these in later rounds (tech breadth bonuses)
-        if (v1 < 17) v1 += round >= 10 ? (random() < 0.4 ? 2 : 1) : 1;
-        if (v1 > 17) v1 = 17;
+        tiers.push(1);
+        if (round >= 10 && random() < 0.4) tiers.push(1);
       }
     }
 
-    db.setAdvCards(p.id, v1, v3, v6);
+    buyCards(p.id, round, tiers);
   }
 }

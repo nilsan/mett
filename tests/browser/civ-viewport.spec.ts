@@ -5,6 +5,9 @@
 /// <reference lib="dom" />
 import { test, expect } from './fixtures';
 
+/** Every player-page tab is checked: each shows different content. */
+const TABS = ['round', 'cards', 'ast', 'calamities'] as const;
+
 // Player-page scroll policy: the page may scroll VERTICALLY on a phone (it
 // carries the full census/cities/VP/AST controls plus the requirements legend),
 // but it must NEVER scroll HORIZONTALLY at any width or OS font scale. These
@@ -25,10 +28,13 @@ test.describe('civ page: never scrolls horizontally', () => {
       await page.goto('/minoa');
       await expect(page.locator('.civ-page')).toBeVisible();
 
-      const h = await page.evaluate(
-        () => document.documentElement.scrollWidth - window.innerWidth,
-      );
-      expect(h, 'horizontal overflow').toBeLessThanOrEqual(0);
+      for (const tab of TABS) {
+        await page.locator(`#tab-btn-${tab}`).click();
+        const h = await page.evaluate(
+          () => document.documentElement.scrollWidth - window.innerWidth,
+        );
+        expect(h, `horizontal overflow on the ${tab} tab`).toBeLessThanOrEqual(0);
+      }
     });
   }
 });
@@ -47,10 +53,18 @@ test.describe('civ page with OS font scaling: no horizontal overflow', () => {
       await page.goto('/minoa');
       await expect(page.locator('.civ-page')).toBeVisible();
 
-      const h = await page.evaluate(
-        () => document.documentElement.scrollWidth - window.innerWidth,
-      );
-      expect(h, `horizontal overflow at ${scale}× font scale`).toBeLessThanOrEqual(0);
+      for (const tab of TABS) {
+        await page.locator(`#tab-btn-${tab}`).click();
+        const h = await page.evaluate(
+          () => document.documentElement.scrollWidth - window.innerWidth,
+        );
+        expect(h, `horizontal overflow on the ${tab} tab at ${scale}× font scale`).toBeLessThanOrEqual(0);
+      }
+      // The page hides sideways overflow, so also check that every tab button
+      // is fully on screen (the tab bar wraps instead).
+      const offscreen = await page.locator('.civ-tab').evaluateAll(els =>
+        els.filter(e => e.getBoundingClientRect().right > window.innerWidth + 0.5).map(e => e.textContent));
+      expect(offscreen, `tabs off-screen at ${scale}× font scale`).toEqual([]);
     });
   }
 });

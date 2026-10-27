@@ -50,6 +50,16 @@ CREATE TABLE IF NOT EXISTS players (
   regressed            INTEGER NOT NULL DEFAULT 0   -- 1 = admin regressed this player (calamity) this round; red marker on status board, cleared on round advance
 );
 
+-- Civilization Advance cards each player holds (card data lives in
+-- src/shared/advances.ts). The tier counts on players are derived from these.
+CREATE TABLE IF NOT EXISTS player_advances (
+  player_id   INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  advance_id  TEXT    NOT NULL,     -- AdvanceCard.id
+  round       INTEGER NOT NULL,     -- round bought; credits apply from the next round
+  credit_choice TEXT,               -- Monument / Written Record: JSON {group: amount}, chosen once
+  PRIMARY KEY (player_id, advance_id)
+);
+
 -- Census entries per player per round
 CREATE TABLE IF NOT EXISTS census (
   id           INTEGER PRIMARY KEY,

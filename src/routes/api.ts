@@ -9,6 +9,7 @@ import { broadcastState } from '../ws.js';
 import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS } from '../civs.js';
 import { isAdminAuthed } from './pages.js';
 import { isRegion } from '../types.js';
+import { ADVANCE_BY_ID, creditChoiceError, playerAdvanceChangeError, type CreditChoice } from '../shared/advances.js';
 import { AST_LEVELS, LIA_THRESHOLD, MAX_POPULATION, MAX_CITIES } from '../models/ast.js';
 import { useSeed, scenarioFor, simulateGame, fakeCensus, fakeCities, fakeAdvances } from '../services/simulate.js';
 import { takeBackup, listBackups, restoreBackup, backupBeforeAdvanceTo, type BackupReason } from '../services/backup.js';
@@ -77,7 +78,7 @@ function expertFlag(v: unknown): 0 | 1 {
 }
 
 // Player-facing POST endpoints — no auth required (players submit from their own civ page)
-const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv', '/move']);
+const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv', '/advances', '/choice', '/move']);
 
 // Protect all mutating API endpoints — read-only GETs and player actions are public
 api.use('*', async (c, next) => {
@@ -317,6 +318,50 @@ api.post('/players/:id/adv', async (c) => {
   }
   const [v1, v3, v6] = counts.map(n => Math.max(0, n)) as [number, number, number];
   db.setAdvCards(playerId, v1, v3, v6);
+  broadcastState(playerId);
+  return c.json({ ok: true });
+});
+
+api.get('/players/:id/advances', (c) => c.json(db.getPlayerAdvances(playerParam(c))));
+
+// The advance cards a player holds (replaces the whole set). Tier counts are
+// derived from the cards; cards already held keep the round they were bought in.
+// Players: new cards only after calamities, earlier rounds' cards locked.
+api.post('/players/:id/advances', async (c) => {
+  const playerId = playerParam(c);
+  const body = await readJson(c);
+  const ids = body.ids;
+  if (!Array.isArray(ids) || ids.some(id => typeof id !== 'string')) {
+    return c.json({ error: 'ids must be a list of advance ids' }, 400);
+  }
+  const unknown = ids.filter(id => !ADVANCE_BY_ID.has(id));
+  if (unknown.length) return c.json({ error: `Unknown advance: ${unknown.join(', ')}` }, 400);
+  const game = requireActiveGame();
+  // Players buy in the post-calamity phase and can't untick earlier rounds'
+  // cards; the GM may change anything, to correct mistakes.
+  if (!isAdminAuthed(c.req.raw)) {
+    const err = playerAdvanceChangeError(db.getPlayerAdvances(playerId), ids, game.current_round, game.cities_phase === 1);
+    if (err) return c.json({ error: err }, 409);
+  }
+  db.setPlayerAdvances(playerId, ids, game.current_round);
+  broadcastState(playerId);
+  return c.json({ ok: true });
+});
+
+// The one-time colour choice for a held Monument or Written Record. It can be
+// made while none is set or corrected in the round the card was bought, and is
+// locked after that, except for the GM correcting a mistake.
+api.post('/players/:id/advances/:advance/choice', async (c) => {
+  const playerId = playerParam(c);
+  const card = ADVANCE_BY_ID.get(c.req.param('advance'));
+  if (!card) return c.json({ error: 'Unknown advance' }, 404);
+  const body = await readJson(c);
+  const err = creditChoiceError(card, body.choice);
+  if (err) return c.json({ error: err }, 400);
+  if (!db.setCreditChoice(playerId, card.id, body.choice as CreditChoice, requireActiveGame().current_round,
+    isAdminAuthed(c.req.raw))) {
+    return c.json({ error: `${card.name} is not held, or its colours are already chosen` }, 409);
+  }
   broadcastState(playerId);
   return c.json({ ok: true });
 });

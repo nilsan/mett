@@ -118,6 +118,7 @@ export function restoreBackup(file: string): void {
       db.query('DELETE FROM players').run();
       db.query('INSERT INTO players SELECT * FROM bk.players').run();
       db.query('INSERT INTO census SELECT * FROM bk.census').run();
+      db.query('INSERT INTO player_advances SELECT * FROM bk.player_advances').run();
     })();
   } finally {
     db.query('DETACH DATABASE bk').run();

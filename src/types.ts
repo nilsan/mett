@@ -124,6 +124,9 @@ export interface FullState {
   astStatus: Record<number, AstStatus>;
   /** Last few round transitions, newest last. Capped at 3 by the server. */
   roundSummaries: RoundSummary[];
+  /** Advance cards each player holds, keyed by player id (absent = none) —
+   *  HeldAdvance in src/shared/advances.ts. */
+  advances: Record<number, { id: string; round: number; choice?: Partial<Record<string, number>> }[]>;
 }
 
 export interface CivRefRow {

@@ -359,24 +359,6 @@ body {
 
 /* Military icon — red dot in census table, ⚔ on header/buttons */
 
-/* Military & Wonder toggles on civ page */
-.mil-won-row { display: flex; flex-direction: column; gap: 0.5rem; }
-.mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ {
-  width: 100%;
-  padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
-  border: 0.0625rem solid var(--mett-border);
-  font-size: 0.9rem;
-  cursor: pointer;
-  text-align: center;
-}
-.mil-toggle-civ.mil-on  { background: #3a2020; border-color: #cc5555; color: #ff8888; }
-.mil-toggle-civ.mil-off { background: var(--mett-surface2); color: var(--mett-muted); }
-.won-toggle-civ.won-on  { background: #2a2a10; border-color: #aaaa22; color: #dddd44; }
-.won-toggle-civ.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
-.spc-toggle-civ.spc-on  { background: #1a1a30; border-color: #5555cc; color: #8888ff; }
-.spc-toggle-civ.spc-off { background: var(--mett-surface2); color: var(--mett-muted); }
-
 /* "Units moved" readiness toggle on the census section of the civ page */
 .mov-row { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.75rem; }
 .mov-toggle-civ {
@@ -1265,6 +1247,168 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 .civ-body > * { min-width: 0; } /* prevent grid items from expanding beyond their track */
 
+/* Tab panels take no box of their own: the open panel's sections drop straight
+   into the .civ-body grid, so the layout per tab matches the old page. */
+.civ-panel:not([hidden]) { display: contents; }
+.civ-panel[hidden] { display: none; }
+
+/* Summary line under the hero: A.S.T. and VP. */
+.civ-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 0 0.85rem 0.35rem;
+  font-size: 0.9rem;
+  color: var(--mett-muted);
+}
+.civ-summary strong { color: var(--mett-text); font-size: 1.05rem; }
+
+/* Round · Cards · A.S.T. · Calamities tab bar: one row while the labels fit,
+   wrapping to more rows at large OS font sizes (never off-screen). */
+.civ-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.4rem;
+}
+.civ-tab {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0.55rem 0.4rem;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: var(--radius-panel);
+  background: var(--mett-surface);
+  color: var(--mett-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.civ-tab { transition: none; } /* switch at once — no fade from Pico's button transition */
+.civ-tab[aria-selected="true"] { background: var(--mett-surface2); border-color: var(--mett-accent); color: var(--mett-text); }
+
+/* Cards tab: every advance as a tap-to-toggle button, grouped by colour. */
+.adv-picker { grid-column: 1 / -1; }
+.adv-pick-summary { margin: 0 0 0.5rem; }
+.adv-pick-tiers { color: var(--mett-muted); font-size: 0.85rem; }
+/* The running total of this round's cards, pinned to the bottom of the screen
+   while the card grid is in view. */
+.adv-basket {
+  position: sticky;
+  bottom: 0;
+  margin: 0.5rem 0 0;
+  padding: 0.6rem 0.8rem;
+  background: var(--mett-bg);
+  border-top: 0.0625rem solid var(--mett-accent);
+}
+.adv-pick-hint { margin: -0.3rem 0 0.5rem; color: var(--mett-muted); font-size: 0.82rem; }
+.adv-group { --grp: var(--mett-muted); margin-bottom: 0.6rem; }
+.adv-group h4 { margin: 0 0 0.3rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--grp); }
+.adv-science  { --grp: #4caf50; }
+.adv-arts     { --grp: #4a90d9; }
+.adv-crafts   { --grp: #e08a2e; }
+.adv-civics   { --grp: #d64545; }
+.adv-religion { --grp: #d4b62c; }
+.adv-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(10rem, 100%), 1fr));
+  gap: 0.3rem;
+}
+.adv-pick {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.55rem;
+  border: 0.0625rem solid var(--mett-border);
+  border-left: 0.25rem solid var(--grp);
+  border-radius: var(--radius-row);
+  background: var(--mett-surface2);
+  color: var(--mett-muted);
+  text-align: left;
+  cursor: pointer;
+}
+.adv-pick.adv-held { background: color-mix(in srgb, var(--grp) 22%, var(--mett-surface2)); border-color: var(--grp); color: var(--mett-text); }
+.adv-pick-name { font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 0.3rem; }
+.adv-pick-meta { font-size: 0.75rem; }
+.adv-pick-meta em { font-style: normal; color: var(--mett-accent); }
+.adv-pick-meta s { color: var(--mett-muted); }
+.adv-pick.adv-locked { cursor: default; }
+.adv-pick.adv-closed { cursor: not-allowed; }
+.adv-pick.adv-closed:not(.adv-held) { opacity: 0.55; }
+.adv-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--grp); flex-shrink: 0; }
+
+/* One-time colour chooser under a held Monument / Written Record: full width
+   of the card grid, one −/+ row per group. */
+.adv-choice {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border: 0.0625rem dashed var(--mett-accent);
+  border-radius: var(--radius-row);
+}
+.adv-choice-intro { margin: 0 0 0.2rem; font-size: 0.85rem; }
+.adv-choice-row { display: grid; grid-template-columns: 1fr 2.6rem 2.6rem 2.6rem; gap: 0.3rem; align-items: center; }
+.adv-choice-row .adv-btn { width: 2.6rem; height: 2.6rem; font-size: 1.2rem; }
+.adv-choice-group { color: var(--grp); font-weight: 700; font-size: 0.9rem; }
+.adv-choice-val { text-align: center; font-weight: 700; }
+.adv-choice-save { justify-self: stretch; height: 2.6rem; margin-top: 0.2rem; }
+.adv-choice-save:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Calamities tab: what the held cards change, per calamity, then every
+   calamity in the game as tap-to-open rows. */
+.cal-panel { grid-column: 1 / -1; }
+.cal-none { margin: 0; color: var(--mett-muted); }
+.cal-group { margin-bottom: 0.6rem; }
+.cal-panel h4 { margin: 0 0 0.25rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--mett-text); }
+.cal-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
+.cal-group li { display: flex; gap: 0.4rem; align-items: baseline; margin: 0; padding: 0.3rem 0.5rem; border-radius: var(--radius-row); background: var(--mett-surface2); font-size: 0.88rem; }
+.cal-mark { font-weight: 800; flex: 0 0 1em; text-align: center; }
+.cal-help .cal-mark { color: var(--mett-success); }
+.cal-hurt .cal-mark { color: var(--mett-danger); }
+.cal-help { border-left: 0.25rem solid var(--mett-success); }
+.cal-hurt { border-left: 0.25rem solid var(--mett-danger); }
+.cal-card { color: var(--mett-muted); font-size: 0.78rem; white-space: nowrap; }
+.cal-ref-list { display: grid; gap: 0.25rem; margin-bottom: 0.7rem; }
+.cal-ref-item { margin: 0; border: 0; border-radius: var(--radius-row); background: var(--mett-surface2); }
+.cal-ref-item summary { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.55rem 0.6rem; line-height: 1.2; }
+.cal-ref-item[open] > summary, .adv-ref-item[open] > summary { margin-bottom: 0; }
+.cal-stack { flex: 0 0 1.1rem; color: var(--mett-muted); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.cal-ref-name { font-weight: 700; }
+.cal-kind { margin-left: auto; color: var(--mett-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.cal-ref-item p { margin: 0 0.6rem 0.45rem 2.2rem; font-size: 0.88rem; }
+.cal-mods { list-style: none; margin: 0 0.6rem 0.55rem 2.2rem; padding: 0; display: grid; gap: 0.15rem; }
+.cal-mods li { display: flex; gap: 0.4rem; align-items: baseline; margin: 0; padding: 0; border: 0; list-style: none; font-size: 0.85rem; color: var(--mett-muted); }
+.cal-mods li.cal-held { color: var(--mett-text); }
+.cal-mod-card { font-weight: 700; }
+.cal-check { margin-left: auto; color: var(--mett-success); font-weight: 800; }
+/* All cards on the Cards tab: tap-to-open rows in the group colours. */
+.adv-ref-list { display: grid; gap: 0.25rem; }
+.adv-ref-item { margin: 0; border: 0; border-left: 0.25rem solid var(--grp); border-radius: var(--radius-row); background: var(--mett-surface2); }
+.adv-ref-item summary { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.55rem 0.6rem; line-height: 1.2; }
+.adv-ref-name { font-weight: 700; display: flex; align-items: center; gap: 0.3rem; }
+.adv-ref-meta { margin-left: auto; color: var(--mett-muted); font-size: 0.8rem; white-space: nowrap; }
+.adv-ref-held { color: var(--grp); font-weight: 800; }
+.adv-ref-item p { margin: 0 0.6rem 0.45rem; font-size: 0.88rem; }
+.adv-ref-cal { display: flex; gap: 0.4rem; align-items: baseline; }
+.adv-ref-credits, .adv-ref-bought { color: var(--mett-muted); font-size: 0.8rem; }
+.adv-ref-credit.adv-science, .adv-ref-credit.adv-arts, .adv-ref-credit.adv-crafts,
+.adv-ref-credit.adv-civics, .adv-ref-credit.adv-religion { color: var(--grp); font-weight: 700; }
+.adv-choice-change {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border: 0.0625rem dashed var(--mett-accent);
+  border-radius: var(--radius-row);
+  background: transparent;
+  color: var(--mett-accent);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 .civ-section.ast-section {
   grid-column: 1 / -1;
 }
@@ -1309,10 +1453,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   margin: 0 !important;
 }
 
-/* Advance card inputs */
-.adv-cards { display: flex; flex-direction: column; gap: 0.25rem; }
-.adv-card-row { display: flex; align-items: center; gap: 0.5rem; }   /* match .census-input-row so −/input/+ line up with the city row */
-.adv-card-label { flex: 0 0 auto; font-size: 0.82rem; color: var(--mett-muted); white-space: nowrap; }  /* label now sits on the right, under the city Submit */
 .adv-btn {
   width: 1.4rem;
   height: 1.4rem;
@@ -1330,33 +1470,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   flex-shrink: 0;
 }
 .adv-btn:hover { background: var(--mett-border); }
-.adv-card-input {
-  --pico-form-element-spacing-vertical: 0.18rem;
-  --pico-form-element-spacing-horizontal: 0.35rem;
-  flex: 1;
-  max-width: 10rem;            /* match .census-input so it aligns with the city select */
-  text-align: right;
-  background: var(--mett-surface2);
-  border: 0.0625rem solid var(--mett-border);
-  border-radius: 0.1875rem;
-  color: var(--mett-text);
-  font-size: 0.88rem;
-  margin: 0 !important;
-}
-/* Hide number input spinners globally for compact layout */
-.adv-card-input::-webkit-outer-spin-button,
-.adv-card-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.adv-card-input[type=number] { -moz-appearance: textfield; }
-.adv-total-row {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.25rem;
-  padding-top: 0.3rem;
-  border-top: 0.0625rem solid var(--mett-border);
-}
-.adv-total-label { flex: 1; font-size: 0.85rem; color: var(--mett-muted); }
-.adv-total-value { font-weight: 800; font-size: 1rem; min-width: 2.5rem; text-align: right; }
 
 .btn-submit {
   background: var(--mett-accent);
@@ -1420,9 +1533,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .civ-section h3 { font-size: 0.74rem; margin-bottom: 0.18rem; }
   .census-submitted, .census-pending { font-size: 0.82rem; margin-bottom: 0.2rem; }
   .census-input { height: 1.75rem; min-height: 0; line-height: 1.75rem; }
-  .adv-card-input { height: 1.65rem; min-height: 0; line-height: 1.65rem; }
   .adv-btn { width: 1.65rem; height: 1.65rem; min-height: 0; }
-  .adv-total-row { margin-top: 0.12rem; padding-top: 0.15rem; }
   .btn-submit { height: 1.75rem; min-height: 0; }
   .move-order { margin-top: 0.25rem; font-size: 0.8rem; }
   .ast-current { gap: 0.25rem; margin-bottom: 0.08rem; }
@@ -1458,19 +1569,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .btn-submit { font-size: 0.92rem; padding: 0 0.85rem; height: 2.6rem; min-height: 0; box-sizing: border-box; }
   .move-order { font-size: 0.64rem; margin-top: 0.06rem; }
 
-  /* Advances */
-  .adv-cards { gap: 0.06rem; }
-  .adv-card-row { gap: 0.18rem; margin: 0; }   /* match .census-input-row phone gap so columns line up */
-  .adv-card-label { font-size: 0.74rem; }
-  .adv-card-input { -webkit-appearance: none; appearance: none; font-size: 0.95rem; padding: 0 0.35rem 0 0; flex: 1; max-width: 10rem; width: auto; height: 2.6rem; min-height: 0; line-height: 2.6rem; text-align: right; box-sizing: border-box; border-radius: 0.1875rem; margin: 0 !important; }
+  /* City stepper buttons */
   .adv-btn { width: 2.6rem; height: 2.6rem; min-height: 0; font-size: 1.2rem; }
-  .adv-total-row { margin-top: 0.06rem; padding-top: 0.08rem; gap: 0.18rem; }
-  .adv-total-label { font-size: 0.64rem; }
-  .adv-total-value { font-size: 0.85rem; min-width: 1.8rem; }
-
-  /* Military, Wonder & Special — 3-column row */
-  .mil-won-row { flex-direction: row; gap: 0.2rem; }
-  .mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ { flex: 1; min-width: 0; padding: 0.85rem 0.3rem; font-size: 0.85rem; }
 
   /* AST section */
   .ast-current { margin-bottom: 0.1rem; gap: 0.2rem; }
@@ -1486,19 +1586,16 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .ast-node { font-size: 0.55rem; }
   .ast-age-label { font-size: 0.36rem; padding: 0.0625rem 0; margin-bottom: 0.0625rem; }
 
-  /* City + VP rows + the SUM row share one grid so every column lines up.
-     Wide non-square steppers (numbers are always small), a narrow input,
-     and a last column (1fr) where Submit, the N-VP labels and the SUM value
-     all sit left-aligned — i.e. directly below the Submit button. */
+  /* Census and city rows share one grid so every column lines up: wide
+     non-square steppers (numbers are always small), a narrow input, and a
+     last column where both Submit buttons sit, one under the other. */
   .census-pop-row,
-  .city-count-row,
-  .adv-card-row,
-  .adv-total-row {
+  .city-count-row {
     display: grid;
     /* fr columns spend the full row width — no fixed caps leaving dead space,
        and fr shrinks to fit so the row never overflows horizontally even at
-       large OS font. Submit + the steppers stretch to fill, like the
-       mil/won/spc row's flex:1 buttons. Submit gets the largest share. */
+       large OS font. Submit + the steppers stretch to fill. Submit gets
+       the largest share. */
     grid-template-columns: 1fr 1.3fr 1fr 2fr;
     gap: min(0.3rem, 1.2vw);
     align-items: center;
@@ -1508,14 +1605,9 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
      last column so it sits directly under the city Submit. */
   .census-pop-row > .census-input { grid-column: 1 / 4; width: 100%; max-width: none; }
   .census-pop-row > .btn-submit { grid-column: 4; justify-self: stretch; }
-  .city-count-row > .adv-btn,
-  .adv-card-row > .adv-btn { width: 100%; height: 2.6rem; }
-  .city-count-row > .census-input,
-  .adv-card-row > .adv-card-input { width: 100%; max-width: none; }
+  .city-count-row > .adv-btn { width: 100%; height: 2.6rem; }
+  .city-count-row > .census-input { width: 100%; max-width: none; }
   .city-count-row > .btn-submit { justify-self: stretch; }
-  .adv-card-label { text-align: left; font-size: 0.95rem; }   /* under the Submit button, not far right */
-  .adv-total-label { grid-column: 1 / 4; }                    /* "SUM" on the left */
-  .adv-total-value { grid-column: 4; text-align: left; min-width: 0; }  /* aligns under Submit, with the N-VP labels */
 }
 
 /* Rules with no responsive override — fine after the breakpoints */
@@ -1525,9 +1617,11 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 /* The player page must NEVER scroll sideways on a phone. Clip any stray
    horizontal overflow (real-device font rounding, or a wrapped AST age-label
    painting past the viewport edge) while leaving vertical scroll intact —
-   mirrors the status page's overflow safety net. */
+   mirrors the status page's overflow safety net. clip, not hidden: hidden
+   makes body a scroll container that never scrolls, and the Cards tab's
+   sticky running total would never stick. */
 html:has(.civ-page),
-body:has(.civ-page) { overflow-x: hidden; }
+body:has(.civ-page) { overflow-x: clip; }
 
 .ast-bar-wrap {
   overflow-x: auto;
@@ -2090,7 +2184,6 @@ body:has(.civ-page) { overflow-x: hidden; }
     padding-top: 0;
     padding-bottom: 0;
   }
-  .admin-table .icon-toggle { width: 1.15rem; height: 1.15rem; font-size: 0.72rem; }
   .admin-table .lia-star-btn { font-size: 0.85rem; padding: 0; }
   /* Empire chip in admin row — shrink to match the 1080p row height */
   .admin-table .civ-badge { padding: 0.05rem 0.4rem; font-size: 0.74rem; }
@@ -2137,34 +2230,50 @@ body:has(.civ-page) { overflow-x: hidden; }
   outline: none;
 }
 
-.mil-won-cell { display: flex; flex-direction: row; gap: 0.25rem; align-items: center; }
-.mil-toggle, .won-toggle, .spc-toggle {
-  border: 0.0625rem solid var(--mett-border);
-  border-radius: 0.1875rem;
-  padding: 0.12rem 0.35rem;
-  font-size: 0.76rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-/* Icon-only compact variant used in admin table */
-.icon-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.8rem;
-  height: 1.8rem;
+.adv-pts-btn {
+  background: none;
+  border: 0;
   padding: 0;
-  font-size: 0.9rem;
-  line-height: 1;
-  border-radius: var(--radius-soft);
-  flex-shrink: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
 }
-.mil-toggle.mil-on { background: #3a2020; border-color: #cc5555; color: #ff8888; }
-.mil-toggle.mil-off { background: var(--mett-surface2); color: var(--mett-muted); }
-.won-toggle.won-on  { background: #2a2a10; border-color: #aaaa22; color: #dddd44; }
-.won-toggle.won-off { background: var(--mett-surface2); color: var(--mett-muted); }
-.spc-toggle.spc-on  { background: #1a1a30; border-color: #5555cc; color: #8888ff; }
-.spc-toggle.spc-off { background: var(--mett-surface2); color: var(--mett-muted); }
+
+/* GM card correction dialog on the admin page. Pico makes the <dialog> the
+   full-screen overlay; the <article> inside is the box. */
+.gm-cards { background: rgba(0, 0, 0, 0.6); }
+.gm-cards-box {
+  width: min(56rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 1rem 1rem;
+  background: var(--mett-bg);
+  color: var(--mett-text);
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: var(--radius-soft);
+}
+.gm-cards-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0 0.5rem;
+  background: var(--mett-bg);
+}
+.gm-cards-head h3 { margin: 0; }
+.gm-cards-close {
+  background: none;
+  border: 0;
+  color: var(--mett-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
 
 /* Calamity regression button (admin table) — drops the empire one AST step. */
 .regress-btn {
@@ -2437,11 +2546,8 @@ body:has(.civ-page) { overflow-x: hidden; }
   .phase-hint { font-size: 0.62rem; margin-bottom: 0.08rem; }
   .census-input { height: 1.9rem; line-height: 1.9rem; }
   .btn-submit { height: 1.9rem; }
-  .adv-card-input { height: 1.9rem; line-height: 1.9rem; }
   .adv-btn { height: 1.9rem; }
-  .city-count-row > .adv-btn,
-  .adv-card-row > .adv-btn { height: 1.9rem; }
-  .mil-toggle-civ, .won-toggle-civ, .spc-toggle-civ { padding: 0.3rem; }
+  .city-count-row > .adv-btn { height: 1.9rem; }
   .ast-current { margin-bottom: 0.04rem; }
   .ast-level-value { font-size: 0.85rem; }
   .ast-next { padding: 0.12rem 0.3rem; margin-bottom: 0.08rem; }

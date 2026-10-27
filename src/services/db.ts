@@ -78,6 +78,14 @@ const MIGRATIONS: ReadonlyArray<(db: Database) => void> = [
   },
   // 2: A.S.T. rules moved from the ast_levels table into src/shared/ast-pure.ts.
   (db) => { db.exec('DROP TABLE IF EXISTS ast_levels'); },
+  // 3: advance cards per player (player_advances). schema.sql creates the
+  //    table; nothing to convert — existing games keep their tier counts.
+  //    credit_choice joined the table during development, so add it if absent.
+  (db) => {
+    try { db.exec('ALTER TABLE player_advances ADD COLUMN credit_choice TEXT'); } catch (e: any) {
+      if (!String(e?.message).includes('duplicate column name')) throw e;
+    }
+  },
 ];
 
 /** Bring any database — fresh, legacy, or in-memory test DB — to the current

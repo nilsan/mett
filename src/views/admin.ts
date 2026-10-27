@@ -413,23 +413,8 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           <span class="${c?.city_count != null ? 'census-submitted' : 'census-pending'} status-icon-fixed" aria-hidden="true">${c?.city_count != null ? '✓' : '?'}</span>
         </div>
       </td>
-      <td data-label="Mil / Won / Spc">
-        <div class="mil-won-cell">
-          <button class="mil-toggle icon-toggle ${p.military ? 'mil-on' : 'mil-off'}" data-player-id="${p.id}"
-            aria-label="${p.military ? `Remove Military from ${escapeHtml(p.name)}` : `Grant Military to ${escapeHtml(p.name)}`}"
-            aria-pressed="${p.military ? 'true' : 'false'}"
-            title="${p.military ? 'Has Military — click to remove' : 'No Military — click to grant'}"><span aria-hidden="true">⚔</span></button>
-          <button class="won-toggle icon-toggle ${p.wonder ? 'won-on' : 'won-off'}" data-player-id="${p.id}"
-            aria-label="${p.wonder ? `Remove Wonder from ${escapeHtml(p.name)}` : `Grant Wonder to ${escapeHtml(p.name)}`}"
-            aria-pressed="${p.wonder ? 'true' : 'false'}"
-            title="${p.wonder ? 'Has Wonder — click to remove' : 'No Wonder — click to grant'}"><span aria-hidden="true">★</span></button>
-          <button class="spc-toggle icon-toggle ${p.special ? 'spc-on' : 'spc-off'}" data-player-id="${p.id}"
-            aria-label="${p.special ? `Remove special ability from ${escapeHtml(p.name)}` : `Grant special ability to ${escapeHtml(p.name)}`}"
-            aria-pressed="${p.special ? 'true' : 'false'}"
-            title="${p.special ? 'Has special ability — click to remove' : 'No special ability — click to grant'}"><span aria-hidden="true">⚡</span></button>
-        </div>
-      </td>
-      <td data-label="Adv VP" class="adv-pts-cell">${p.adv_points}</td>
+      <td data-label="Adv VP" class="adv-pts-cell"><button type="button" class="adv-pts-btn" data-player-id="${p.id}"
+        data-civ-name="${escapeHtml(p.civ_name)}" title="Correct ${escapeHtml(p.civ_name)}'s cards">${p.adv_points}</button></td>
       <td data-label="A.S.T.">
         <div class="ast-ctrl">
           <select class="ast-select" data-player-id="${p.id}" data-server-value="${p.ast_level}">${astOptions}</select>
@@ -494,16 +479,25 @@ function renderActiveAdmin(state: FullState, allCivs: CivRefRow[], query = '', p
           <th>Player Name</th>
           <th>Census</th>
           <th title="Cities on board">Cities</th>
-          <th>Mil / Won / Spc</th>
           <th>Adv VP</th>
           <th>A.S.T. Position</th>
           <th title="Calamity regression — drop this empire one A.S.T. step">Regress</th>
           <th title="Late Iron Age bonus (5 VP) — first to reach LIA alone">★</th>
         </tr></thead>
-        <tbody>${playerRows || '<tr><td colspan="9">No players</td></tr>'}</tbody>
+        <tbody>${playerRows || '<tr><td colspan="8">No players</td></tr>'}</tbody>
       </table>
     </div>
   </section>
+
+  <dialog id="gm-cards" class="gm-cards" aria-labelledby="gm-cards-title">
+    <article class="gm-cards-box">
+      <div class="gm-cards-head">
+        <h3 id="gm-cards-title">Cards</h3>
+        <button type="button" class="gm-cards-close" aria-label="Close">✕</button>
+      </div>
+      <section class="adv-picker" id="gm-picker"></section>
+    </article>
+  </dialog>
 
   ${roundSummaryPanelHtml(state.roundSummaries ?? [])}
 

@@ -236,6 +236,582 @@
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
 
+  // src/shared/advances.ts
+  var ADVANCE_GROUPS = ["science", "arts", "crafts", "civics", "religion"];
+  var ADVANCES = [
+    { id: "mysticism", name: "Mysticism", cost: 50, vp: 1, groups: ["arts", "religion"], credits: { arts: 5, religion: 5 }, special: { monument: 10 } },
+    { id: "monument", name: "Monument", cost: 180, vp: 3, groups: ["crafts", "religion"], credits: { crafts: 10, religion: 10 }, special: { "wonder-of-the-world": 20 }, choiceCredits: 20 },
+    { id: "wonder-of-the-world", name: "Wonder of the World", cost: 290, vp: 6, groups: ["arts", "crafts"], credits: { arts: 20, crafts: 20 }, special: {} },
+    { id: "sculpture", name: "Sculpture", cost: 50, vp: 1, groups: ["arts"], credits: { arts: 10, civics: 5 }, special: { architecture: 10 } },
+    { id: "architecture", name: "Architecture", cost: 140, vp: 3, groups: ["arts"], credits: { science: 5, arts: 10 }, special: { mining: 20 } },
+    { id: "mining", name: "Mining", cost: 230, vp: 6, groups: ["crafts"], credits: { science: 5, crafts: 20 }, special: {} },
+    { id: "cloth-making", name: "Cloth Making", cost: 50, vp: 1, groups: ["crafts"], credits: { arts: 5, crafts: 10 }, special: { "naval-warfare": 10 } },
+    { id: "naval-warfare", name: "Naval Warfare", cost: 160, vp: 3, groups: ["civics"], credits: { crafts: 5, civics: 10 }, special: { diaspora: 20 } },
+    { id: "diaspora", name: "Diaspora", cost: 270, vp: 6, groups: ["religion"], credits: { arts: 5, religion: 20 }, special: {} },
+    { id: "urbanism", name: "Urbanism", cost: 50, vp: 1, groups: ["civics"], credits: { science: 5, civics: 10 }, special: { diplomacy: 10 } },
+    { id: "diplomacy", name: "Diplomacy", cost: 160, vp: 3, groups: ["arts"], credits: { arts: 10, civics: 5 }, special: { "provincial-empire": 20 } },
+    { id: "provincial-empire", name: "Provincial Empire", cost: 260, vp: 6, groups: ["civics"], credits: { civics: 20, religion: 5 }, special: {} },
+    { id: "monarchy", name: "Monarchy", cost: 60, vp: 1, groups: ["civics"], credits: { civics: 10, religion: 5 }, special: { law: 10 } },
+    { id: "law", name: "Law", cost: 150, vp: 3, groups: ["civics"], credits: { civics: 10, religion: 5 }, special: { "cultural-ascendancy": 20 } },
+    { id: "cultural-ascendancy", name: "Cultural Ascendancy", cost: 280, vp: 6, groups: ["arts"], credits: { arts: 20, religion: 5 }, special: {} },
+    { id: "written-record", name: "Written Record", cost: 60, vp: 1, groups: ["civics", "science"], credits: { science: 5, civics: 5 }, special: { cartography: 10 }, choiceCredits: 10 },
+    { id: "cartography", name: "Cartography", cost: 160, vp: 3, groups: ["science"], credits: { science: 10, arts: 5 }, special: { library: 20 } },
+    { id: "library", name: "Library", cost: 220, vp: 6, groups: ["science"], credits: { science: 20, arts: 5 }, special: {} },
+    { id: "pottery", name: "Pottery", cost: 60, vp: 1, groups: ["crafts"], credits: { arts: 5, crafts: 10 }, special: { agriculture: 10 } },
+    { id: "agriculture", name: "Agriculture", cost: 120, vp: 3, groups: ["crafts"], credits: { science: 5, crafts: 10 }, special: { democracy: 20 } },
+    { id: "democracy", name: "Democracy", cost: 220, vp: 6, groups: ["civics"], credits: { arts: 5, civics: 20 }, special: {} },
+    { id: "masonry", name: "Masonry", cost: 60, vp: 1, groups: ["crafts"], credits: { science: 5, crafts: 10 }, special: { engineering: 10 } },
+    { id: "engineering", name: "Engineering", cost: 160, vp: 3, groups: ["crafts", "science"], credits: { science: 10, crafts: 10 }, special: { roadbuilding: 20 } },
+    { id: "roadbuilding", name: "Roadbuilding", cost: 220, vp: 6, groups: ["crafts"], credits: { science: 5, crafts: 20 }, special: {} },
+    { id: "mythology", name: "Mythology", cost: 60, vp: 1, groups: ["religion"], credits: { arts: 5, religion: 10 }, special: { literacy: 10 } },
+    { id: "literacy", name: "Literacy", cost: 110, vp: 3, groups: ["arts", "civics"], credits: { science: 5, arts: 10, crafts: 5, civics: 10, religion: 5 }, special: { mathematics: 20 } },
+    { id: "mathematics", name: "Mathematics", cost: 250, vp: 6, groups: ["arts", "science"], credits: { science: 20, arts: 20, crafts: 10, civics: 10, religion: 10 }, special: {} },
+    { id: "empiricism", name: "Empiricism", cost: 60, vp: 1, groups: ["science"], credits: { science: 10, arts: 5, crafts: 5, civics: 5, religion: 5 }, special: { medicine: 10 } },
+    { id: "medicine", name: "Medicine", cost: 140, vp: 3, groups: ["science"], credits: { science: 10, crafts: 5 }, special: { anatomy: 20 } },
+    { id: "anatomy", name: "Anatomy", cost: 270, vp: 6, groups: ["science"], credits: { science: 20, crafts: 5 }, special: {} },
+    { id: "deism", name: "Deism", cost: 70, vp: 1, groups: ["religion"], credits: { crafts: 5, religion: 10 }, special: { fundamentalism: 10 } },
+    { id: "fundamentalism", name: "Fundamentalism", cost: 150, vp: 3, groups: ["religion"], credits: { arts: 5, religion: 10 }, special: { monotheism: 20 } },
+    { id: "monotheism", name: "Monotheism", cost: 240, vp: 6, groups: ["religion"], credits: { civics: 5, religion: 20 }, special: {} },
+    { id: "theocracy", name: "Theocracy", cost: 80, vp: 1, groups: ["civics", "religion"], credits: { civics: 5, religion: 5 }, special: { "universal-doctrine": 10 } },
+    { id: "universal-doctrine", name: "Universal Doctrine", cost: 160, vp: 3, groups: ["religion"], credits: { civics: 5, religion: 10 }, special: { theology: 20 } },
+    { id: "theology", name: "Theology", cost: 250, vp: 6, groups: ["religion"], credits: { science: 5, religion: 20 }, special: {} },
+    { id: "drama-and-poetry", name: "Drama and Poetry", cost: 80, vp: 1, groups: ["arts"], credits: { arts: 10, religion: 5 }, special: { rhetoric: 10 } },
+    { id: "rhetoric", name: "Rhetoric", cost: 130, vp: 3, groups: ["arts"], credits: { arts: 10, civics: 5 }, special: { politics: 20 } },
+    { id: "politics", name: "Politics", cost: 230, vp: 6, groups: ["arts"], credits: { arts: 20, religion: 5 }, special: {} },
+    { id: "music", name: "Music", cost: 80, vp: 1, groups: ["arts"], credits: { arts: 10, religion: 5 }, special: { enlightenment: 10 } },
+    { id: "enlightenment", name: "Enlightenment", cost: 160, vp: 3, groups: ["religion"], credits: { crafts: 5, religion: 10 }, special: { philosophy: 20 } },
+    { id: "philosophy", name: "Philosophy", cost: 220, vp: 6, groups: ["religion", "science"], credits: { science: 20, religion: 20 }, special: {} },
+    { id: "astronavigation", name: "Astronavigation", cost: 80, vp: 1, groups: ["science"], credits: { science: 10, religion: 5 }, special: { calendar: 10 } },
+    { id: "calendar", name: "Calendar", cost: 180, vp: 3, groups: ["science"], credits: { science: 10, civics: 5 }, special: { "public-works": 20 } },
+    { id: "public-works", name: "Public Works", cost: 230, vp: 6, groups: ["civics"], credits: { crafts: 5, civics: 20 }, special: {} },
+    { id: "coinage", name: "Coinage", cost: 90, vp: 1, groups: ["science"], credits: { science: 10, civics: 5 }, special: { "trade-routes": 10 } },
+    { id: "trade-routes", name: "Trade Routes", cost: 180, vp: 3, groups: ["crafts"], credits: { crafts: 10, religion: 5 }, special: { "trade-empire": 20 } },
+    { id: "trade-empire", name: "Trade Empire", cost: 260, vp: 6, groups: ["crafts"], credits: { crafts: 20, civics: 5 }, special: {} },
+    { id: "metalworking", name: "Metalworking", cost: 90, vp: 1, groups: ["crafts"], credits: { crafts: 10, civics: 5 }, special: { military: 10 } },
+    { id: "military", name: "Military", cost: 170, vp: 3, groups: ["civics"], credits: { crafts: 5, civics: 10 }, special: { "advanced-military": 20 } },
+    { id: "advanced-military", name: "Advanced Military", cost: 240, vp: 6, groups: ["civics"], credits: { science: 5, civics: 20 }, special: {} }
+  ];
+  var ADVANCE_BY_ID = new Map(ADVANCES.map((a) => [a.id, a]));
+  var SPECIAL_ABILITY_IDS = [
+    "diaspora",
+    "fundamentalism",
+    "monotheism",
+    "politics",
+    "provincial-empire",
+    "trade-routes",
+    "universal-doctrine"
+  ];
+  function creditChoiceOpen(held, round) {
+    return !held.choice || held.round === round;
+  }
+  function advanceLocked(held, round) {
+    return held.round < round;
+  }
+  function advanceTotals(ids, catalogue = ADVANCE_BY_ID) {
+    const t = { adv_1vp: 0, adv_3vp: 0, adv_6vp: 0, adv_points: 0 };
+    for (const id of new Set(ids)) {
+      const card = catalogue.get(id);
+      if (!card)
+        continue;
+      if (card.vp === 1)
+        t.adv_1vp++;
+      else if (card.vp === 3)
+        t.adv_3vp++;
+      else
+        t.adv_6vp++;
+      t.adv_points += card.vp;
+    }
+    return t;
+  }
+  function advanceCost(cardId, held, round, catalogue = ADVANCE_BY_ID) {
+    const card = catalogue.get(cardId);
+    if (!card)
+      throw new Error(`Unknown advance: ${cardId}`);
+    const groupCredit = {};
+    let special = 0;
+    for (const h of held) {
+      if (h.round >= round || h.id === cardId)
+        continue;
+      const from = catalogue.get(h.id);
+      if (!from)
+        continue;
+      for (const g of ADVANCE_GROUPS) {
+        groupCredit[g] = (groupCredit[g] ?? 0) + (from.credits[g] ?? 0) + (h.choice?.[g] ?? 0);
+      }
+      special += from.special[cardId] ?? 0;
+    }
+    const bestGroup = Math.max(0, ...card.groups.map((g) => groupCredit[g] ?? 0));
+    return Math.max(0, card.cost - bestGroup - special);
+  }
+
+  // src/shared/advance-text.ts
+  var ADVANCE_TEXT = {
+    monument: [
+      "Acquire 20 additional points of credit tokens in any combination of colors."
+    ],
+    "wonder-of-the-world": [
+      "During the Trade cards acquisition phase, you may acquire 1 additional trade card for free from a stack number that is higher than your number of cities in play.",
+      "Wonder of the World counts as a city during the A.S.T.-alteration phase."
+    ],
+    architecture: [
+      "Once per turn, when constructing a city you may choose to pay up to half of the required number of tokens from treasury."
+    ],
+    mining: [
+      "During the Trade cards acquisition phase, you may acquire additional trade cards from stack 6 and/or stack 8 for 13 treasury tokens per card.",
+      "Treasury tokens are worth 2 points when purchasing Civilization Advances."
+    ],
+    "cloth-making": [
+      "Your ships are allowed to move 5 steps."
+    ],
+    "naval-warfare": [
+      "Your ships are allowed to carry 6 tokens.",
+      "In conflicts, you may choose to remove ships from the conflict area instead of tokens. After each round of token removal a new check for token majority must be made."
+    ],
+    diaspora: [
+      "You may choose to take up to 5 of your tokens from the board and place them anywhere on the board, providing that no population limits are exceeded."
+    ],
+    urbanism: [
+      "Once per turn, when constructing a wilderness city you may choose to use up to 4 tokens from areas adjacent by land."
+    ],
+    diplomacy: [
+      "Players are not allowed to move tokens into areas containing your cities, except for areas where a conflict situation already occurs. This does not count for players holding Diplomacy or Military."
+    ],
+    "provincial-empire": [
+      "You may choose to select up to 5 players that have units adjacent by land or water to your units. These players must choose and give you a commodity card with a face value of at least 2. Players holding Provincial Empire or Public Works may not be selected."
+    ],
+    monarchy: [
+      "You may choose to increase your tax rate by 1."
+    ],
+    "cultural-ascendancy": [
+      "Players are not allowed to cause conflict in areas containing your units, except for areas where a conflict situation already occurs. This does not count for players holding Cultural Ascendancy or Advanced Military.",
+      "Your units are protected against the effect of Politics.",
+      "Your default city support rate is increased by 1."
+    ],
+    "written-record": [
+      "Acquire 10 additional points of credit tokens in any combination of colors."
+    ],
+    cartography: [
+      "During the Trade cards acquisition phase, you may acquire additional trade cards from stack 2 for 5 treasury tokens and/or from stack 7 for 13 treasury tokens per card."
+    ],
+    library: [
+      "You may discount the cost of 1 other Civilization Advance that you purchase in the same turn as Library by 40 points."
+    ],
+    agriculture: [
+      "The population limit of ‘0’, ‘1’, and ‘2’ areas on the board is increased by 1 for you as long as these areas do not contain any other player’s units or barbarian tokens."
+    ],
+    democracy: [
+      "During the Tax collection phase you collect tax as usual but your cities do not revolt as a result of a shortage in tax collection."
+    ],
+    engineering: [
+      "Other players or barbarians require 8 tokens to successfully attack your cities. Your cities are then replaced with 7 tokens. This does not apply when the attacking player also holds Engineering.",
+      "You require 6 tokens to successfully attack other player’s cities or pirate cities. Their cities are then replaced with 5 tokens. This does not apply when the defending player also holds Engineering."
+    ],
+    roadbuilding: [
+      "When moving over land, your tokens may move 2 areas. Tokens that are in a conflict situation after one step are not allowed to move any further.",
+      "Your hand limit of trade cards is increased by 1."
+    ],
+    anatomy: [
+      "Upon purchase, you may choose to acquire 1 science card with an undiscounted cost price of less than 100 for free."
+    ],
+    fundamentalism: [
+      "You may choose to destroy all units in an area adjacent by land to your units. Barbarian tokens, pirate cities and units belonging to players holding Fundamentalism or Philosophy are unaffected."
+    ],
+    monotheism: [
+      "You may choose to annex all units in an area adjacent by land to your units. Barbarian tokens, pirate cities, and units belonging to players holding Monotheism or Theology are unaffected."
+    ],
+    "universal-doctrine": [
+      "You may choose to annex 1 pirate city or up to 5 barbarian tokens anywhere on the board."
+    ],
+    theology: [
+      "Your units are protected against the effect of Monotheism."
+    ],
+    rhetoric: [
+      "During the Trade cards acquisition phase, you may acquire additional trade cards from stack 3 for 9 treasury tokens per card."
+    ],
+    politics: [
+      "You may choose one of two options:",
+      "1) Gain up to 5 treasury tokens from stock.",
+      "2) Annex all units in an area adjacent by land to your units. Pay treasury tokens equal to the number of unit points annexed, or the effect is canceled. Barbarian tokens, pirate cities, and units belonging to players holding Politics or Cultural Ascendancy are unaffected."
+    ],
+    philosophy: [
+      "Your units are protected against the effect of Fundamentalism."
+    ],
+    astronavigation: [
+      "Your ships are allowed to move through open sea areas."
+    ],
+    "public-works": [
+      "Areas containing your cities may also contain 1 of your tokens.",
+      "You are protected against the effect of Provincial Empire."
+    ],
+    coinage: [
+      "You may choose to increase or decrease your tax rate by 1."
+    ],
+    "trade-routes": [
+      "You may choose to discard any number of commodity cards to gain treasury tokens at twice the face value of the commodity cards discarded this way."
+    ],
+    "trade-empire": [
+      "Once per turn, you may choose to use 1 substitute commodity card of at least the same face value when turning in an incomplete set of commodity cards."
+    ],
+    metalworking: [
+      "In conflicts, for each round of token removal all other players not holding Metalworking must remove their token first."
+    ],
+    military: [
+      "Your movement phase is after all other players not holding Military have moved.",
+      "You are allowed to move tokens into areas containing cities belonging to players holding Diplomacy."
+    ],
+    "advanced-military": [
+      "In conflicts, you may choose to remove tokens from areas adjacent by land. After each round of token removal a new check for token majority must be made. You may decide to wait for other token conflicts to be resolved first.",
+      "You are allowed to cause conflict in areas containing units belonging to players holding Cultural Ascendancy."
+    ]
+  };
+
+  // src/shared/calamities.ts
+  var CALAMITIES = [
+    { name: "Tempest", stack: 2, kind: "minor", text: ["Take 2 damage in total from coastal areas of your choice and lose 5 treasury tokens."] },
+    { name: "Squandered Wealth", stack: 3, kind: "minor", text: ["Lose 10 treasury tokens."] },
+    { name: "City Riots", stack: 4, kind: "minor", text: ["Reduce 1 of your cities and lose 5 treasury tokens."] },
+    { name: "City in Flames", stack: 5, kind: "minor", text: ["Destroy 1 of your cities. You may choose to pay 10 treasury tokens to prevent this."] },
+    { name: "Tribal Conflict", stack: 6, kind: "minor", text: ["Take 5 damage."] },
+    { name: "Minor Uprising", stack: 7, kind: "minor", text: ["Destroy 1 of your cities."] },
+    { name: "Banditry", stack: 8, kind: "minor", text: ["Discard 2 commodity cards of your choice. For each card you must discard, you may choose to pay 4 treasury tokens to prevent it."] },
+    { name: "Coastal Migration", stack: 9, kind: "minor", text: ["Destroy 1 of your coastal cities and lose 5 treasury tokens."] },
+    { name: "Volcanic Eruption", stack: 2, kind: "non-tradeable", alias: "Earthquake", text: [
+      "Only if you have a city on a volcano this calamity is a Volcanic Eruption, otherwise this is an Earthquake.",
+      "Volcanic Eruption: Destroy all units (irrespective of ownership) in the area(s) touched by the volcano. If you have cities in more than one area with a volcano, select the one volcano that would affect the most of your unit points.",
+      "Earthquake: Select and destroy 1 of your cities and select and reduce 1 city adjacent by land or water (irrespective of ownership)."
+    ] },
+    { name: "Treachery", stack: 2, kind: "tradeable", text: ["The beneficiary selects and annexes 1 of your cities."] },
+    { name: "Famine", stack: 3, kind: "non-tradeable", text: ["Take 10 damage and select 3 other players who must take 5 damage as well."] },
+    { name: "Slave Revolt", stack: 3, kind: "tradeable", text: ["Immediately perform an additional check for city support, during which your city support rate is increased by 2. Reduce cities until you have sufficient support."] },
+    { name: "Flood", stack: 4, kind: "non-tradeable", text: ["Only if you have any units on a flood plain, take 15 damage from the flood plain. If you have units on more than one flood plain, select the one flood plain where the most of your units would be affected. All other players with units on the same flood plain take 5 damage from that flood plain as well. Cities built on black city sites are not considered to be on the flood plain. If you have no units on a flood plain, take 5 damage in total from coastal areas of your choice instead."] },
+    { name: "Superstition", stack: 4, kind: "tradeable", text: ["Reduce 3 of your cities."] },
+    { name: "Civil War", stack: 5, kind: "non-tradeable", text: ["The beneficiary annexes all your units in excess of 35 unit points. You select the units. Count all units points that you have on the board and select units in excess of 35. All units selected this way must be in areas adjacent to each other if possible, and in each of these areas all of your units must be selected. If you have 35 unit points or less there is no Civil War."] },
+    { name: "Barbarian Hordes", stack: 5, kind: "tradeable", text: ["One of your cities is attacked by 15 barbarian tokens, which will continue attacking your units until there are no areas with barbarian tokens in which the population limit is exceeded. Place 15 barbarian tokens in one of your cities selected by the beneficiary (if possible a wilderness city) and resolve a city attack. After this conflict, the beneficiary moves all remaining barbarian tokens in excess of the population limit to an area adjacent by land or water that contains any of your units and conflict is resolved again. The beneficiary may only move barbarian tokens into an area that contains a city if the attack would be successful. This process is repeated until no population limit is exceeded by the barbarian tokens or no new area can be chosen legally. Any barbarian tokens in excess of a population limit are then destroyed."] },
+    { name: "Cyclone", stack: 6, kind: "non-tradeable", text: ["Select and reduce 3 of your cities adjacent to the one open sea area that has the largest number of your cities directly adjacent to it. All other players with cities directly adjacent to the same open sea area must select and reduce 2 of such cities as well."] },
+    { name: "Epidemic", stack: 6, kind: "tradeable", text: ["Take 15 damage and select 2 other players who must take 10 damage as well. The beneficiary may not be selected as a secondary victim."] },
+    { name: "Tyranny", stack: 7, kind: "non-tradeable", text: ["The beneficiary selects and annexes 15 of your unit points. All units selected this way must be in areas adjacent to each other if possible, and in each of these areas all of your units must be selected."] },
+    { name: "Civil Disorder", stack: 7, kind: "tradeable", text: ["Reduce all but 3 of your cities."] },
+    { name: "Corruption", stack: 8, kind: "non-tradeable", text: ["Discard commodity cards with a total face value (not set value) of at least 10 points."] },
+    { name: "Iconoclasm and Heresy", stack: 8, kind: "tradeable", text: ["Reduce 4 of your cities and select 2 other players who must reduce 1 of their cities as well. The beneficiary may not be selected as a secondary victim."] },
+    { name: "Regression", stack: 9, kind: "non-tradeable", text: ["Your succession marker on the A.S.T. is moved 1 step backward."] },
+    { name: "Piracy", stack: 9, kind: "tradeable", text: ["The beneficiary selects 2 of your coastal cities, which are replaced by pirate cities. Then you select from 2 other players 1 coastal city each, which are also replaced by pirate cities. The beneficiary may not be selected as a secondary victim."] }
+  ];
+  function calamityNamed(name) {
+    return CALAMITIES.find((c) => c.name === name || c.alias === name);
+  }
+  function minorCalamitiesInPlay(playerCount) {
+    return playerCount === 9 || playerCount === 10 || playerCount === 11 || playerCount >= 15;
+  }
+  var CARD_CALAMITIES = {
+    "advanced-military": [
+      { calamity: "Civil Disorder", effect: "hurt", text: "Reduce 1 additional city." }
+    ],
+    agriculture: [
+      { calamity: "Famine", effect: "hurt", text: "If you are the primary victim, take 5 additional damage." }
+    ],
+    anatomy: [
+      { calamity: "Epidemic", effect: "help", text: "If you are a secondary victim, prevent 5 damage." }
+    ],
+    calendar: [
+      { calamity: "Famine", effect: "help", text: "Prevent 5 damage." },
+      { calamity: "Cyclone", effect: "help", text: "Reduce 2 less selected cities." }
+    ],
+    cartography: [
+      { calamity: "Piracy", effect: "hurt", text: "If you are the primary victim, the beneficiary selects and replaces 1 additional coastal city." }
+    ],
+    coinage: [
+      { calamity: "Corruption", effect: "hurt", text: "Discard 5 additional points of face value." }
+    ],
+    deism: [
+      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city." }
+    ],
+    democracy: [
+      { calamity: "Civil War", effect: "help", text: "Select 10 less unit points." },
+      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city." }
+    ],
+    diplomacy: [
+      { calamity: "Treachery", effect: "hurt", text: "The beneficiary selects and annexes 1 additional city." }
+    ],
+    "drama-and-poetry": [
+      { calamity: "Civil War", effect: "help", text: "Select 5 less unit points." },
+      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city." }
+    ],
+    engineering: [
+      { calamity: "Earthquake", effect: "help", text: "Your city is reduced instead of destroyed." },
+      { calamity: "Flood", effect: "help", text: "Prevent 5 damage." }
+    ],
+    enlightenment: [
+      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city." },
+      { calamity: "Slave Revolt", effect: "help", text: "Your city support rate is decreased by 1 during the resolution of Slave Revolt." },
+      { calamity: "Epidemic", effect: "help", text: "If you are the primary victim, prevent 5 damage." },
+      { calamity: "Regression", effect: "help", text: "For each step backward, you may choose to prevent the effect by destroying 2 of your cities (if possible non-coastal)." }
+    ],
+    fundamentalism: [
+      { calamity: "Regression", effect: "hurt", text: "Your marker is moved backward 1 additional step." }
+    ],
+    law: [
+      { calamity: "Tyranny", effect: "help", text: "The beneficiary selects and annexes 5 less unit points." },
+      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city." },
+      { calamity: "Corruption", effect: "help", text: "Discard 5 less points of face value." }
+    ],
+    library: [
+      { calamity: "Regression", effect: "help", text: "Your marker is moved backward 1 less step." }
+    ],
+    masonry: [
+      { calamity: "Cyclone", effect: "help", text: "Reduce 1 less of your selected cities." }
+    ],
+    medicine: [
+      { calamity: "Epidemic", effect: "help", text: "Prevent 5 damage." }
+    ],
+    military: [
+      { calamity: "Civil War", effect: "hurt", text: "Select 5 additional unit points." }
+    ],
+    mining: [
+      { calamity: "Slave Revolt", effect: "hurt", text: "Your city support rate is increased by 1 during the resolution of Slave Revolt." }
+    ],
+    monarchy: [
+      { calamity: "Barbarian Hordes", effect: "help", text: "5 less barbarian tokens are used." },
+      { calamity: "Tyranny", effect: "hurt", text: "The beneficiary selects and annexes 5 additional unit points." }
+    ],
+    monotheism: [
+      { calamity: "Iconoclasm and Heresy", effect: "hurt", text: "Reduce 1 additional city." }
+    ],
+    music: [
+      { calamity: "Civil War", effect: "help", text: "Select 5 less unit points." },
+      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city." }
+    ],
+    mysticism: [
+      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city." }
+    ],
+    mythology: [
+      { calamity: "Slave Revolt", effect: "help", text: "Your city support rate is decreased by 1 during the resolution of Slave Revolt." }
+    ],
+    "naval-warfare": [
+      { calamity: "Piracy", effect: "help", text: "If you are the primary victim, the beneficiary selects and replaces 1 less coastal city. You may not be selected as a secondary victim." },
+      { calamity: "Civil Disorder", effect: "hurt", text: "Reduce 1 additional city." }
+    ],
+    philosophy: [
+      { calamity: "Iconoclasm and Heresy", effect: "help", text: "Reduce 2 less cities." },
+      { calamity: "Civil War", effect: "hurt", text: "Select 5 additional unit points." }
+    ],
+    politics: [
+      { calamity: "Barbarian Hordes", effect: "hurt", text: "5 additional barbarian tokens are used." }
+    ],
+    pottery: [
+      { calamity: "Famine", effect: "help", text: "Prevent 5 damage." }
+    ],
+    "provincial-empire": [
+      { calamity: "Barbarian Hordes", effect: "hurt", text: "5 additional barbarian tokens are used." },
+      { calamity: "Tyranny", effect: "hurt", text: "The beneficiary selects and annexes 5 additional unit points." }
+    ],
+    roadbuilding: [
+      { calamity: "Epidemic", effect: "hurt", text: "If you are the primary victim, take 5 additional damage." }
+    ],
+    sculpture: [
+      { calamity: "Tyranny", effect: "help", text: "The beneficiary selects and annexes 5 less unit points." }
+    ],
+    theocracy: [
+      { calamity: "Iconoclasm and Heresy", effect: "help", text: "You may choose to discard 2 commodity cards to prevent the city reduction effect for you." }
+    ],
+    theology: [
+      { calamity: "Iconoclasm and Heresy", effect: "help", text: "Reduce 3 less cities." }
+    ],
+    "trade-empire": [
+      { calamity: "Cyclone", effect: "hurt", text: "Select and reduce 1 additional city adjacent to the open sea area." },
+      { calamity: "Epidemic", effect: "hurt", text: "If you are the primary victim, take 5 additional damage." }
+    ],
+    "universal-doctrine": [
+      { calamity: "Superstition", effect: "hurt", text: "Reduce 1 additional city." }
+    ],
+    "wonder-of-the-world": [
+      { calamity: "Corruption", effect: "hurt", text: "Discard 5 additional points of face value." }
+    ]
+  };
+
+  // src/shared/advance-picker.ts
+  var GROUP_LABEL = {
+    science: "Science",
+    arts: "Arts",
+    crafts: "Crafts",
+    civics: "Civics",
+    religion: "Religion"
+  };
+  function renderChooser(card, values) {
+    const total = card.choiceCredits;
+    const sum = ADVANCE_GROUPS.reduce((n, g) => n + (values[g] ?? 0), 0);
+    const rows = ADVANCE_GROUPS.map((g) => `<div class="adv-choice-row adv-${g}">` + `<span class="adv-choice-group">${GROUP_LABEL[g]}</span>` + `<button type="button" class="adv-btn" data-choice-step="-5" data-group="${g}" aria-label="5 less ${GROUP_LABEL[g]}">−</button>` + `<output class="adv-choice-val" data-group="${g}">${values[g] ?? 0}</output>` + `<button type="button" class="adv-btn" data-choice-step="5" data-group="${g}" aria-label="5 more ${GROUP_LABEL[g]}">+</button>` + `</div>`).join("");
+    return `<div class="adv-choice" data-choice-for="${card.id}" data-total="${total}">` + `<p class="adv-choice-intro"><strong>${escapeHtml(card.name)}</strong>: choose the colours of ${total} extra credits. You keep them all game.</p>` + rows + `<button type="button" class="btn-submit adv-choice-save"${sum === total ? "" : " disabled"}>Save <span class="adv-choice-sum">${sum}</span> of ${total}</button>` + `</div>`;
+  }
+  var groupCards = (g) => ADVANCES.filter((c) => c.groups[0] === g).sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
+  function renderAdvancePicker(held, round, { canBuy = true, drafts = new Map, gm = false } = {}) {
+    const heldById = new Map(held.map((h) => [h.id, h]));
+    const t = advanceTotals(heldById.keys());
+    const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${gm ? "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round." : canBuy ? "Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends." : "Cards are bought after calamities are resolved."}</p>`;
+    const groups = ADVANCE_GROUPS.map((g) => {
+      const cards = groupCards(g);
+      const buttons = cards.map((c) => {
+        const h = heldById.get(c.id);
+        const bought = h ? advanceLocked(h, round) : false;
+        const locked = bought && !gm;
+        const closed = !locked && !canBuy && !gm;
+        const price = bought ? c.cost : advanceCost(c.id, held, round);
+        const cost = price < c.cost ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
+        const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
+        const chooser = open && (!h.choice || drafts.has(c.id)) ? renderChooser(c, drafts.get(c.id) ?? h.choice ?? {}) : "";
+        const change = open && h.choice && !drafts.has(c.id) ? `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>` : "";
+        const cls = `adv-pick${h ? " adv-held" : ""}${locked ? " adv-locked" : ""}${closed ? " adv-closed" : ""}`;
+        return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}"${locked || closed ? ' aria-disabled="true"' : ""}>` + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-pick-meta">${cost} · ${c.vp} VP${h && h.round === round ? " · <em>new</em>" : ""}</span>` + `</button>` + change + chooser;
+      }).join("");
+      return `<section class="adv-group adv-${g}"><h4>${GROUP_LABEL[g]}</h4><div class="adv-pick-grid">${buttons}</div></section>`;
+    }).join("");
+    return summary + groups + basket(held, round);
+  }
+  function basket(held, round) {
+    const fresh = held.filter((h) => h.round === round && ADVANCE_BY_ID.has(h.id));
+    if (!fresh.length)
+      return "";
+    const cost = fresh.reduce((sum, h) => sum + advanceCost(h.id, held, round), 0);
+    const vp = fresh.reduce((sum, h) => sum + ADVANCE_BY_ID.get(h.id).vp, 0);
+    return `<p class="adv-basket" role="status">Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>`;
+  }
+  var dot = (c) => c.groups[1] ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : "";
+  var CREDITS_FROM = (() => {
+    const m = new Map;
+    for (const from of ADVANCES) {
+      for (const [id, n] of Object.entries(from.special))
+        m.set(id, [...m.get(id) ?? [], { from, n }]);
+    }
+    return m;
+  })();
+  var credit = (g, text) => `<span class="adv-ref-credit adv-${g}">${escapeHtml(text)}</span>`;
+  var line = (label, items) => items.length ? `<p class="adv-ref-credits">${label}: ${items.join(" · ")}</p>` : "";
+  function cardBody(c, held) {
+    const text = ADVANCE_TEXT[c.id] ?? [];
+    const attrs = text.map((t, i) => `<p>${i === 0 && SPECIAL_ABILITY_IDS.includes(c.id) ? "<strong>Special ability:</strong> " : ""}${escapeHtml(t)}</p>`).join("");
+    const cals = (CARD_CALAMITIES[c.id] ?? []).map((e) => `<p class="adv-ref-cal cal-${e.effect}">` + `<span class="cal-mark" aria-label="${e.effect === "help" ? "helps" : "hurts"}">${e.effect === "help" ? "＋" : "−"}</span>` + `<span><strong>${escapeHtml(e.calamity)}:</strong> ${escapeHtml(e.text)}</span></p>`).join("");
+    const choice = held?.choice;
+    const chosen = choice ? ADVANCE_GROUPS.filter((g) => choice[g]).map((g) => credit(g, `${choice[g]} ${GROUP_LABEL[g]}`)) : [];
+    return attrs + cals + line("Credits", ADVANCE_GROUPS.filter((g) => c.credits[g]).map((g) => credit(g, `${c.credits[g]} ${GROUP_LABEL[g]}`))) + (c.choiceCredits ? line("Credits of your choice", chosen.length ? chosen : [`${c.choiceCredits}, chosen once`]) : "") + line("Card credit", Object.entries(c.special).flatMap(([id, n]) => {
+      const to = ADVANCE_BY_ID.get(id);
+      return to ? [credit(to.groups[0], `${n} to ${to.name}`)] : [];
+    })) + line("Cheaper with", (CREDITS_FROM.get(c.id) ?? []).map(({ from, n }) => credit(from.groups[0], `${from.name} −${n}`))) + (held ? `<p class="adv-ref-bought">Bought in round ${held.round}</p>` : "");
+  }
+  function renderAdvanceReference(held, open = new Set) {
+    const heldById = new Map(held.map((h) => [h.id, h]));
+    return ADVANCE_GROUPS.map((g) => {
+      const rows = groupCards(g).map((c) => `<details class="adv-ref-item" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-ref-meta">${c.cost} · ${c.vp} VP</span>` + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : "") + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join("");
+      return `<section class="adv-group adv-${g}"><h4>${GROUP_LABEL[g]}</h4><div class="adv-ref-list">${rows}</div></section>`;
+    }).join("");
+  }
+
+  // src/client/picker.ts
+  function bindPicker(picker, b) {
+    picker.addEventListener("click", async (e) => {
+      const target = e.target;
+      const chooser = target.closest(".adv-choice");
+      if (chooser) {
+        await onChooserClick(chooser, target, b);
+        return;
+      }
+      const change = target.closest("[data-choice-change]");
+      if (change) {
+        const id = change.dataset.choiceChange;
+        b.drafts.set(id, { ...b.held().find((h) => h.id === id)?.choice ?? {} });
+        b.rerender();
+        return;
+      }
+      const btn = target.closest(".adv-pick");
+      if (!btn || btn.getAttribute("aria-disabled") === "true")
+        return;
+      const on = btn.getAttribute("aria-pressed") !== "true";
+      btn.setAttribute("aria-pressed", String(on));
+      btn.classList.toggle("adv-held", on);
+      const ids = Array.from(picker.querySelectorAll('.adv-pick[aria-pressed="true"]')).map((el) => el.dataset.advance);
+      const res = await mettPost(`/api/players/${b.playerId()}/advances`, { ids });
+      if (!res.ok) {
+        btn.setAttribute("aria-pressed", String(!on));
+        btn.classList.toggle("adv-held", !on);
+      }
+    });
+  }
+  async function onChooserClick(chooser, target, b) {
+    const cardId = chooser.dataset.choiceFor;
+    const total = Number(chooser.dataset.total);
+    const read = () => Object.fromEntries(Array.from(chooser.querySelectorAll(".adv-choice-val")).map((o) => [o.dataset.group, Number(o.textContent)]).filter(([, n]) => n));
+    const step = target.closest("[data-choice-step]");
+    if (step) {
+      const out = chooser.querySelector(`.adv-choice-val[data-group="${step.dataset.group}"]`);
+      const sum = Object.values(read()).reduce((a, n) => a + (n ?? 0), 0);
+      const delta = Number(step.dataset.choiceStep);
+      const next = Number(out.textContent) + delta;
+      if (next < 0 || sum + delta > total)
+        return;
+      out.textContent = String(next);
+      b.drafts.set(cardId, read());
+      const newSum = sum + delta;
+      chooser.querySelector(".adv-choice-sum").textContent = String(newSum);
+      chooser.querySelector(".adv-choice-save").disabled = newSum !== total;
+      return;
+    }
+    const save = target.closest(".adv-choice-save");
+    if (!save)
+      return;
+    save.disabled = true;
+    const res = await mettPost(`/api/players/${b.playerId()}/advances/${cardId}/choice`, { choice: read() });
+    if (res.ok)
+      b.drafts.delete(cardId);
+    else
+      save.disabled = false;
+  }
+
+  // src/shared/civ-summary.ts
+  function renderCivSummary(player, totalVp) {
+    return `<div class="civ-summary" id="civ-summary">` + `<span class="civ-sum-item">A.S.T. <strong>${player.ast_level === 0 ? "S" : player.ast_level}</strong></span>` + `<span class="civ-sum-item"><strong>${totalVp}</strong> VP</span>` + `</div>`;
+  }
+
+  // src/shared/calamity-panel.ts
+  var KIND_LABEL = {
+    minor: "Tradeable",
+    "non-tradeable": "Non tradeable",
+    tradeable: "Tradeable"
+  };
+  function renderCalamityPanel(heldIds) {
+    const byCalamity = new Map;
+    for (const id of heldIds) {
+      for (const e of CARD_CALAMITIES[id] ?? []) {
+        const list = byCalamity.get(e.calamity) ?? [];
+        list.push({ card: ADVANCE_BY_ID.get(id)?.name ?? id, e });
+        byCalamity.set(e.calamity, list);
+      }
+    }
+    if (!byCalamity.size) {
+      return '<p class="cal-none">None of your cards change a calamity.</p>';
+    }
+    return [...byCalamity.keys()].sort().map((cal) => {
+      const rows = byCalamity.get(cal).sort((a, b) => a.e.effect === b.e.effect ? 0 : a.e.effect === "help" ? -1 : 1).map(({ card, e }) => `<li class="cal-${e.effect}">` + `<span class="cal-mark" aria-label="${e.effect === "help" ? "helps" : "hurts"}">${e.effect === "help" ? "＋" : "−"}</span>` + `<span class="cal-text">${escapeHtml(e.text)} <span class="cal-card">${escapeHtml(card)}</span></span></li>`).join("");
+      return `<section class="cal-group"><h4>${escapeHtml(cal)}</h4><ul>${rows}</ul></section>`;
+    }).join("");
+  }
+  function cardsFor(cal) {
+    const out = [];
+    for (const card of ADVANCES) {
+      for (const e of CARD_CALAMITIES[card.id] ?? []) {
+        if (calamityNamed(e.calamity) === cal)
+          out.push({ id: card.id, e });
+      }
+    }
+    return [...out.filter((c) => c.e.effect === "help"), ...out.filter((c) => c.e.effect === "hurt")];
+  }
+  function renderCalamityReference(heldIds, playerCount, open = new Set) {
+    const held = new Set(heldIds);
+    const item = (cal) => {
+      const mods = cardsFor(cal).map(({ id, e }) => `<li class="cal-${e.effect}${held.has(id) ? " cal-held" : ""}">` + `<span class="cal-mark" aria-label="${e.effect === "help" ? "helps" : "hurts"}">${e.effect === "help" ? "＋" : "−"}</span>` + `<span><span class="cal-mod-card">${escapeHtml(ADVANCE_BY_ID.get(id).name)}:</span> ${escapeHtml(e.text)}</span>` + (held.has(id) ? '<span class="cal-check" aria-label="you hold this card">✓</span>' : "") + `</li>`).join("");
+      return `<details class="cal-ref-item" data-calamity="${escapeHtml(cal.name)}"${open.has(cal.name) ? " open" : ""}>` + `<summary><span class="cal-stack">${cal.stack}</span><span class="cal-ref-name">${escapeHtml(cal.name)}</span>` + `<span class="cal-kind cal-kind-${cal.kind}">${KIND_LABEL[cal.kind]}</span></summary>` + cal.text.map((t) => `<p>${escapeHtml(t)}</p>`).join("") + (mods ? `<ul class="cal-mods">${mods}</ul>` : "") + `</details>`;
+    };
+    const major = `<h4>Major calamities</h4><div class="cal-ref-list">${CALAMITIES.filter((c) => c.kind !== "minor").map(item).join("")}</div>`;
+    return minorCalamitiesInPlay(playerCount) ? `<h4>Minor calamities</h4><div class="cal-ref-list">${CALAMITIES.filter((c) => c.kind === "minor").map(item).join("")}</div>` + major : major + `<p class="cal-none">Minor calamities are not used with ${playerCount} players, only with 9–11 or 15–18.</p>`;
+  }
+
   // src/client/civ.ts
   var civEl = document.getElementById("civ-content");
   if (civEl) {
@@ -297,86 +873,48 @@
         if (res.ok)
           mettFlash(cityBtn.closest(".civ-section"));
       });
-    }, bindAdv = function() {
-      const adv1 = document.getElementById("adv-1vp");
-      const adv3 = document.getElementById("adv-3vp");
-      const adv6 = document.getElementById("adv-6vp");
-      const advTotal = document.getElementById("adv-total");
-      function calcAdvTotal() {
-        const v1 = parseInt(adv1?.value ?? "0", 10) || 0;
-        const v3 = parseInt(adv3?.value ?? "0", 10) || 0;
-        const v6 = parseInt(adv6?.value ?? "0", 10) || 0;
-        return v1 + v3 * 3 + v6 * 6;
-      }
-      function refreshAdvTotal() {
-        if (advTotal)
-          advTotal.textContent = String(calcAdvTotal());
-      }
-      async function submitAdv() {
-        const v1 = Math.max(0, parseInt(adv1?.value ?? "0", 10) || 0);
-        const v3 = Math.max(0, parseInt(adv3?.value ?? "0", 10) || 0);
-        const v6 = Math.max(0, parseInt(adv6?.value ?? "0", 10) || 0);
-        const res = await mettPost(`/api/players/${playerId}/adv`, { adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 });
-        if (res.ok && adv1)
-          mettFlash(adv1.closest(".civ-section"));
-      }
-      function submitAdvDebounced() {
-        clearTimeout(advTypingTimer);
-        advTypingTimer = setTimeout(submitAdv, 400);
-      }
-      for (const inp of [adv1, adv3, adv6]) {
-        if (!inp)
-          continue;
-        inp.addEventListener("input", () => {
-          refreshAdvTotal();
-          submitAdvDebounced();
-        });
-        inp.addEventListener("blur", () => {
-          clearTimeout(advTypingTimer);
-          submitAdv();
+    }, bindTabs = function() {
+      const tabs = Array.from(document.querySelectorAll(".civ-tab"));
+      const show = (tab, focus = false) => {
+        for (const t of tabs) {
+          const on = t === tab;
+          t.setAttribute("aria-selected", String(on));
+          t.tabIndex = on ? 0 : -1;
+          const panel = document.getElementById(t.getAttribute("aria-controls"));
+          if (panel)
+            panel.hidden = !on;
+        }
+        if (focus)
+          tab.focus();
+        history.replaceState(null, "", `#${tab.id.replace("tab-btn-", "")}`);
+      };
+      for (const t of tabs) {
+        t.addEventListener("click", () => show(t));
+        t.addEventListener("keydown", (e) => {
+          const i = tabs.indexOf(t);
+          const next = e.key === "ArrowRight" ? tabs[(i + 1) % tabs.length] : e.key === "ArrowLeft" ? tabs[(i + tabs.length - 1) % tabs.length] : null;
+          if (next) {
+            e.preventDefault();
+            show(next, true);
+          }
         });
       }
-      document.querySelectorAll(".adv-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const inp = document.getElementById(btn.dataset.target);
-          if (!inp)
-            return;
-          const dir = parseInt(btn.dataset.dir, 10);
-          const cur = parseInt(inp.value, 10) || 0;
-          inp.value = String(Math.max(0, cur + dir));
-          refreshAdvTotal();
-          clearTimeout(advTypingTimer);
-          submitAdv();
-        });
+      const fromHash = document.getElementById(`tab-btn-${location.hash.slice(1)}`);
+      if (fromHash && tabs.includes(fromHash))
+        show(fromHash);
+    }, bindCards = function() {
+      const picker = document.getElementById("adv-picker");
+      if (!picker)
+        return;
+      bindPicker(picker, {
+        playerId: () => playerId,
+        held: () => lastState?.advances[playerId] ?? [],
+        rerender: () => {
+          if (lastState)
+            syncPicker(lastState.advances[playerId] ?? [], lastState.game);
+        },
+        drafts: choiceDrafts
       });
-    }, bindMilWon = function() {
-      const milBtn = document.getElementById("mil-toggle");
-      if (milBtn) {
-        milBtn.addEventListener("click", async () => {
-          milBtn.disabled = true;
-          const res = await mettPost(`/api/players/${playerId}/military`);
-          if (!res.ok)
-            milBtn.disabled = false;
-        });
-      }
-      const wonBtn = document.getElementById("won-toggle");
-      if (wonBtn) {
-        wonBtn.addEventListener("click", async () => {
-          wonBtn.disabled = true;
-          const res = await mettPost(`/api/players/${playerId}/wonder`);
-          if (!res.ok)
-            wonBtn.disabled = false;
-        });
-      }
-      const spcBtn = document.getElementById("spc-toggle");
-      if (spcBtn) {
-        spcBtn.addEventListener("click", async () => {
-          spcBtn.disabled = true;
-          const res = await mettPost(`/api/players/${playerId}/special`);
-          if (!res.ok)
-            spcBtn.disabled = false;
-        });
-      }
     }, bindMov = function() {
       const movBtn = document.getElementById("mov-toggle");
       if (!movBtn)
@@ -392,6 +930,7 @@
     }, renderFromState = function(state) {
       if (!state?.game || !state?.players)
         return;
+      lastState = state;
       const player = state.players.find((p) => p.id === playerId);
       if (!player) {
         location.reload();
@@ -404,38 +943,39 @@
       const citiesPhase = game.cities_phase === 1;
       const submitted = census != null && census.population != null;
       const cityCountSubmitted = census != null && census.city_count != null;
-      for (const id of ["mil-toggle", "won-toggle", "spc-toggle"]) {
-        const btn = document.getElementById(id);
-        if (btn)
-          btn.disabled = false;
-      }
       const roundEl = document.getElementById("census-round");
       if (roundEl)
         roundEl.textContent = String(game.current_round);
-      syncMilWon(player);
+      syncSummary(player, census, game);
       syncCensus(player, census, submitted, revealed, citiesPhase, state);
       syncCity(census, cityCountSubmitted, citiesPhase, revealed);
-      syncAdv(player);
+      syncPicker(state.advances[playerId] ?? [], game);
+      syncCalamities((state.advances[playerId] ?? []).map((h) => h.id), state.players.length);
       syncAst(player, census, game, state, expert);
-    }, syncMilWon = function(player) {
-      const milBtn = document.getElementById("mil-toggle");
-      if (milBtn) {
-        milBtn.classList.toggle("mil-on", !!player.military);
-        milBtn.classList.toggle("mil-off", !player.military);
-        milBtn.textContent = player.military ? "⚔ Has Military — tap to remove" : "✕ No Military — tap to grant";
+    }, syncCalamities = function(heldIds, playerCount) {
+      const cal = document.getElementById("cal-panel");
+      if (cal)
+        cal.innerHTML = renderCalamityPanel(heldIds);
+      rerenderKeepingOpen("cal-ref", "calamity", (open) => renderCalamityReference(heldIds, playerCount, open));
+    }, syncSummary = function(player, census, game) {
+      const el = document.getElementById("civ-summary");
+      if (el)
+        el.outerHTML = renderCivSummary(player, playerTotalVp(player, game.active ? null : census?.city_count));
+    }, syncPicker = function(held, game) {
+      const picker = document.getElementById("adv-picker");
+      if (picker) {
+        const focused = document.activeElement?.dataset?.advance;
+        picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts });
+        if (focused)
+          picker.querySelector(`[data-advance="${focused}"]`)?.focus();
       }
-      const wonBtn = document.getElementById("won-toggle");
-      if (wonBtn) {
-        wonBtn.classList.toggle("won-on", !!player.wonder);
-        wonBtn.classList.toggle("won-off", !player.wonder);
-        wonBtn.textContent = player.wonder ? "★ Has Wonder — tap to remove" : "✕ No Wonder — tap to grant";
-      }
-      const spcBtn = document.getElementById("spc-toggle");
-      if (spcBtn) {
-        spcBtn.classList.toggle("spc-on", !!player.special);
-        spcBtn.classList.toggle("spc-off", !player.special);
-        spcBtn.textContent = player.special ? "⚡ Special ability — tap to remove" : "✕ No special ability — tap to grant";
-      }
+      rerenderKeepingOpen("adv-ref", "advanceRef", (open) => renderAdvanceReference(held, open));
+    }, rerenderKeepingOpen = function(id, key, render) {
+      const el = document.getElementById(id);
+      if (!el)
+        return;
+      const open = new Set(Array.from(el.querySelectorAll("details[open]"), (d) => d.dataset[key] ?? ""));
+      el.innerHTML = render(open);
     }, syncCensus = function(player, census, submitted, revealed, citiesPhase, state) {
       const formEl = document.getElementById("census-form");
       if (!formEl)
@@ -545,24 +1085,6 @@
       const cityHint = formEl.querySelector(".city-hint");
       if (cityHint)
         cityHint.hidden = revealed;
-    }, syncAdv = function(player) {
-      const adv1 = document.getElementById("adv-1vp");
-      const adv3 = document.getElementById("adv-3vp");
-      const adv6 = document.getElementById("adv-6vp");
-      const advTotal = document.getElementById("adv-total");
-      const focused = document.activeElement;
-      if (adv1 && adv1 !== focused)
-        adv1.value = String(player.adv_1vp);
-      if (adv3 && adv3 !== focused)
-        adv3.value = String(player.adv_3vp);
-      if (adv6 && adv6 !== focused)
-        adv6.value = String(player.adv_6vp);
-      if (advTotal) {
-        const v1 = parseInt(adv1?.value ?? "0", 10) || 0;
-        const v3 = parseInt(adv3?.value ?? "0", 10) || 0;
-        const v6 = parseInt(adv6?.value ?? "0", 10) || 0;
-        advTotal.textContent = String(v1 + v3 * 3 + v6 * 6);
-      }
     }, syncAst = function(player, census, game, state, expert) {
       const sec = document.querySelector(".ast-section");
       if (!sec)
@@ -710,10 +1232,11 @@
       return `<div class="ast-bar-wrap"><div class="ast-progress-grid" style="grid-template-columns:repeat(${N},minmax(0,1fr))">${nodes}</div></div>`;
     };
     const playerId = Number(civEl.dataset.playerId) || window.PLAYER_ID;
+    const choiceDrafts = new Map;
+    bindTabs();
     bindCensus();
     bindCity();
-    bindAdv();
-    bindMilWon();
+    bindCards();
     bindMov();
     window.addEventListener("mett:my-state", (e) => {
       try {
@@ -722,6 +1245,6 @@
         console.error("[civ.ts] renderFromState failed", err);
       }
     });
-    let advTypingTimer;
+    let lastState = null;
   }
 })();

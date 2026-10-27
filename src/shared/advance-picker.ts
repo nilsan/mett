@@ -1,0 +1,166 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+// The Cards tab on the player page: every advance card as a tap-to-toggle
+// button, grouped by colour. Rendered by the server on load and re-rendered by
+// src/client/civ.ts on every state update, so both share this one function.
+
+import { escapeHtml } from './html.js';
+import {
+  ADVANCES, ADVANCE_BY_ID, ADVANCE_GROUPS, SPECIAL_ABILITY_IDS, advanceCost, advanceLocked, advanceTotals, creditChoiceOpen,
+  type AdvanceCard, type AdvanceGroup, type CreditChoice, type HeldAdvance,
+} from './advances.js';
+import { ADVANCE_TEXT } from './advance-text.js';
+import { CARD_CALAMITIES } from './calamities.js';
+
+export const GROUP_LABEL: Readonly<Record<AdvanceGroup, string>> = {
+  science: 'Science', arts: 'Arts', crafts: 'Crafts', civics: 'Civics', religion: 'Religion',
+};
+
+/** The one-time colour chooser under a held Monument / Written Record:
+ *  a −/+ stepper per group in steps of 5, and Save once the split adds up. */
+function renderChooser(card: AdvanceCard, values: CreditChoice): string {
+  const total = card.choiceCredits!;
+  const sum = ADVANCE_GROUPS.reduce((n, g) => n + (values[g] ?? 0), 0);
+  const rows = ADVANCE_GROUPS.map(g => `<div class="adv-choice-row adv-${g}">`
+    + `<span class="adv-choice-group">${GROUP_LABEL[g]}</span>`
+    + `<button type="button" class="adv-btn" data-choice-step="-5" data-group="${g}" aria-label="5 less ${GROUP_LABEL[g]}">−</button>`
+    + `<output class="adv-choice-val" data-group="${g}">${values[g] ?? 0}</output>`
+    + `<button type="button" class="adv-btn" data-choice-step="5" data-group="${g}" aria-label="5 more ${GROUP_LABEL[g]}">+</button>`
+    + `</div>`).join('');
+  return `<div class="adv-choice" data-choice-for="${card.id}" data-total="${total}">`
+    + `<p class="adv-choice-intro"><strong>${escapeHtml(card.name)}</strong>: choose the colours of ${total} extra credits. You keep them all game.</p>`
+    + rows
+    + `<button type="button" class="btn-submit adv-choice-save"${sum === total ? '' : ' disabled'}>Save <span class="adv-choice-sum">${sum}</span> of ${total}</button>`
+    + `</div>`;
+}
+
+export interface PickerOptions {
+  /** Phase 12 (after calamities): new cards may be ticked. */
+  canBuy?: boolean;
+  /** Colour splits being edited on this page, kept across live re-renders. */
+  drafts?: ReadonlyMap<string, CreditChoice>;
+  /** The GM is correcting this player's cards: nothing is locked or closed. */
+  gm?: boolean;
+}
+
+/** A colour's cards as the box shows them: cheapest first by printed cost. */
+const groupCards = (g: AdvanceGroup): AdvanceCard[] => ADVANCES
+  .filter(c => c.groups[0] === g)
+  .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
+
+/** Inner HTML of the Cards tab picker. Dual-group cards are listed under their
+ *  first group, with a dot in the second group's colour. Cards bought in an
+ *  earlier round are locked; unheld cards can only be ticked while buying. */
+export function renderAdvancePicker(held: readonly HeldAdvance[], round: number,
+  { canBuy = true, drafts = new Map(), gm = false }: PickerOptions = {}): string {
+  const heldById = new Map(held.map(h => [h.id, h]));
+  const t = advanceTotals(heldById.keys());
+  const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP`
+    + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>`
+    + `<p class="adv-pick-hint">${gm
+      ? '<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round.'
+      : canBuy
+      ? 'Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends.'
+      : 'Cards are bought after calamities are resolved.'}</p>`;
+  const groups = ADVANCE_GROUPS.map(g => {
+    const cards = groupCards(g);
+    const buttons = cards.map(c => {
+      const h = heldById.get(c.id);
+      const bought = h ? advanceLocked(h, round) : false;
+      const locked = bought && !gm;
+      const closed = !locked && !canBuy && !gm;
+      // What it costs this round after credits from cards bought earlier
+      // (for this round's cards: what was paid). A card from an earlier round shows its print.
+      const price = bought ? c.cost : advanceCost(c.id, held, round);
+      const cost = price < c.cost
+        ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
+      // The chooser opens by itself until a choice is saved; after that, while
+      // it may still be corrected, it opens only on "Change colours".
+      const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
+      const chooser = open && (!h.choice || drafts.has(c.id))
+        ? renderChooser(c, drafts.get(c.id) ?? h.choice ?? {}) : '';
+      const change = open && h.choice && !drafts.has(c.id)
+        ? `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>` : '';
+      const cls = `adv-pick${h ? ' adv-held' : ''}${locked ? ' adv-locked' : ''}${closed ? ' adv-closed' : ''}`;
+      return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}"${locked || closed ? ' aria-disabled="true"' : ''}>`
+        + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>`
+        + `<span class="adv-pick-meta">${cost} · ${c.vp} VP${h && h.round === round ? ' · <em>new</em>' : ''}</span>`
+        + `</button>`
+        + change
+        + chooser;
+    }).join('');
+    return `<section class="adv-group adv-${g}"><h4>${GROUP_LABEL[g]}</h4><div class="adv-pick-grid">${buttons}</div></section>`;
+  }).join('');
+  return summary + groups + basket(held, round);
+}
+
+/** What this round's ticked cards cost together, after credits. It sits at
+ *  the bottom of the screen while the player scrolls the cards. */
+function basket(held: readonly HeldAdvance[], round: number): string {
+  const fresh = held.filter(h => h.round === round && ADVANCE_BY_ID.has(h.id));
+  if (!fresh.length) return '';
+  const cost = fresh.reduce((sum, h) => sum + advanceCost(h.id, held, round), 0);
+  const vp = fresh.reduce((sum, h) => sum + ADVANCE_BY_ID.get(h.id)!.vp, 0);
+  return `<p class="adv-basket" role="status">Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? 'card' : 'cards'}`
+    + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>`;
+}
+
+const dot = (c: AdvanceCard) => c.groups[1]
+  ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : '';
+
+/** The named-card credits each card receives: target id → givers. */
+const CREDITS_FROM: ReadonlyMap<string, readonly { from: AdvanceCard; n: number }[]> = (() => {
+  const m = new Map<string, { from: AdvanceCard; n: number }[]>();
+  for (const from of ADVANCES) {
+    for (const [id, n] of Object.entries(from.special)) m.set(id, [...(m.get(id) ?? []), { from, n }]);
+  }
+  return m;
+})();
+
+/** A credit amount in a group's colour. */
+const credit = (g: AdvanceGroup, text: string) => `<span class="adv-ref-credit adv-${g}">${escapeHtml(text)}</span>`;
+const line = (label: string, items: string[]) => items.length
+  ? `<p class="adv-ref-credits">${label}: ${items.join(' · ')}</p>` : '';
+
+/** Everything printed on a card except its picture, one line per effect:
+ *  attributes, calamities, colour credits, the player's own colour split,
+ *  the credit to a named card, the named cards that credit this one, and
+ *  when the player bought it. */
+function cardBody(c: AdvanceCard, held?: HeldAdvance): string {
+  const text = ADVANCE_TEXT[c.id] ?? [];
+  const attrs = text.map((t, i) => `<p>${i === 0 && SPECIAL_ABILITY_IDS.includes(c.id) ? '<strong>Special ability:</strong> ' : ''}${escapeHtml(t)}</p>`).join('');
+  const cals = (CARD_CALAMITIES[c.id] ?? []).map(e => `<p class="adv-ref-cal cal-${e.effect}">`
+    + `<span class="cal-mark" aria-label="${e.effect === 'help' ? 'helps' : 'hurts'}">${e.effect === 'help' ? '＋' : '−'}</span>`
+    + `<span><strong>${escapeHtml(e.calamity)}:</strong> ${escapeHtml(e.text)}</span></p>`).join('');
+  const choice = held?.choice;
+  const chosen = choice ? ADVANCE_GROUPS.filter(g => choice[g]).map(g => credit(g, `${choice[g]} ${GROUP_LABEL[g]}`)) : [];
+  // A credit to or from a named card is in that card's colour (its first
+  // colour, where it is listed).
+  return attrs + cals
+    + line('Credits', ADVANCE_GROUPS.filter(g => c.credits[g]).map(g => credit(g, `${c.credits[g]} ${GROUP_LABEL[g]}`)))
+    + (c.choiceCredits ? line('Credits of your choice', chosen.length ? chosen : [`${c.choiceCredits}, chosen once`]) : '')
+    + line('Card credit', Object.entries(c.special).flatMap(([id, n]) => {
+      const to = ADVANCE_BY_ID.get(id);
+      return to ? [credit(to.groups[0]!, `${n} to ${to.name}`)] : [];
+    }))
+    + line('Cheaper with', (CREDITS_FROM.get(c.id) ?? []).map(({ from, n }) => credit(from.groups[0]!, `${from.name} −${n}`)))
+    + (held ? `<p class="adv-ref-bought">Bought in round ${held.round}</p>` : '');
+}
+
+/** Every card as a collapsible row, grouped by colour, cheapest first, so
+ *  players can read what a card does. `open` names the rows to render
+ *  expanded, so a live re-render keeps what the player opened. */
+export function renderAdvanceReference(held: readonly HeldAdvance[], open: ReadonlySet<string> = new Set()): string {
+  const heldById = new Map(held.map(h => [h.id, h]));
+  return ADVANCE_GROUPS.map(g => {
+    const rows = groupCards(g).map(c =>
+      `<details class="adv-ref-item" data-advance-ref="${c.id}"${open.has(c.id) ? ' open' : ''}>`
+      + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>`
+      + `<span class="adv-ref-meta">${c.cost} · ${c.vp} VP</span>`
+      + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : '')
+      + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join('');
+    return `<section class="adv-group adv-${g}"><h4>${GROUP_LABEL[g]}</h4><div class="adv-ref-list">${rows}</div></section>`;
+  }).join('');
+}

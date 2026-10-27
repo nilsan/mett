@@ -530,6 +530,105 @@ describe('POST /api/players/:id/regress — calamity AST regression', () => {
   });
 });
 
+describe('/api/players/:id/advances — advance cards', () => {
+  let app: Hono;
+  let db: Database;
+  let p1: number;
+  beforeEach(async () => {
+    db = setUpDbForGameTests();
+    app = makeApp();
+    await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 1, players: [{ civ_id: 1, name: 'Ann', region: 'west' }] }, ADMIN);
+    p1 = db.query<{ id: number }, []>('SELECT id FROM players').get()!.id;
+    db.exec('UPDATE game SET cities_phase=1'); // phase 12 comes after calamities
+  });
+
+  it('a new player holds no cards', async () => {
+    expect(await (await app.request(`/api/players/${p1}/advances`)).json()).toEqual([]);
+  });
+
+  it('players set their own cards without an admin session', async () => {
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] });
+    expect(res.status).toBe(200);
+  });
+
+  it('an empty set derives zero tier counts, replacing hand-entered ones', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/adv`, { adv_1vp: 3, adv_3vp: 1, adv_6vp: 0 });
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] });
+    expect(db.query('SELECT adv_1vp, adv_3vp, adv_6vp, adv_points FROM players WHERE id=?').get(p1))
+      .toEqual({ adv_1vp: 0, adv_3vp: 0, adv_6vp: 0, adv_points: 0 });
+  });
+
+  it.each([[{}], [{ ids: 'pottery' }], [{ ids: [1] }]])('rejects a body that is not a list of ids: %j', async (body) => {
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/advances`, body);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'ids must be a list of advance ids' });
+  });
+
+  it('rejects unknown card ids', async () => {
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['no-such-card'] });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'Unknown advance: no-such-card' });
+  });
+
+  it('real cards set the tier counts and the flags', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery', 'military', 'monotheism'] });
+    expect(db.query('SELECT adv_1vp, adv_3vp, adv_6vp, adv_points, military, wonder, special FROM players WHERE id=?').get(p1))
+      .toEqual({ adv_1vp: 1, adv_3vp: 1, adv_6vp: 1, adv_points: 10, military: 1, wonder: 0, special: 1 });
+  });
+
+  it('the colour choice for a held Monument is saved and sent with the state', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['monument'] });
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { arts: 10, science: 10 } });
+    expect(res.status).toBe(200);
+    const state = await (await app.request('/api/state')).json();
+    expect(state.advances[p1]).toEqual([{ id: 'monument', round: 1, choice: { arts: 10, science: 10 } }]);
+  });
+
+  it('a colour choice that does not add up is a 400; an unknown card a 404; a card not held a 409', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['monument'] });
+    const bad = await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { arts: 15 } });
+    expect(bad.status).toBe(400);
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/nope/choice`, { choice: {} })).status).toBe(404);
+    const notHeld = await jsonReq(app, 'POST', `/api/players/${p1}/advances/written-record/choice`, { choice: { arts: 10 } });
+    expect(notHeld.status).toBe(409);
+  });
+
+  it('players buy only after calamities; before that only the GM can add cards', async () => {
+    db.exec('UPDATE game SET cities_phase=0');
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery'] });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'Cards are bought after calamities are resolved' });
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery'] }, ADMIN)).status).toBe(200);
+    // Nor untick, even a card from this round.
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] })).status).toBe(409);
+  });
+
+  it('cards bought this round can be unticked; earlier rounds are locked for the player, not the GM', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery', 'masonry'] });
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery'] })).status).toBe(200);
+    db.exec('UPDATE game SET current_round=2, cities_phase=0');
+    const locked = await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] });
+    expect(locked.status).toBe(409);
+    expect(await locked.json()).toEqual({ error: 'Pottery: bought in an earlier round, ask the GM to correct it' });
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] }, ADMIN)).status).toBe(200);
+  });
+
+  it('a colour choice is locked after its round for the player, not for the GM', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['monument'] });
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { arts: 20 } });
+    db.exec('UPDATE game SET current_round=2');
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { science: 20 } })).status).toBe(409);
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { science: 20 } }, ADMIN)).status).toBe(200);
+  });
+
+  it('needs a game in progress (cards are bought in a round)', async () => {
+    db.exec('UPDATE game SET active=0');
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] });
+    expect(res.status).toBe(409);
+  });
+});
+
 // ─── Request validation, game-state guards, secrets, escaping ────────────────
 
 describe('API input validation', () => {
@@ -552,7 +651,7 @@ describe('API input validation', () => {
     expect(await res.json()).toEqual({ error: 'Invalid JSON body' });
   });
 
-  it.each(['census', 'city-count', 'military', 'move', 'wonder', 'special', 'adv'])(
+  it.each(['census', 'city-count', 'military', 'move', 'wonder', 'special', 'adv', 'advances'])(
     'unknown player on /%s is a 404', async (action) => {
       const res = await jsonReq(app, 'POST', `/api/players/999/${action}`, { population: 5, city_count: 1, adv_1vp: 1 });
       expect(res.status).toBe(404);

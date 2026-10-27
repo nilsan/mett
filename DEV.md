@@ -283,7 +283,7 @@ docker compose -f docker/docker-compose.yml up -d
 ```
 
 - **Hostname:** put yours in `docker/Caddyfile`; Caddy fetches the certificate.
-- **Image:** `ghcr.io/nilsan/mett:${METT_VERSION:-latest}`. CI publishes `:latest`, `:<version>`, `:<major>.<minor>`, `:<major>` and `:<commit>`. `METT_VERSION=1` gets every compatible update.
+- **Image:** `ghcr.io/nilsan/mett:${METT_VERSION:-latest}`. CI publishes `:latest`, `:<version>`, `:<major>.<minor>`, `:<major>` and `:<commit>`. `METT_VERSION=1` gets every compatible update. A beta branch listed in `build.yml` publishes only `:beta` and `:<commit>`.
 - **Data** is in the `mett_data` volume, backups included.
 - **Container:** it starts as root only to hand the data volume to the `bun` user, then drops privileges (`docker/entrypoint.sh`).
 - **Health:** a `HEALTHCHECK` calls `/healthz` every 30 s (the server answers and the database responds), and Caddy starts once it passes. Docker marks a failing container unhealthy but doesn't restart it, so use an outside monitor on `/healthz` if you want alerts.

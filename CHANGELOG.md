@@ -2,6 +2,22 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.1 — 2026-10-27
+
+A beta for review on beta.mett.games; the image is tagged `:beta` only, never `:latest`. Start a new game on it: cards entered mid-game replace the hand-entered advance counts.
+
+### Added
+- **Advance cards per player.** Players tick the cards they own on a new Cards tab; tier counts, advance VP, Military, Wonder and special abilities all follow from the cards. Card data (cost, VP, colours, credits, calamity effects and text) is read from the printed cards.
+- Cards are bought after calamities (phase 12) and lock when the round rolls over; a round undo unlocks them again. Each tile shows the price after credits from cards bought in earlier rounds, and a bar at the bottom of the screen sums what the player is buying this round.
+- Monument and Written Record: the extra credits are split between colours once and kept for the rest of the game.
+- **All cards** on the Cards tab: every card's text, calamity effects, credits (colour credits, the player's own colour split, the credit to a named card, the cards that make it cheaper) and the round the player bought it, in the card colours.
+- **Calamities** tab: what the player's cards change, and every calamity in the game with its Quick Chart text and a ✓ on the effects of cards the player holds. Minor calamities are listed only for player counts that use them (9–11 and 15–18).
+- The GM corrects a player's cards on the admin page: a player's Adv VP opens their cards in a dialog, where any card can be ticked or unticked, locked or not, in any phase, and a colour choice changed.
+
+### Changed
+- The player page is split into Round · Cards · A.S.T. · Calamities tabs under a summary line with A.S.T. position and VP.
+- The admin page no longer has the Military / Wonder / special ability toggles, and the player page no longer shows them as icons: the cards decide them.
+
 ## 1.7.0 — 2026-10-26
 
 ### Added

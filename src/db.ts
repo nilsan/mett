@@ -39,6 +39,7 @@ import type { PlayerRow, CensusRow, FullState, CivRefRow, Region } from './types
 import { getGame, getRoundSummaries } from './models/game.js';
 import { LIA_THRESHOLD, nextAstStatus, AST_LEVELS } from './models/ast.js';
 import type { AstStatus } from './types.js';
+import { advanceTotals, advanceFlags, creditChoiceOpen, type HeldAdvance, type CreditChoice } from './shared/advances.js';
 
 // ── Admin password ─────────────────────────────────────────────────────────────
 
@@ -208,6 +209,64 @@ export function setAdvCards(playerId: number, v1: number, v3: number, v6: number
     .run(v1, v3, v6, total, playerId);
 }
 
+type HeldAdvanceRow = { player_id: number; id: string; round: number; credit_choice: string | null };
+const HELD_ADVANCE_SELECT = 'SELECT player_id, advance_id AS id, round, credit_choice FROM player_advances';
+
+function toHeldAdvance(r: HeldAdvanceRow): HeldAdvance {
+  return r.credit_choice ? { id: r.id, round: r.round, choice: JSON.parse(r.credit_choice) } : { id: r.id, round: r.round };
+}
+
+/** The advance cards a player holds, in purchase order. */
+export function getPlayerAdvances(playerId: number): HeldAdvance[] {
+  return getDb().query<HeldAdvanceRow, [number]>(`${HELD_ADVANCE_SELECT} WHERE player_id=? ORDER BY round, advance_id`)
+    .all(playerId).map(toHeldAdvance);
+}
+
+/** Every player's advance cards, keyed by player id, in purchase order. */
+export function getAllPlayerAdvances(): Record<number, HeldAdvance[]> {
+  const out: Record<number, HeldAdvance[]> = {};
+  for (const r of getDb().query<HeldAdvanceRow, []>(`${HELD_ADVANCE_SELECT} ORDER BY round, advance_id`).all()) {
+    (out[r.player_id] ??= []).push(toHeldAdvance(r));
+  }
+  return out;
+}
+
+/** Set the colours of a held card's choice credits (Monument, Written Record).
+ *  The choice is made once and kept all game: it can be made while none is
+ *  set, or corrected in the round the card was bought; after that it is
+ *  locked. Returns false when the player doesn't hold the card or the choice
+ *  is locked. Validate `choice` with creditChoiceError first. */
+export function setCreditChoice(playerId: number, advanceId: string, choice: CreditChoice, round: number,
+  gm = false): boolean {
+  const held = getPlayerAdvances(playerId).find(h => h.id === advanceId);
+  if (!held || !(gm || creditChoiceOpen(held, round))) return false;
+  getDb().query('UPDATE player_advances SET credit_choice=? WHERE player_id=? AND advance_id=?')
+    .run(JSON.stringify(choice), playerId, advanceId);
+  return true;
+}
+
+/** Replace a player's advance cards with `ids` and derive the tier counts and
+ *  the Military / Wonder / special-ability flags from them. Cards already held
+ *  keep their purchase round and colour choice; new ones are bought in `round`.
+ *  Unknown ids are the caller's to reject (see the API). */
+export function setPlayerAdvances(playerId: number, ids: readonly string[], round: number): void {
+  const db = getDb();
+  const want = new Set(ids);
+  db.transaction(() => {
+    const had = new Map(getPlayerAdvances(playerId).map(h => [h.id, h]));
+    db.query('DELETE FROM player_advances WHERE player_id=?').run(playerId);
+    const ins = db.query('INSERT INTO player_advances (player_id, advance_id, round, credit_choice) VALUES (?, ?, ?, ?)');
+    for (const id of want) {
+      const h = had.get(id);
+      ins.run(playerId, id, h?.round ?? round, h?.choice ? JSON.stringify(h.choice) : null);
+    }
+    const t = advanceTotals(want);
+    setAdvCards(playerId, t.adv_1vp, t.adv_3vp, t.adv_6vp);
+    const f = advanceFlags(want);
+    db.query('UPDATE players SET military=?, wonder=?, special=? WHERE id=?').run(f.military, f.wonder, f.special, playerId);
+  })();
+}
+
 // ── Census ────────────────────────────────────────────────────────────────────
 
 export function getCensusForRound(round: number): CensusRow[] {
@@ -314,5 +373,6 @@ export function getFullState(): FullState {
     astStatus[p.id] = nextAstStatus(p, censusByPlayer.get(p.id)?.city_count, expert);
   }
   const roundSummaries = getRoundSummaries();
-  return { game, players, census, prevCensus, astStatus, roundSummaries };
+  const advances = getAllPlayerAdvances();
+  return { game, players, census, prevCensus, astStatus, roundSummaries, advances };
 }

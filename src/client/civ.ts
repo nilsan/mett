@@ -19,15 +19,24 @@ import { playerTotalVp, makeScoreEntry, compareScores, sameScoreGroup, sortCensu
 import { AST_LEVELS, boardLevels, astNodeTitle, advancesOfTier, getAdvanceRequirement, renderAgeRequirementsList, type AstRequirement } from '../shared/ast-pure.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
+import { renderAdvancePicker, renderAdvanceReference } from '../shared/advance-picker.js';
+import type { CreditChoice } from '../shared/advances.js';
+import { bindPicker } from './picker.js';
+import { renderCivSummary } from '../shared/civ-summary.js';
+import { renderCalamityPanel, renderCalamityReference } from '../shared/calamity-panel.js';
 
 const civEl = document.getElementById('civ-content');
 if (civEl) {
   const playerId = Number(civEl.dataset.playerId) || window.PLAYER_ID!;
 
+  // Colour splits being edited in a Monument / Written Record chooser, kept
+  // here so a live re-render of the Cards tab doesn't wipe them.
+  const choiceDrafts = new Map<string, CreditChoice>();
+
+  bindTabs();
   bindCensus();
   bindCity();
-  bindAdv();
-  bindMilWon();
+  bindCards();
   bindMov();
 
   window.addEventListener('mett:my-state', (e: Event) => {
@@ -84,76 +93,45 @@ if (civEl) {
     });
   }
 
-  let advTypingTimer: ReturnType<typeof setTimeout> | undefined;
-  function bindAdv(): void {
-    const adv1 = document.getElementById('adv-1vp') as HTMLInputElement | null;
-    const adv3 = document.getElementById('adv-3vp') as HTMLInputElement | null;
-    const adv6 = document.getElementById('adv-6vp') as HTMLInputElement | null;
-    const advTotal = document.getElementById('adv-total');
-
-    function calcAdvTotal(): number {
-      const v1 = parseInt(adv1?.value ?? '0', 10) || 0;
-      const v3 = parseInt(adv3?.value ?? '0', 10) || 0;
-      const v6 = parseInt(adv6?.value ?? '0', 10) || 0;
-      return v1 + v3 * 3 + v6 * 6;
-    }
-    function refreshAdvTotal(): void { if (advTotal) advTotal.textContent = String(calcAdvTotal()); }
-    async function submitAdv(): Promise<void> {
-      const v1 = Math.max(0, parseInt(adv1?.value ?? '0', 10) || 0);
-      const v3 = Math.max(0, parseInt(adv3?.value ?? '0', 10) || 0);
-      const v6 = Math.max(0, parseInt(adv6?.value ?? '0', 10) || 0);
-      const res = await mettPost(`/api/players/${playerId}/adv`, { adv_1vp: v1, adv_3vp: v3, adv_6vp: v6 });
-      if (res.ok && adv1) mettFlash(adv1.closest('.civ-section'));
-    }
-    function submitAdvDebounced(): void {
-      clearTimeout(advTypingTimer);
-      advTypingTimer = setTimeout(submitAdv, 400);
-    }
-
-    for (const inp of [adv1, adv3, adv6]) {
-      if (!inp) continue;
-      inp.addEventListener('input', () => { refreshAdvTotal(); submitAdvDebounced(); });
-      inp.addEventListener('blur', () => { clearTimeout(advTypingTimer); submitAdv(); });
-    }
-    document.querySelectorAll<HTMLButtonElement>('.adv-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const inp = document.getElementById(btn.dataset.target!) as HTMLInputElement | null;
-        if (!inp) return;
-        const dir = parseInt(btn.dataset.dir!, 10);
-        const cur = parseInt(inp.value, 10) || 0;
-        inp.value = String(Math.max(0, cur + dir));
-        refreshAdvTotal();
-        clearTimeout(advTypingTimer);
-        submitAdv();
+  // Tabs: Round · Cards · A.S.T. · Calamities. The open tab lives in the URL hash, so a
+  // reload or a bookmark (…/egypt#cards) comes back to it.
+  function bindTabs(): void {
+    const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.civ-tab'));
+    const show = (tab: HTMLButtonElement, focus = false): void => {
+      for (const t of tabs) {
+        const on = t === tab;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+        const panel = document.getElementById(t.getAttribute('aria-controls')!);
+        if (panel) panel.hidden = !on;
+      }
+      if (focus) tab.focus();
+      history.replaceState(null, '', `#${tab.id.replace('tab-btn-', '')}`);
+    };
+    for (const t of tabs) {
+      t.addEventListener('click', () => show(t));
+      t.addEventListener('keydown', (e: KeyboardEvent) => {
+        const i = tabs.indexOf(t);
+        const next = e.key === 'ArrowRight' ? tabs[(i + 1) % tabs.length]
+          : e.key === 'ArrowLeft' ? tabs[(i + tabs.length - 1) % tabs.length] : null;
+        if (next) { e.preventDefault(); show(next, true); }
       });
-    });
+    }
+    const fromHash = document.getElementById(`tab-btn-${location.hash.slice(1)}`);
+    if (fromHash && tabs.includes(fromHash as HTMLButtonElement)) show(fromHash as HTMLButtonElement);
   }
 
-  function bindMilWon(): void {
-    const milBtn = document.getElementById('mil-toggle') as HTMLButtonElement | null;
-    if (milBtn) {
-      milBtn.addEventListener('click', async () => {
-        milBtn.disabled = true;
-        const res = await mettPost(`/api/players/${playerId}/military`);
-        if (!res.ok) milBtn.disabled = false;
-      });
-    }
-    const wonBtn = document.getElementById('won-toggle') as HTMLButtonElement | null;
-    if (wonBtn) {
-      wonBtn.addEventListener('click', async () => {
-        wonBtn.disabled = true;
-        const res = await mettPost(`/api/players/${playerId}/wonder`);
-        if (!res.ok) wonBtn.disabled = false;
-      });
-    }
-    const spcBtn = document.getElementById('spc-toggle') as HTMLButtonElement | null;
-    if (spcBtn) {
-      spcBtn.addEventListener('click', async () => {
-        spcBtn.disabled = true;
-        const res = await mettPost(`/api/players/${playerId}/special`);
-        if (!res.ok) spcBtn.disabled = false;
-      });
-    }
+
+  // Cards: tap a card to hold or drop it (src/client/picker.ts).
+  function bindCards(): void {
+    const picker = document.getElementById('adv-picker');
+    if (!picker) return;
+    bindPicker(picker, {
+      playerId: () => playerId,
+      held: () => lastState?.advances[playerId] ?? [],
+      rerender: () => { if (lastState) syncPicker(lastState.advances[playerId] ?? [], lastState.game); },
+      drafts: choiceDrafts,
+    });
   }
 
   function bindMov(): void {
@@ -171,8 +149,13 @@ if (civEl) {
 
   // ── Live render from WS state ───────────────────────────────────────────────
 
+  // Latest state from the server, for re-rendering the Cards tab on a local
+  // change (opening a colour chooser) without waiting for a broadcast.
+  let lastState: FullState | null = null;
+
   function renderFromState(state: FullState): void {
     if (!state?.game || !state?.players) return;
+    lastState = state;
     const player = state.players.find(p => p.id === playerId);
     if (!player) { location.reload(); return; }
 
@@ -184,48 +167,47 @@ if (civEl) {
     const submitted = census != null && census.population != null;
     const cityCountSubmitted = census != null && census.city_count != null;
 
-    for (const id of ['mil-toggle', 'won-toggle', 'spc-toggle']) {
-      const btn = document.getElementById(id) as HTMLButtonElement | null;
-      if (btn) btn.disabled = false;
-    }
-
     // The round-number heading is rendered once by the server; without this it
     // would stay on the previous round until a manual page reload.
     const roundEl = document.getElementById('census-round');
     if (roundEl) roundEl.textContent = String(game.current_round);
 
-    syncMilWon(player);
+    syncSummary(player, census, game);
     syncCensus(player, census, submitted, revealed, citiesPhase, state);
     syncCity(census, cityCountSubmitted, citiesPhase, revealed);
-    syncAdv(player);
+    syncPicker(state.advances[playerId] ?? [], game);
+    syncCalamities((state.advances[playerId] ?? []).map(h => h.id), state.players.length);
     syncAst(player, census, game, state, expert);
   }
 
-  function syncMilWon(player: PlayerRow): void {
-    const milBtn = document.getElementById('mil-toggle') as HTMLButtonElement | null;
-    if (milBtn) {
-      milBtn.classList.toggle('mil-on', !!player.military);
-      milBtn.classList.toggle('mil-off', !player.military);
-      milBtn.textContent = player.military
-        ? '⚔ Has Military — tap to remove'
-        : '✕ No Military — tap to grant';
+  function syncCalamities(heldIds: string[], playerCount: number): void {
+    const cal = document.getElementById('cal-panel');
+    if (cal) cal.innerHTML = renderCalamityPanel(heldIds);
+    rerenderKeepingOpen('cal-ref', 'calamity', open => renderCalamityReference(heldIds, playerCount, open));
+  }
+
+  function syncSummary(player: PlayerRow, census: { city_count: number | null } | null, game: FullState['game']): void {
+    const el = document.getElementById('civ-summary');
+    if (el) el.outerHTML = renderCivSummary(player, playerTotalVp(player, game.active ? null : census?.city_count));
+  }
+
+  function syncPicker(held: FullState['advances'][number], game: FullState['game']): void {
+    const picker = document.getElementById('adv-picker');
+    if (picker) {
+      const focused = (document.activeElement as HTMLElement | null)?.dataset?.advance;
+      picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts });
+      if (focused) picker.querySelector<HTMLElement>(`[data-advance="${focused}"]`)?.focus();
     }
-    const wonBtn = document.getElementById('won-toggle') as HTMLButtonElement | null;
-    if (wonBtn) {
-      wonBtn.classList.toggle('won-on', !!player.wonder);
-      wonBtn.classList.toggle('won-off', !player.wonder);
-      wonBtn.textContent = player.wonder
-        ? '★ Has Wonder — tap to remove'
-        : '✕ No Wonder — tap to grant';
-    }
-    const spcBtn = document.getElementById('spc-toggle') as HTMLButtonElement | null;
-    if (spcBtn) {
-      spcBtn.classList.toggle('spc-on', !!player.special);
-      spcBtn.classList.toggle('spc-off', !player.special);
-      spcBtn.textContent = player.special
-        ? '⚡ Special ability — tap to remove'
-        : '✕ No special ability — tap to grant';
-    }
+    rerenderKeepingOpen('adv-ref', 'advanceRef', open => renderAdvanceReference(held, open));
+  }
+
+  /** Re-render a list of <details> rows; the rows the player has expanded
+   *  (named by data-<key>) stay expanded. */
+  function rerenderKeepingOpen(id: string, key: string, render: (open: ReadonlySet<string>) => string): void {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const open = new Set(Array.from(el.querySelectorAll<HTMLDetailsElement>('details[open]'), d => d.dataset[key] ?? ''));
+    el.innerHTML = render(open);
   }
 
   function syncCensus(
@@ -363,23 +345,6 @@ if (civEl) {
     }
     const cityHint = formEl.querySelector('.city-hint') as HTMLElement | null;
     if (cityHint) cityHint.hidden = revealed;
-  }
-
-  function syncAdv(player: PlayerRow): void {
-    const adv1 = document.getElementById('adv-1vp') as HTMLInputElement | null;
-    const adv3 = document.getElementById('adv-3vp') as HTMLInputElement | null;
-    const adv6 = document.getElementById('adv-6vp') as HTMLInputElement | null;
-    const advTotal = document.getElementById('adv-total');
-    const focused = document.activeElement;
-    if (adv1 && adv1 !== focused) adv1.value = String(player.adv_1vp);
-    if (adv3 && adv3 !== focused) adv3.value = String(player.adv_3vp);
-    if (adv6 && adv6 !== focused) adv6.value = String(player.adv_6vp);
-    if (advTotal) {
-      const v1 = parseInt(adv1?.value ?? '0', 10) || 0;
-      const v3 = parseInt(adv3?.value ?? '0', 10) || 0;
-      const v6 = parseInt(adv6?.value ?? '0', 10) || 0;
-      advTotal.textContent = String(v1 + v3 * 3 + v6 * 6);
-    }
   }
 
   function syncAst(

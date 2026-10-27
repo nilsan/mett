@@ -50,9 +50,10 @@ describe('initDb', () => {
   it('fresh DB: current schema, latest version, all civs, hashed default password', () => {
     const db = new Database(':memory:');
     initDb(db);
-    expect(userVersion(db)).toBe(2);
+    expect(userVersion(db)).toBe(3);
     expect(tableExists(db, 'ast_levels')).toBe(false);
     expect(tableExists(db, 'admin_sessions')).toBe(true);
+    expect(tableExists(db, 'player_advances')).toBe(true);
     expect(db.query<{ n: number }, []>('SELECT COUNT(*) AS n FROM civs').get()!.n).toBe(CIVS.length);
     const pwd = db.query<{ admin_password: string }, []>('SELECT admin_password FROM game').get()!.admin_password;
     expect(pwd.startsWith('scrypt$')).toBe(true);
@@ -63,8 +64,9 @@ describe('initDb', () => {
     db.exec("ALTER TABLE game ADD COLUMN admin_password TEXT; UPDATE game SET admin_password='hunter2'");
     initDb(db);
 
-    expect(userVersion(db)).toBe(2);
+    expect(userVersion(db)).toBe(3);
     expect(tableExists(db, 'ast_levels')).toBe(false);
+    expect(tableExists(db, 'player_advances')).toBe(true);
     expect(columns(db, 'players')).toEqual(expect.arrayContaining(
       ['rank_order', 'adv_1vp', 'adv_3vp', 'adv_6vp', 'late_iron_age_bonus', 'regressed', 'wonder', 'special']));
     expect(columns(db, 'census')).toEqual(expect.arrayContaining(['city_count', 'moved']));
@@ -99,7 +101,7 @@ describe('initDb', () => {
     initDb(db);
     const before = db.query<{ admin_password: string }, []>('SELECT admin_password FROM game').get()!.admin_password;
     initDb(db);
-    expect(userVersion(db)).toBe(2);
+    expect(userVersion(db)).toBe(3);
     expect(db.query<{ n: number }, []>('SELECT COUNT(*) AS n FROM civs').get()!.n).toBe(CIVS.length);
     // The stored hash is not re-seeded on a second boot.
     expect(db.query<{ admin_password: string }, []>('SELECT admin_password FROM game').get()!.admin_password).toBe(before);

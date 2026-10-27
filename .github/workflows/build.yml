@@ -3,7 +3,8 @@ name: build
 # yamllint thinks bare `on:` is a YAML 1.1 boolean; quote it to silence.
 "on":
   push:
-    branches: [main]
+    # feat/advance-cards publishes the 2.0 beta as :beta for beta.mett.games.
+    branches: [main, feat/advance-cards]
 
 permissions:
   contents: read
@@ -34,21 +35,27 @@ jobs:
           echo "app=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
           echo "bun=$(cat .bun-version)" >> "$GITHUB_OUTPUT"
           echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          # A bare :<major> tag only from main, and not in major version zero
+          # (semver: 0.x is unstable).
+          app=$(jq -r .version package.json)
+          if [ "$GITHUB_REF" = refs/heads/main ] && [ "${app#0.}" = "$app" ]; then major=true; else major=false; fi
+          echo "major=$major" >> "$GITHUB_OUTPUT"
 
       # Tags: :latest is what production pulls; :<version>, :<major.minor> and
       # :<major> (from package.json) let docker-compose pin via METT_VERSION;
       # :<short-sha> pins a specific commit for rollback / forensic inspection.
+      # A beta branch gets only :beta and :<short-sha>, never :latest or a version.
       - name: Image tags
         id: meta
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/mett
           tags: |
-            type=raw,value=latest
-            type=semver,pattern={{version}},value=${{ steps.ver.outputs.app }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.ver.outputs.app }}
-            # No bare :0 tag while in major version zero (semver: 0.x is unstable).
-            type=semver,pattern={{major}},value=${{ steps.ver.outputs.app }},enable=${{ !startsWith(steps.ver.outputs.app, '0.') }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=beta,enable=${{ github.ref != 'refs/heads/main' }}
+            type=semver,pattern={{version}},value=${{ steps.ver.outputs.app }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.ver.outputs.app }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{major}},value=${{ steps.ver.outputs.app }},enable=${{ steps.ver.outputs.major }}
             type=sha,prefix=,format=short
 
       - uses: docker/setup-buildx-action@v4

@@ -6,6 +6,9 @@ import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
 import { SUPPORT_LINE } from './layout.js';
+import { renderAdvancePicker, renderAdvanceReference } from '../shared/advance-picker.js';
+import { renderCivSummary } from '../shared/civ-summary.js';
+import { renderCalamityPanel, renderCalamityReference } from '../shared/calamity-panel.js';
 import { sortCensusOrder, playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
 import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
@@ -194,8 +197,17 @@ export function renderCivFragment(
     </div>
   </div>
 
+  ${renderCivSummary(player, playerTotalVp(player, game.active ? null : census?.city_count))}
+  <div class="civ-tabs" role="tablist" aria-label="Player page">
+    <button type="button" role="tab" id="tab-btn-round" class="civ-tab" aria-controls="tab-round" aria-selected="true">Round</button>
+    <button type="button" role="tab" id="tab-btn-cards" class="civ-tab" aria-controls="tab-cards" aria-selected="false" tabindex="-1">Cards</button>
+    <button type="button" role="tab" id="tab-btn-ast" class="civ-tab" aria-controls="tab-ast" aria-selected="false" tabindex="-1">A.S.T.</button>
+    <button type="button" role="tab" id="tab-btn-calamities" class="civ-tab" aria-controls="tab-calamities" aria-selected="false" tabindex="-1">Calamities</button>
+  </div>
+
   <div class="civ-body">
 
+  <div class="civ-panel" id="tab-round" role="tabpanel" aria-labelledby="tab-btn-round">
     <section class="civ-section">
       <h3>Round <span id="census-round">${game.current_round}</span> Census</h3>
       ${game.active ? `
@@ -246,49 +258,19 @@ export function renderCivFragment(
       </div>
     </section>
 
-    <section class="civ-section">
-      <h3>VP</h3>
-      <div class="adv-cards">
-        <div class="adv-card-row">
-          <button class="adv-btn" data-target="adv-1vp" data-dir="-1" aria-label="Decrease 1 VP advance count">−</button>
-          <input type="number" id="adv-1vp" min="0" value="${player.adv_1vp}" inputmode="numeric" class="adv-card-input" aria-labelledby="adv-1vp-label">
-          <button class="adv-btn" data-target="adv-1vp" data-dir="1" aria-label="Increase 1 VP advance count">+</button>
-          <span class="adv-card-label" id="adv-1vp-label">1 VP</span>
-        </div>
-        <div class="adv-card-row">
-          <button class="adv-btn" data-target="adv-3vp" data-dir="-1" aria-label="Decrease 3 VP advance count">−</button>
-          <input type="number" id="adv-3vp" min="0" value="${player.adv_3vp}" inputmode="numeric" class="adv-card-input" aria-labelledby="adv-3vp-label">
-          <button class="adv-btn" data-target="adv-3vp" data-dir="1" aria-label="Increase 3 VP advance count">+</button>
-          <span class="adv-card-label" id="adv-3vp-label">3 VP</span>
-        </div>
-        <div class="adv-card-row">
-          <button class="adv-btn" data-target="adv-6vp" data-dir="-1" aria-label="Decrease 6 VP advance count">−</button>
-          <input type="number" id="adv-6vp" min="0" value="${player.adv_6vp}" inputmode="numeric" class="adv-card-input" aria-labelledby="adv-6vp-label">
-          <button class="adv-btn" data-target="adv-6vp" data-dir="1" aria-label="Increase 6 VP advance count">+</button>
-          <span class="adv-card-label" id="adv-6vp-label">6 VP</span>
-        </div>
-        <div class="adv-total-row">
-          <span class="adv-total-label">SUM</span>
-          <span class="adv-total-value"><span id="adv-total">${player.adv_points}</span> VP</span>
-        </div>
-      </div>
-    </section>
+  </div><!-- #tab-round -->
 
-    <section class="civ-section">
-      <h3>Military, Wonder &amp; Special</h3>
-      <div class="mil-won-row">
-        <button id="mil-toggle" class="mil-toggle-civ ${player.military ? 'mil-on' : 'mil-off'}">
-          ${player.military ? '⚔ Has Military — tap to remove' : '✕ No Military — tap to grant'}
-        </button>
-        <button id="won-toggle" class="won-toggle-civ ${player.wonder ? 'won-on' : 'won-off'}">
-          ${player.wonder ? '★ Has Wonder — tap to remove' : '✕ No Wonder — tap to grant'}
-        </button>
-        <button id="spc-toggle" class="spc-toggle-civ ${player.special ? 'spc-on' : 'spc-off'}">
-          ${player.special ? '⚡ Special ability — tap to remove' : '✕ No special ability — tap to grant'}
-        </button>
-      </div>
+  <div class="civ-panel" id="tab-cards" role="tabpanel" aria-labelledby="tab-btn-cards" hidden>
+    <section class="civ-section adv-picker" id="adv-picker">
+      ${renderAdvancePicker(state.advances[player.id] ?? [], game.current_round, { canBuy: game.cities_phase === 1 })}
     </section>
+    <section class="civ-section adv-picker">
+      <h3>All cards</h3>
+      <div id="adv-ref">${renderAdvanceReference(state.advances[player.id] ?? [])}</div>
+    </section>
+  </div><!-- #tab-cards -->
 
+  <div class="civ-panel" id="tab-ast" role="tabpanel" aria-labelledby="tab-btn-ast" hidden>
     <section class="civ-section ast-section">
       <div class="ast-current">
         <span class="ast-level-label">Leaderboard position:</span>
@@ -338,6 +320,18 @@ export function renderCivFragment(
       ${astBar(player.ast_level, expert, player.civ_number)}
       <ul class="ab-legend ast-req-legend">${renderAgeRequirementsList(player, census?.city_count ?? prevCensus?.city_count ?? null, expert)}</ul>
     </section>
+  </div><!-- #tab-ast -->
+
+  <div class="civ-panel" id="tab-calamities" role="tabpanel" aria-labelledby="tab-btn-calamities" hidden>
+    <section class="civ-section cal-panel">
+      <h3>Your cards</h3>
+      <div id="cal-panel">${renderCalamityPanel((state.advances[player.id] ?? []).map(h => h.id))}</div>
+    </section>
+    <section class="civ-section cal-panel">
+      <h3>All calamities</h3>
+      <div id="cal-ref">${renderCalamityReference((state.advances[player.id] ?? []).map(h => h.id), state.players.length)}</div>
+    </section>
+  </div><!-- #tab-calamities -->
 
   </div><!-- .civ-body -->
 </div><!-- .civ-page -->

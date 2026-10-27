@@ -34,6 +34,8 @@ const KNOWN_DYNAMIC: Record<string, string> = {
   '.mett-flash': 'flash animation api.js adds to a value the player just changed',
   '.mett-offline-pill': 'offline pill, created by ws-client.js while the WebSocket is down',
   '.backup-section[open] summary': 'the admin backup list after the GM opens it',
+  '.cal-ref-item[open] > summary': 'a calamity row on the Calamities tab after the player opens it',
+  '.adv-ref-item[open] > summary': 'a card row in All cards on the Cards tab after the player opens it',
   // Round-summary lines for specific transitions (logic covered by
   // computeRoundSummary tests in tests/game.test.ts).
   '.round-summary .rs-final': 'summary line: the advance triggered the final round',
@@ -103,7 +105,12 @@ try {
   await post('/api/debug/simulate', { expert: 1, player_count: 18, rounds: 6, seed: 1 });
   const ps = await players();
   for (const p of ps.slice(0, 3)) await post(`/api/players/${p.id}/census`, { population: 20 });
-  for (const what of ['military', 'wonder', 'special']) await post(`/api/players/${ps[0]!.id}/${what}`);
+  // Cards: flags from Military / Wonder / Monotheism, a Monument with its
+  // colours chosen (and still correctable this round), a Written Record not
+  // chosen yet (open chooser).
+  await post(`/api/players/${ps[0]!.id}/advances`, { ids: ['military', 'wonder-of-the-world', 'monotheism', 'monument'] });
+  await post(`/api/players/${ps[0]!.id}/advances/monument/choice`, { choice: { arts: 10, science: 10 } });
+  await post(`/api/players/${ps[1]!.id}/advances`, { ids: ['written-record'] });
   await post(`/api/players/${ps[5]!.id}/ast`, { level: 0 });  // admin: regress button disabled
   await pages();
   // Trade phase: census revealed, a few city counts in, units marked moved.
@@ -133,9 +140,12 @@ try {
   // Game over with an unresolved tie (admin shows the tie-break dropdowns).
   await post('/api/debug/census', { seed: 3 });
   await post('/api/debug/cities', { seed: 3 });
+  // The tie sits low in the table so gold, silver and bronze stay clear.
+  const tieCards = ['pottery', 'masonry'];
   for (const p of ps.slice(5, 7)) {
-    await post(`/api/players/${p.id}/ast`, { level: 60 });
-    await post(`/api/players/${p.id}/adv`, { adv_1vp: 30, adv_3vp: 0, adv_6vp: 0 });
+    await post(`/api/players/${p.id}/ast`, { level: 10 });
+    await post(`/api/players/${p.id}/advances`, { ids: tieCards });
+    await post(`/api/players/${p.id}/city-count`, { city_count: 4 });
   }
   await post('/api/game/round/next');
   await pages();

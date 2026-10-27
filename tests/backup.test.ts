@@ -121,6 +121,16 @@ describe('restoreBackup', () => {
     expect(isValidAdminSession(session)).toBe(true);
   });
 
+  it('brings back the advance cards players held', () => {
+    const pid = addPlayer(db, 1, 'Ann');
+    db.query('INSERT INTO player_advances (player_id, advance_id, round) VALUES (?, ?, ?)').run(pid, 'pottery', 2);
+    const b = takeBackup('before-round');
+    db.exec('DELETE FROM player_advances');
+    restoreBackup(b.file);
+    expect(db.query('SELECT player_id, advance_id, round FROM player_advances').all())
+      .toEqual([{ player_id: pid, advance_id: 'pottery', round: 2 }]);
+  });
+
   it('backs up the current state first, so a restore can be undone', () => {
     const b = takeBackup('before-start');
     db.exec('UPDATE game SET current_round=9');

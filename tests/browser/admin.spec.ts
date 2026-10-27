@@ -35,3 +35,33 @@ test.describe('admin census input', () => {
       .not.toBeNull();
   });
 });
+
+// The advance VP follows the cards live and opens the GM's card correction
+// dialog: any card, locked or not, in any phase.
+test.describe('admin: cards', () => {
+  test('Adv VP opens the card dialog, where the GM unticks a locked card', async ({ page, request }) => {
+    await adminLogin(page.context().request);
+    await page.goto('/admin');
+    const state = await (await request.get('/api/state')).json();
+    const id = state.players.find((p: { civ_slug: string }) => p.civ_slug === 'minoa').id;
+    await request.post(`/api/players/${id}/advances`, { data: { ids: ['military', 'mysticism'] } });
+    await request.post('/api/debug/set-round', { data: { round: state.game.current_round + 1 } });
+    const vp = page.locator(`.adv-pts-btn[data-player-id="${id}"]`);
+    await expect(vp).toHaveText('4');
+    await vp.click();
+    const dialog = page.locator('#gm-cards');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('h3')).toHaveText('Correct cards: Minoa');
+    await expect(dialog).toContainText('GM correction');
+    const tile = dialog.locator('.adv-pick[data-advance="mysticism"]');
+    await expect(tile).toHaveAttribute('aria-pressed', 'true');
+    await expect(tile).not.toHaveAttribute('aria-disabled', 'true');
+    await tile.click();
+    await expect.poll(async () => (await (await request.get('/api/state')).json()).advances[id].map((h: { id: string }) => h.id))
+      .toEqual(['military']);
+    await expect(vp).toHaveText('3');
+    await expect(tile).toHaveAttribute('aria-pressed', 'false');
+    await dialog.locator('.gm-cards-close').click();
+    await expect(dialog).toBeHidden();
+  });
+});
