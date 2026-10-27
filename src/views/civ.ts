@@ -6,7 +6,7 @@ import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
 import { SUPPORT_LINE } from './layout.js';
-import { CARD_SORTS, renderAdvancePicker, renderAdvanceReference } from '../shared/advance-picker.js';
+import { CARD_SORTS, renderAdvancePicker, renderSortButton, renderAdvanceReference } from '../shared/advance-picker.js';
 import { renderCivSummary } from '../shared/civ-summary.js';
 import { renderCalamityPanel, renderCalamityReference } from '../shared/calamity-panel.js';
 import { sortCensusOrder, playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
@@ -263,7 +263,7 @@ export function renderCivFragment(
   <div class="civ-panel" id="tab-cards" role="tabpanel" aria-labelledby="tab-btn-cards" hidden>
     <div class="adv-sort" role="toolbar" aria-label="Sort cards">
       <span class="adv-sort-label">Sort</span>
-      ${CARD_SORTS.map(o => `<button type="button" class="adv-sort-btn" data-card-sort="${o.id}" aria-pressed="${o.id === 'group'}">${o.label}</button>`).join('')}
+      ${CARD_SORTS.map(s => renderSortButton(s, 'group', 'asc')).join('')}
     </div>
     <section class="civ-section adv-picker" id="adv-picker">
       ${renderAdvancePicker(state.advances[player.id] ?? [], game.current_round, { canBuy: game.cities_phase === 1 })}

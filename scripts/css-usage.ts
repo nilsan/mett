@@ -105,12 +105,6 @@ try {
   await post('/api/debug/simulate', { expert: 1, player_count: 18, rounds: 6, seed: 1 });
   const ps = await players();
   for (const p of ps.slice(0, 3)) await post(`/api/players/${p.id}/census`, { population: 20 });
-  // Cards: flags from Military / Wonder / Monotheism, a Monument with its
-  // colours chosen (and still correctable this round), a Written Record not
-  // chosen yet (open chooser).
-  await post(`/api/players/${ps[0]!.id}/advances`, { ids: ['military', 'wonder-of-the-world', 'monotheism', 'monument'] });
-  await post(`/api/players/${ps[0]!.id}/advances/monument/choice`, { choice: { arts: 10, science: 10 } });
-  await post(`/api/players/${ps[1]!.id}/advances`, { ids: ['written-record'] });
   await post(`/api/players/${ps[5]!.id}/ast`, { level: 0 });  // admin: regress button disabled
   await pages();
   // Trade phase: census revealed, a few city counts in, units marked moved.
@@ -125,6 +119,12 @@ try {
   // advances for real — the admin page gets a round summary.
   await post('/api/game/cities/clear');
   await post(`/api/players/${ps[1]!.id}/regress`);
+  // Cards, bought after calamities: flags from Military / Wonder / Monotheism, a Monument with its
+  // colours chosen (and still correctable this round), a Written Record not
+  // chosen yet (open chooser).
+  await post(`/api/players/${ps[0]!.id}/advances`, { ids: ['military', 'wonder-of-the-world', 'monotheism', 'monument'] });
+  await post(`/api/players/${ps[0]!.id}/advances/monument/choice`, { choice: { arts: 10, science: 10 } });
+  await post(`/api/players/${ps[1]!.id}/advances`, { ids: ['written-record'] });
   await pages();
   await post('/api/debug/cities', { seed: 2 });
   await post(`/api/players/${ps[5]!.id}/city-count`, { city_count: 0 });  // will regress

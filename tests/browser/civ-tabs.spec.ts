@@ -132,7 +132,7 @@ test.describe('civ page: tabs', () => {
     await expect(monument).toHaveAttribute('open', '');
   });
 
-  test('Cards: the chosen order applies to both lists and is kept on reload', async ({ page }) => {
+  test('Cards: the chosen order, either way round, applies to both lists and is kept on reload', async ({ page }) => {
     await page.goto('/minoa#cards');
     const first = () => page.locator('.adv-pick').first();
     const firstRef = () => page.locator('#adv-ref details').first();
@@ -145,7 +145,20 @@ test.describe('civ page: tabs', () => {
     await page.reload();
     await expect(page.locator('[data-card-sort="name"]')).toHaveAttribute('aria-pressed', 'true');
     await expect(first()).toHaveAttribute('data-advance', 'advanced-military');
+    // A second click on the same button turns the order round.
+    await page.locator('[data-card-sort="name"]').click();
+    await expect(page.locator('[data-card-sort="name"]')).toHaveText('Z–A');
+    await expect(first()).toHaveAttribute('data-advance', 'written-record');
+    await expect(firstRef()).toHaveAttribute('data-advance-ref', 'written-record');
+    await page.reload();
+    await expect(page.locator('[data-card-sort="name"]')).toHaveText('Z–A');
+    await expect(first()).toHaveAttribute('data-advance', 'written-record');
     await page.locator('[data-card-sort="vp"]').click();
+    await expect(page.locator('[data-card-sort="vp"]')).toHaveText('VP ↑');
+    await expect(page.locator('[data-card-sort="name"]')).toHaveText('A–Z');
+    await expect(first().locator('.adv-pick-meta')).toContainText('1 VP');
+    await page.locator('[data-card-sort="vp"]').click();
+    await expect(page.locator('[data-card-sort="vp"]')).toHaveText('VP ↓');
     await expect(first().locator('.adv-pick-meta')).toContainText('6 VP');
     await page.locator('[data-card-sort="group"]').click();
     await expect(page.locator('#adv-picker h4').first()).toHaveText('Science');

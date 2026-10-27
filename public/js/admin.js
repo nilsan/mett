@@ -117,27 +117,29 @@
     const rows = ADVANCE_GROUPS.map((g) => `<div class="adv-choice-row adv-${g}">` + `<span class="adv-choice-group">${GROUP_LABEL[g]}</span>` + `<button type="button" class="adv-btn" data-choice-step="-5" data-group="${g}" aria-label="5 less ${GROUP_LABEL[g]}">−</button>` + `<output class="adv-choice-val" data-group="${g}">${values[g] ?? 0}</output>` + `<button type="button" class="adv-btn" data-choice-step="5" data-group="${g}" aria-label="5 more ${GROUP_LABEL[g]}">+</button>` + `</div>`).join("");
     return `<div class="adv-choice" data-choice-for="${card.id}" data-total="${total}">` + `<p class="adv-choice-intro"><strong>${escapeHtml(card.name)}</strong>: choose the colours of ${total} extra credits. You keep them all game.</p>` + rows + `<button type="button" class="btn-submit adv-choice-save"${sum === total ? "" : " disabled"}>Save <span class="adv-choice-sum">${sum}</span> of ${total}</button>` + `</div>`;
   }
+  var DEFAULT_DIR = { group: "asc", name: "asc", cost: "asc", vp: "asc" };
   var groupCards = (g) => ADVANCES.filter((c) => c.groups[0] === g).sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
   function cardPrice(c, held, round) {
     const h = held.find((x) => x.id === c.id);
     return h && advanceLocked(h, round) ? c.cost : advanceCost(c.id, held, round);
   }
   var priceHtml = (c, price) => price < c.cost ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
-  function sections(sort, held, round) {
+  function sections(sort, dir, held, round) {
     if (sort === "group")
       return ADVANCE_GROUPS.map((g) => ({ group: g, cards: groupCards(g) }));
     const price = new Map(ADVANCES.map((c) => [c.id, cardPrice(c, held, round)]));
     const byName = (a, b) => a.name.localeCompare(b.name);
     const byPrice = (a, b) => price.get(a.id) - price.get(b.id);
-    const cmp = sort === "name" ? byName : sort === "cost" ? (a, b) => byPrice(a, b) || byName(a, b) : (a, b) => b.vp - a.vp || byPrice(a, b) || byName(a, b);
-    return [{ cards: [...ADVANCES].sort(cmp) }];
+    const primary = sort === "name" ? byName : sort === "cost" ? byPrice : (a, b) => a.vp - b.vp;
+    const sign = dir === "desc" ? -1 : 1;
+    return [{ cards: [...ADVANCES].sort((a, b) => sign * primary(a, b) || byPrice(a, b) || byName(a, b)) }];
   }
   var section = (group, inner) => group ? `<section class="adv-group adv-${group}"><h4>${GROUP_LABEL[group]}</h4>${inner}</section>` : `<section class="adv-group">${inner}</section>`;
-  function renderAdvancePicker(held, round, { canBuy = true, drafts = new Map, gm = false, sort = "group" } = {}) {
+  function renderAdvancePicker(held, round, { canBuy = true, drafts = new Map, gm = false, sort = "group", dir = DEFAULT_DIR[sort] } = {}) {
     const heldById = new Map(held.map((h) => [h.id, h]));
     const t = advanceTotals(heldById.keys());
-    const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${gm ? "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round." : canBuy ? "Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends." : "Cards are bought after calamities are resolved."}</p>`;
-    const groups = sections(sort, held, round).map(({ group, cards }) => {
+    const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${gm ? "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before." : canBuy ? "Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends." : "Cards are bought after calamities are resolved."}</p>`;
+    const groups = sections(sort, dir, held, round).map(({ group, cards }) => {
       const buttons = cards.map((c) => {
         const h = heldById.get(c.id);
         const bought = h ? advanceLocked(h, round) : false;

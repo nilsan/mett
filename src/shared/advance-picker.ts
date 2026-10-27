@@ -45,14 +45,32 @@ export interface PickerOptions {
   gm?: boolean;
   /** How the player has chosen to order the cards. */
   sort?: CardSort;
+  dir?: SortDir;
 }
 
-/** The orders a player can pick on the Cards tab. */
+/** The orders a player can pick on the Cards tab. A–Z, Cost and VP turn
+ *  round on a second click; each starts in the direction players want most. */
 export type CardSort = 'group' | 'name' | 'cost' | 'vp';
-export const CARD_SORTS: readonly { id: CardSort; label: string }[] = [
-  { id: 'group', label: 'Colour' }, { id: 'name', label: 'A–Z' }, { id: 'cost', label: 'Cost' }, { id: 'vp', label: 'VP' },
-];
-export const isCardSort = (s: unknown): s is CardSort => CARD_SORTS.some(o => o.id === s);
+export type SortDir = 'asc' | 'desc';
+export const CARD_SORTS: readonly CardSort[] = ['group', 'name', 'cost', 'vp'];
+export const DEFAULT_DIR: Readonly<Record<CardSort, SortDir>> = { group: 'asc', name: 'asc', cost: 'asc', vp: 'asc' };
+export const isCardSort = (s: unknown): s is CardSort => CARD_SORTS.includes(s as CardSort);
+export const isSortDir = (s: unknown): s is SortDir => s === 'asc' || s === 'desc';
+
+const SORT_LABEL: Readonly<Record<CardSort, Record<SortDir, [label: string, title: string]>>> = {
+  group: { asc: ['Colour', 'By colour, cheapest first'], desc: ['Colour', 'By colour, cheapest first'] },
+  name: { asc: ['A–Z', 'A to Z'], desc: ['Z–A', 'Z to A'] },
+  cost: { asc: ['Cost ↑', 'Cheapest first, after credits'], desc: ['Cost ↓', 'Dearest first, after credits'] },
+  vp: { asc: ['VP ↑', 'Fewest VP first'], desc: ['VP ↓', 'Most VP first'] },
+};
+/** A sort button's text and tooltip in a direction. */
+export const sortLabel = (sort: CardSort, dir: SortDir) => SORT_LABEL[sort][dir];
+
+/** One sort button; the active one shows its direction. */
+export function renderSortButton(sort: CardSort, active: CardSort, dir: SortDir): string {
+  const [label, title] = sortLabel(sort, sort === active ? dir : DEFAULT_DIR[sort]);
+  return `<button type="button" class="adv-sort-btn" data-card-sort="${sort}" aria-pressed="${sort === active}" title="${title}">${label}</button>`;
+}
 
 /** A colour's cards as the box shows them: cheapest first by printed cost. */
 const groupCards = (g: AdvanceGroup): AdvanceCard[] => ADVANCES
@@ -70,17 +88,17 @@ function cardPrice(c: AdvanceCard, held: readonly HeldAdvance[], round: number):
 const priceHtml = (c: AdvanceCard, price: number) => price < c.cost
   ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
 
-/** The cards in sections: one per colour, or a single unheaded list in the
- *  chosen order (A–Z; cheapest first after credits; most VP first). */
-function sections(sort: CardSort, held: readonly HeldAdvance[], round: number): { group?: AdvanceGroup; cards: AdvanceCard[] }[] {
+/** The cards in sections: one per colour, or a single unheaded list by name,
+ *  price after credits or VP in the chosen direction. Ties go cheapest
+ *  first, then by name. */
+function sections(sort: CardSort, dir: SortDir, held: readonly HeldAdvance[], round: number): { group?: AdvanceGroup; cards: AdvanceCard[] }[] {
   if (sort === 'group') return ADVANCE_GROUPS.map(g => ({ group: g, cards: groupCards(g) }));
   const price = new Map(ADVANCES.map(c => [c.id, cardPrice(c, held, round)]));
   const byName = (a: AdvanceCard, b: AdvanceCard) => a.name.localeCompare(b.name);
   const byPrice = (a: AdvanceCard, b: AdvanceCard) => price.get(a.id)! - price.get(b.id)!;
-  const cmp = sort === 'name' ? byName
-    : sort === 'cost' ? (a: AdvanceCard, b: AdvanceCard) => byPrice(a, b) || byName(a, b)
-    : (a: AdvanceCard, b: AdvanceCard) => b.vp - a.vp || byPrice(a, b) || byName(a, b);
-  return [{ cards: [...ADVANCES].sort(cmp) }];
+  const primary = sort === 'name' ? byName : sort === 'cost' ? byPrice : (a: AdvanceCard, b: AdvanceCard) => a.vp - b.vp;
+  const sign = dir === 'desc' ? -1 : 1;
+  return [{ cards: [...ADVANCES].sort((a, b) => sign * primary(a, b) || byPrice(a, b) || byName(a, b)) }];
 }
 
 const section = (group: AdvanceGroup | undefined, inner: string) => group
@@ -91,17 +109,17 @@ const section = (group: AdvanceGroup | undefined, inner: string) => group
  *  first group, with a dot in the second group's colour. Cards bought in an
  *  earlier round are locked; unheld cards can only be ticked while buying. */
 export function renderAdvancePicker(held: readonly HeldAdvance[], round: number,
-  { canBuy = true, drafts = new Map(), gm = false, sort = 'group' }: PickerOptions = {}): string {
+  { canBuy = true, drafts = new Map(), gm = false, sort = 'group', dir = DEFAULT_DIR[sort] }: PickerOptions = {}): string {
   const heldById = new Map(held.map(h => [h.id, h]));
   const t = advanceTotals(heldById.keys());
   const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP`
     + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>`
     + `<p class="adv-pick-hint">${gm
-      ? '<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round.'
+      ? '<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before.'
       : canBuy
       ? 'Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends.'
       : 'Cards are bought after calamities are resolved.'}</p>`;
-  const groups = sections(sort, held, round).map(({ group, cards }) => {
+  const groups = sections(sort, dir, held, round).map(({ group, cards }) => {
     const buttons = cards.map(c => {
       const h = heldById.get(c.id);
       const bought = h ? advanceLocked(h, round) : false;
@@ -187,9 +205,9 @@ function cardBody(c: AdvanceCard, held?: HeldAdvance): string {
  *  a card does. Prices are as in the picker. `open` names the rows to render
  *  expanded, so a live re-render keeps what the player opened. */
 export function renderAdvanceReference(held: readonly HeldAdvance[], open: ReadonlySet<string> = new Set(),
-  round = 0, sort: CardSort = 'group'): string {
+  round = 0, sort: CardSort = 'group', dir: SortDir = DEFAULT_DIR[sort]): string {
   const heldById = new Map(held.map(h => [h.id, h]));
-  return sections(sort, held, round).map(({ group, cards }) => {
+  return sections(sort, dir, held, round).map(({ group, cards }) => {
     const rows = cards.map(c =>
       `<details class="adv-ref-item adv-${c.groups[0]}" data-advance-ref="${c.id}"${open.has(c.id) ? ' open' : ''}>`
       + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>`

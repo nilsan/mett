@@ -2,6 +2,14 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.3 — 2026-10-27
+
+### Changed
+- A–Z, Cost and VP on the Cards tab turn round on a second click (Z–A, dearest first, most VP first); the button shows the direction. VP now starts with the fewest VP, like Cost starts cheapest.
+
+### Fixed
+- A card the GM adds outside the buying phase counts as bought in the previous round, locked, instead of as a purchase in progress the player could not change.
+
 ## 2.0.0-beta.2 — 2026-10-27
 
 ### Added

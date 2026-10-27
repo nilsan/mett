@@ -614,6 +614,18 @@ describe('/api/players/:id/advances — advance cards', () => {
     expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] }, ADMIN)).status).toBe(200);
   });
 
+  it('a card the GM adds outside the buying phase dates to the previous round, locked', async () => {
+    db.exec('UPDATE game SET current_round=3, cities_phase=0');
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery'] }, ADMIN);
+    expect(db.query('SELECT advance_id, round FROM player_advances').all()).toEqual([{ advance_id: 'pottery', round: 2 }]);
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] })).status).toBe(409);
+    // In the buying phase it is this round's purchase, as for the player.
+    db.exec('UPDATE game SET cities_phase=1');
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery', 'masonry'] }, ADMIN);
+    expect(db.query('SELECT advance_id, round FROM player_advances ORDER BY advance_id').all())
+      .toEqual([{ advance_id: 'masonry', round: 3 }, { advance_id: 'pottery', round: 2 }]);
+  });
+
   it('a colour choice is locked after its round for the player, not for the GM', async () => {
     await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['monument'] });
     await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { arts: 20 } });

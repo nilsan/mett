@@ -379,7 +379,7 @@ describe('renderCalamityReference', () => {
 
 import { advanceLocked, playerAdvanceChangeError } from '../src/shared/advances.js';
 import { ADVANCE_TEXT } from '../src/shared/advance-text.js';
-import { CARD_SORTS, renderAdvancePicker, renderAdvanceReference } from '../src/shared/advance-picker.js';
+import { CARD_SORTS, DEFAULT_DIR, renderAdvancePicker, renderAdvanceReference, sortLabel, type CardSort, type SortDir } from '../src/shared/advance-picker.js';
 
 describe('playerAdvanceChangeError', () => {
   const held = [{ id: 'pottery', round: 2 }, { id: 'masonry', round: 3 }];
@@ -478,8 +478,8 @@ describe('renderAdvancePicker: locks and the buying window', () => {
     const price = (id: string) => advanceCost(id, mine, 2);
     expect(price('agriculture')).toBeLessThan(ADVANCE_BY_ID.get('agriculture')!.cost);
     for (const render of [
-      (sort: (typeof CARD_SORTS)[number]['id']) => renderAdvancePicker(mine, 2, { sort }),
-      (sort: (typeof CARD_SORTS)[number]['id']) => renderAdvanceReference(mine, new Set(), 2, sort),
+      (sort: CardSort, dir?: SortDir) => renderAdvancePicker(mine, 2, { sort, dir }),
+      (sort: CardSort, dir?: SortDir) => renderAdvanceReference(mine, new Set(), 2, sort, dir),
     ]) {
       expect(render('group')).toContain('<h4>Science</h4>');
       const byName = ids(render('name'));
@@ -490,8 +490,16 @@ describe('renderAdvancePicker: locks and the buying window', () => {
       const byCost = ids(render('cost')).filter(id => id !== 'pottery').map(price);
       expect(byCost).toEqual([...byCost].sort((a, b) => a - b));
       const vps = ids(render('vp')).map(id => ADVANCE_BY_ID.get(id)!.vp);
-      expect(vps).toEqual([...vps].sort((a, b) => b - a));
+      expect(vps).toEqual([...vps].sort((a, b) => a - b));
+      // A second click turns each order round.
+      expect(ids(render('name', 'desc'))).toEqual([...byName].reverse());
+      const dearest = ids(render('cost', 'desc')).filter(id => id !== 'pottery').map(price);
+      expect(dearest).toEqual([...dearest].sort((a, b) => b - a));
+      const most = ids(render('vp', 'desc')).map(id => ADVANCE_BY_ID.get(id)!.vp);
+      expect(most).toEqual([...most].sort((a, b) => b - a));
     }
+    expect(CARD_SORTS.map(s => sortLabel(s, DEFAULT_DIR[s])[0])).toEqual(['Colour', 'A–Z', 'Cost ↑', 'VP ↑']);
+    expect(CARD_SORTS.map(s => sortLabel(s, DEFAULT_DIR[s] === 'asc' ? 'desc' : 'asc')[0])).toEqual(['Colour', 'Z–A', 'Cost ↓', 'VP ↓']);
     // A tile outside a colour section keeps its colour.
     expect(renderAdvancePicker(mine, 2, { sort: 'name' })).toContain('class="adv-pick adv-crafts');
     // All cards shows the price after credits, as the picker does.

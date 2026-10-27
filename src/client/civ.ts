@@ -19,7 +19,7 @@ import { playerTotalVp, makeScoreEntry, compareScores, sameScoreGroup, sortCensu
 import { AST_LEVELS, boardLevels, astNodeTitle, advancesOfTier, getAdvanceRequirement, renderAgeRequirementsList, type AstRequirement } from '../shared/ast-pure.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
-import { isCardSort, renderAdvancePicker, renderAdvanceReference, type CardSort } from '../shared/advance-picker.js';
+import { DEFAULT_DIR, isCardSort, isSortDir, renderAdvancePicker, renderAdvanceReference, sortLabel, type CardSort, type SortDir } from '../shared/advance-picker.js';
 import type { CreditChoice } from '../shared/advances.js';
 import { bindPicker } from './picker.js';
 import { renderCivSummary } from '../shared/civ-summary.js';
@@ -37,9 +37,10 @@ if (civEl) {
   // browser. The server renders by colour; the first state applies the choice.
   const CARD_SORT_KEY = 'mett.cardSort';
   let cardSort: CardSort = 'group';
+  let cardDir: SortDir = 'asc';
   try {
-    const saved = localStorage.getItem(CARD_SORT_KEY);
-    if (isCardSort(saved)) cardSort = saved;
+    const [sort, dir] = (localStorage.getItem(CARD_SORT_KEY) ?? '').split(':');
+    if (isCardSort(sort)) { cardSort = sort; cardDir = isSortDir(dir) ? dir : DEFAULT_DIR[sort]; }
   } catch { /* storage blocked: default order */ }
 
   bindTabs();
@@ -144,9 +145,12 @@ if (civEl) {
     const bar = document.querySelector<HTMLElement>('.adv-sort');
     bar?.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-card-sort]');
-      if (!btn || !isCardSort(btn.dataset.cardSort)) return;
-      cardSort = btn.dataset.cardSort;
-      try { localStorage.setItem(CARD_SORT_KEY, cardSort); } catch { /* private window: this visit only */ }
+      const sort = btn?.dataset.cardSort;
+      if (!isCardSort(sort)) return;
+      // The active button turns the order round; another starts in its usual direction.
+      if (sort === cardSort && sort !== 'group') cardDir = cardDir === 'asc' ? 'desc' : 'asc';
+      else { cardSort = sort; cardDir = DEFAULT_DIR[sort]; }
+      try { localStorage.setItem(CARD_SORT_KEY, `${cardSort}:${cardDir}`); } catch { /* private window: this visit only */ }
       showCardSort();
       if (lastState) syncPicker(lastState.advances[playerId] ?? [], lastState.game);
     });
@@ -154,8 +158,13 @@ if (civEl) {
   }
 
   function showCardSort(): void {
-    document.querySelectorAll<HTMLButtonElement>('[data-card-sort]')
-      .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cardSort === cardSort)));
+    document.querySelectorAll<HTMLButtonElement>('[data-card-sort]').forEach(b => {
+      const sort = b.dataset.cardSort as CardSort;
+      const [label, title] = sortLabel(sort, sort === cardSort ? cardDir : DEFAULT_DIR[sort]);
+      b.setAttribute('aria-pressed', String(sort === cardSort));
+      b.textContent = label;
+      b.title = title;
+    });
   }
 
   function bindMov(): void {
@@ -219,10 +228,10 @@ if (civEl) {
     const picker = document.getElementById('adv-picker');
     if (picker) {
       const focused = (document.activeElement as HTMLElement | null)?.dataset?.advance;
-      picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts, sort: cardSort });
+      picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts, sort: cardSort, dir: cardDir });
       if (focused) picker.querySelector<HTMLElement>(`[data-advance="${focused}"]`)?.focus();
     }
-    rerenderKeepingOpen('adv-ref', 'advanceRef', open => renderAdvanceReference(held, open, game.current_round, cardSort));
+    rerenderKeepingOpen('adv-ref', 'advanceRef', open => renderAdvanceReference(held, open, game.current_round, cardSort, cardDir));
   }
 
   /** Re-render a list of <details> rows; the rows the player has expanded

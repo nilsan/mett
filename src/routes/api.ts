@@ -343,7 +343,10 @@ api.post('/players/:id/advances', async (c) => {
     const err = playerAdvanceChangeError(db.getPlayerAdvances(playerId), ids, game.current_round, game.cities_phase === 1);
     if (err) return c.json({ error: err }, 409);
   }
-  db.setPlayerAdvances(playerId, ids, game.current_round);
+  // A card the GM adds outside the buying phase was missed when it was bought:
+  // it dates to the round that has closed, locked, not to this round's purchase.
+  const boughtIn = game.cities_phase === 1 ? game.current_round : Math.max(1, game.current_round - 1);
+  db.setPlayerAdvances(playerId, ids, boughtIn);
   broadcastState(playerId);
   return c.json({ ok: true });
 });
