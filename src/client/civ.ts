@@ -19,7 +19,7 @@ import { playerTotalVp, makeScoreEntry, compareScores, sameScoreGroup, sortCensu
 import { AST_LEVELS, boardLevels, astNodeTitle, advancesOfTier, getAdvanceRequirement, renderAgeRequirementsList, type AstRequirement } from '../shared/ast-pure.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
-import { DEFAULT_DIR, isCardSort, isReversible, isSortDir, renderAdvancePicker, renderCardOverview, renderAdvanceReference, sortLabel, type CardSort, type SortDir } from '../shared/advance-picker.js';
+import { DEFAULT_DIR, isCardSort, isReversible, isSortDir, renderCardList, renderCardOverview, sortLabel, type CardSort, type SortDir } from '../shared/advance-picker.js';
 import type { CreditChoice } from '../shared/advances.js';
 import { bindPicker } from './picker.js';
 import { renderCivSummary } from '../shared/civ-summary.js';
@@ -132,7 +132,7 @@ if (civEl) {
   }
 
 
-  // Cards: tap a card to hold or drop it (src/client/picker.ts).
+  // Cards: Buy a card or undo it (src/client/picker.ts).
   function bindCards(): void {
     const picker = document.getElementById('adv-picker');
     if (!picker) return;
@@ -227,13 +227,11 @@ if (civEl) {
   }
 
   function syncPicker(held: FullState['advances'][number], game: FullState['game']): void {
-    const picker = document.getElementById('adv-picker');
-    if (picker) {
-      const focused = (document.activeElement as HTMLElement | null)?.dataset?.advance;
-      picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts, sort: cardSort, dir: cardDir });
-      if (focused) picker.querySelector<HTMLElement>(`[data-advance="${focused}"]`)?.focus();
-    }
-    rerenderKeepingOpen('adv-ref', 'advanceRef', open => renderAdvanceReference(held, open, game.current_round, cardSort, cardDir));
+    const focused = (document.activeElement as HTMLElement | null)?.dataset?.advance;
+    rerenderKeepingOpen('adv-picker', 'advanceRef', open => renderCardList(held, game.current_round,
+      { canBuy: game.cities_phase === 1, drafts: choiceDrafts, sort: cardSort, dir: cardDir, open,
+        confirmed: lastState?.players.find(p => p.id === playerId)?.cards_confirmed ?? 0 }));
+    if (focused) document.querySelector<HTMLElement>(`#adv-picker [data-advance="${focused}"]`)?.focus();
   }
 
   /** Re-render a list of <details> rows; the rows the player has expanded

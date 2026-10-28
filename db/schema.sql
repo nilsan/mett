@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS players (
   region               TEXT    NOT NULL,            -- "west" or "east" for this game
   rank_order           INTEGER NOT NULL DEFAULT 0,  -- 0=unresolved; nonzero=admin tie-break rank
   late_iron_age_bonus  INTEGER NOT NULL DEFAULT 0,  -- 5 VP A.S.T. bonus: the one empire that reached LIA first, alone
-  regressed            INTEGER NOT NULL DEFAULT 0   -- 1 = admin regressed this player (calamity) this round; red marker on status board, cleared on round advance
+  regressed            INTEGER NOT NULL DEFAULT 0,  -- 1 = admin regressed this player (calamity) this round; red marker on status board, cleared on round advance
+  cards_confirmed      INTEGER NOT NULL DEFAULT 0   -- last round whose card purchase the player confirmed (locks it before the round ends)
 );
 
 -- Civilization Advance cards each player holds (card data lives in

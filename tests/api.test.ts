@@ -635,6 +635,37 @@ describe('/api/players/:id/advances — advance cards', () => {
     expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { science: 20 } }, ADMIN)).status).toBe(200);
   });
 
+  it('a player confirms the purchase: locked for them until the GM reopens it', async () => {
+    const confirmed = () => db.query<{ n: number }, [number]>('SELECT cards_confirmed AS n FROM players WHERE id=?').get(p1)!.n;
+    // Nothing bought yet: nothing to confirm.
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/confirm`, {})).status).toBe(409);
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery'] });
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/confirm`, {})).status).toBe(200);
+    expect(confirmed()).toBe(1);
+    expect((await (await app.request('/api/state')).json()).players.find((p: { id: number }) => p.id === p1).cards_confirmed).toBe(1);
+    // No more buying or unticking this round, and no second confirm.
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery', 'masonry'] })).status).toBe(409);
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] })).status).toBe(409);
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/confirm`, {})).status).toBe(409);
+    // Only the GM reopens it; the GM may change cards either way.
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/confirm`, { confirm: false })).status).toBe(403);
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery', 'masonry'] }, ADMIN)).status).toBe(200);
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/confirm`, { confirm: false }, ADMIN)).status).toBe(200);
+    expect(confirmed()).toBe(0);
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['pottery'] })).status).toBe(200);
+  });
+
+  it('confirming waits for the colours of a new Monument', async () => {
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: ['monument'] });
+    const res = await jsonReq(app, 'POST', `/api/players/${p1}/advances/confirm`, {});
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('Choose the colours of Monument first');
+    await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { arts: 20 } });
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/confirm`, {})).status).toBe(200);
+    // Confirmed: the colours are locked too.
+    expect((await jsonReq(app, 'POST', `/api/players/${p1}/advances/monument/choice`, { choice: { science: 20 } })).status).toBe(409);
+  });
+
   it('needs a game in progress (cards are bought in a round)', async () => {
     db.exec('UPDATE game SET active=0');
     const res = await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] });

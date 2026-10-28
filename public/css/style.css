@@ -1289,7 +1289,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .civ-tab { transition: none; } /* switch at once — no fade from Pico's button transition */
 .civ-tab[aria-selected="true"] { background: var(--mett-surface2); border-color: var(--mett-accent); color: var(--mett-text); }
 
-/* Cards tab: every advance as a tap-to-toggle button, grouped by colour. */
+/* Cards tab: every advance as a row with a Buy button, grouped by colour;
+   the GM's correction dialog shows them as tap-to-toggle tiles. */
 .adv-picker { grid-column: 1 / -1; }
 /* Above the cards: colour credit totals and the next age's card requirement. */
 .adv-overview { grid-column: 1 / -1; display: grid; gap: 0.3rem; container-type: inline-size; }
@@ -1337,12 +1338,18 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   background: var(--mett-bg);
   border-top: 0.0625rem solid var(--mett-accent);
 }
-.adv-basket { display: flex; align-items: center; gap: 0.6rem; }
-.adv-basket-text { flex: 1; min-width: 0; }
+.adv-basket { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.4rem 0.6rem; }
+/* Clear moves under the text when large fonts leave too little room beside it. */
+.adv-basket-text { flex: 1 1 12rem; min-width: 0; }
 .adv-basket p { margin: 0; }
 .adv-basket-names { font-size: 0.82rem; }
 .adv-basket-card { color: var(--grp); font-weight: 700; }
-.adv-basket-clear { margin: 0; padding: 0.4rem 0.9rem; min-height: 2.6rem; width: auto; flex: none; background: var(--mett-surface2); border: 0.0625rem solid var(--mett-border); color: var(--mett-text); font-size: 0.85rem; }
+.adv-basket-vp { white-space: nowrap; }
+.adv-basket-buttons { display: flex; gap: 0.4rem; flex: none; }
+.adv-basket-buttons button { margin: 0; padding: 0.4rem 0.9rem; min-height: 2.6rem; width: auto; background: var(--mett-surface2); border: 0.0625rem solid var(--mett-border); color: var(--mett-text); font-size: 0.85rem; }
+/* Confirm: the player is done buying; the purchase locks before the round ends. */
+.adv-basket-buttons .adv-basket-confirm { background: var(--mett-accent); border-color: var(--mett-accent); color: var(--mett-bg); font-weight: 700; }
+.adv-basket-done { margin: 0; flex: none; color: var(--mett-success); font-weight: 700; font-size: 0.85rem; }
 .adv-pick-hint { margin: -0.3rem 0 0.5rem; color: var(--mett-muted); font-size: 0.82rem; }
 .adv-group { --grp: var(--mett-muted); margin-bottom: 0.6rem; }
 .adv-group h4 { margin: 0 0 0.3rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--grp); }
@@ -1377,10 +1384,30 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .adv-pick-meta { font-size: 0.75rem; }
 .adv-pick-meta em { font-style: normal; color: var(--mett-accent); }
 .adv-pick-meta s { color: var(--mett-muted); }
-.adv-pick.adv-locked { cursor: default; }
-.adv-pick.adv-closed { cursor: not-allowed; }
-.adv-pick.adv-closed:not(.adv-held) { opacity: 0.55; }
 .adv-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--grp); flex-shrink: 0; }
+/* Two-colour cards, as the game draws them: a stripe in both colours (first
+   colour on top) and, when held, a fade from the first colour to the second.
+   (No card has Arts as its second colour.) */
+.adv-2-science  { --grp2: #4caf50; }
+.adv-2-crafts   { --grp2: #e08a2e; }
+.adv-2-civics   { --grp2: #d64545; }
+.adv-2-religion { --grp2: #d4b62c; }
+.adv-pick.adv-dual, .adv-ref-item.adv-dual { position: relative; border-left-color: transparent; }
+.adv-pick.adv-dual::before, .adv-ref-item.adv-dual::before {
+  content: "";
+  position: absolute;
+  left: -0.25rem;
+  top: 0;
+  bottom: 0;
+  width: 0.25rem;
+  border-radius: var(--radius-row) 0 0 var(--radius-row);
+  background: linear-gradient(var(--grp) 50%, var(--grp2) 50%);
+}
+.adv-pick.adv-dual::before { top: -0.0625rem; bottom: -0.0625rem; }
+.adv-pick.adv-held.adv-dual, .adv-ref-item.adv-held.adv-dual {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--grp) 22%, var(--mett-surface2)), color-mix(in srgb, var(--grp2) 22%, var(--mett-surface2)));
+  border-color: color-mix(in srgb, var(--grp), var(--grp2)) var(--grp2) color-mix(in srgb, var(--grp), var(--grp2)) transparent;
+}
 
 /* One-time colour chooser under a held Monument / Written Record: full width
    of the card grid, one −/+ row per group. */
@@ -1395,7 +1422,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .adv-choice-intro { margin: 0 0 0.2rem; font-size: 0.85rem; }
 .adv-choice-row { display: grid; grid-template-columns: 1fr 2.6rem 2.6rem 2.6rem; gap: 0.3rem; align-items: center; }
 .adv-choice-row .adv-btn { width: 2.6rem; height: 2.6rem; font-size: 1.2rem; }
-.adv-choice-group { color: var(--grp); font-weight: 700; font-size: 0.9rem; }
+.adv-choice-group { color: var(--grp); font-weight: 700; font-size: 0.9rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .adv-choice-val { text-align: center; font-weight: 700; }
 .adv-choice-save { justify-self: stretch; height: 2.6rem; margin-top: 0.2rem; }
 .adv-choice-save:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1409,7 +1436,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .cal-hurt .cal-mark { color: var(--mett-danger); }
 /* Who suffers what: one line per victim role, as it works out for this
    player; the cards that change the number in their help/hurt colour. */
-.cal-roles { display: grid; gap: 0.25rem; margin: 0 0.6rem 0.45rem 2.2rem; }
+.cal-roles { display: grid; gap: 0.25rem; margin: 0 0.6rem 0.55rem 2.2rem; padding-top: 0.4rem; border-top: 0.0625rem solid var(--mett-border); }
+.cal-ref-item .cal-roles p.cal-result-head { color: var(--mett-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; }
 .cal-ref-item .cal-roles p { margin: 0; font-size: 0.88rem; }
 .cal-role-name { font-weight: 700; }
 .cal-who { font-weight: 400; color: var(--mett-muted); }
@@ -1417,7 +1445,8 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .cal-calc .cal-help, .cal-role > .cal-help { color: var(--mett-success); }
 .cal-calc .cal-hurt { color: var(--mett-danger); }
 .cal-role-note { display: flex; gap: 0.4rem; align-items: baseline; }
-.cal-ref-item p.cal-chart { color: var(--mett-muted); font-size: 0.82rem; }
+/* The calamity as printed: the same for every player. */
+.cal-ref-item p.cal-chart { color: var(--mett-text); }
 .cal-ref-list { display: grid; gap: 0.25rem; margin-bottom: 0.7rem; }
 .cal-ref-item { margin: 0; border: 0; border-radius: var(--radius-row); background: var(--mett-surface2); }
 .cal-ref-item summary { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.55rem 0.6rem; line-height: 1.2; }
@@ -1436,13 +1465,34 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .cal-ref-name + .cal-check, .cal-check + .cal-check { margin-left: 0; }
 .cal-check-help { color: var(--mett-success); }
 .cal-check-hurt { color: var(--mett-danger); }
-/* All cards on the Cards tab: tap-to-open rows in the group colours. */
-.adv-ref-list { display: grid; gap: 0.25rem; }
+/* The cards on the Cards tab: tap-to-open rows in the group colours, held
+   ones filled in their colour. */
+/* One column as wide as the screen, even with an open colour chooser in it. */
+.adv-ref-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
 .adv-ref-item { margin: 0; border: 0; border-left: 0.25rem solid var(--grp); border-radius: var(--radius-row); background: var(--mett-surface2); }
-.adv-ref-item summary { display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; align-items: baseline; padding: 0.55rem 0.6rem; line-height: 1.2; }
+.adv-ref-item.adv-held { background: color-mix(in srgb, var(--grp) 22%, var(--mett-surface2)); }
+.adv-ref-item summary { position: relative; display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; align-items: center; min-height: 3rem; padding: 0.35rem 2rem 0.35rem 0.6rem; line-height: 1.2; }
+/* The open/close chevron keeps to the right edge, out of the wrapping row. */
+.adv-ref-item summary::after { position: absolute; right: 0.5rem; top: calc(50% - 0.5rem); margin: 0; }
+/* Price and Buy stay together on the right, under the name with large fonts. */
+.adv-ref-end { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.2rem 0.5rem; }
 .adv-ref-name { font-weight: 700; display: flex; align-items: center; gap: 0.3rem; }
-.adv-ref-meta { margin-left: auto; color: var(--mett-muted); font-size: 0.8rem; white-space: nowrap; }
-.adv-ref-held { color: var(--grp); font-weight: 800; }
+.adv-ref-meta { color: var(--mett-muted); font-size: 0.8rem; white-space: nowrap; }
+.adv-ref-held, .adv-buy { flex: none; min-width: 5.2rem; text-align: center; font-size: 0.8rem; }
+.adv-ref-held { color: var(--mett-text); font-weight: 700; }
+.adv-buy {
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  min-height: 2.3rem;
+  width: auto;
+  border: 0.0625rem solid var(--mett-border);
+  border-radius: var(--radius-row);
+  background: var(--mett-bg);
+  color: var(--mett-text);
+  font-weight: 700;
+  transition: none;
+}
+.adv-buy[aria-pressed="true"] { border-color: var(--mett-accent); background: var(--mett-accent); color: var(--mett-bg); }
 .adv-ref-item p { margin: 0 0.6rem 0.45rem; font-size: 0.88rem; }
 .adv-ref-cal { display: flex; gap: 0.4rem; align-items: baseline; }
 .adv-ref-credits, .adv-ref-bought { color: var(--mett-muted); font-size: 0.8rem; }

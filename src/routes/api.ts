@@ -9,7 +9,7 @@ import { broadcastState } from '../ws.js';
 import { SETUP_RECOMMENDATIONS, WEST_SCENARIOS, EAST_SCENARIOS } from '../civs.js';
 import { isAdminAuthed } from './pages.js';
 import { isRegion } from '../types.js';
-import { ADVANCE_BY_ID, creditChoiceError, playerAdvanceChangeError, type CreditChoice } from '../shared/advances.js';
+import { ADVANCE_BY_ID, confirmPurchaseError, creditChoiceError, playerAdvanceChangeError, type CreditChoice } from '../shared/advances.js';
 import { AST_LEVELS, LIA_THRESHOLD, MAX_POPULATION, MAX_CITIES } from '../models/ast.js';
 import { useSeed, scenarioFor, simulateGame, fakeCensus, fakeCities, fakeAdvances } from '../services/simulate.js';
 import { takeBackup, listBackups, restoreBackup, backupBeforeAdvanceTo, type BackupReason } from '../services/backup.js';
@@ -78,7 +78,7 @@ function expertFlag(v: unknown): 0 | 1 {
 }
 
 // Player-facing POST endpoints — no auth required (players submit from their own civ page)
-const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv', '/advances', '/choice', '/move']);
+const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv', '/advances', '/choice', '/confirm', '/move']);
 
 // Protect all mutating API endpoints — read-only GETs and player actions are public
 api.use('*', async (c, next) => {
@@ -340,13 +340,33 @@ api.post('/players/:id/advances', async (c) => {
   // Players buy in the post-calamity phase and can't untick earlier rounds'
   // cards; the GM may change anything, to correct mistakes.
   if (!isAdminAuthed(c.req.raw)) {
-    const err = playerAdvanceChangeError(db.getPlayerAdvances(playerId), ids, game.current_round, game.cities_phase === 1);
+    const err = playerAdvanceChangeError(db.getPlayerAdvances(playerId), ids, game.current_round, game.cities_phase === 1,
+      db.getCardsConfirmed(playerId));
     if (err) return c.json({ error: err }, 409);
   }
   // A card the GM adds outside the buying phase was missed when it was bought:
   // it dates to the round that has closed, locked, not to this round's purchase.
   const boughtIn = game.cities_phase === 1 ? game.current_round : Math.max(1, game.current_round - 1);
   db.setPlayerAdvances(playerId, ids, boughtIn);
+  broadcastState(playerId);
+  return c.json({ ok: true });
+});
+
+// The player is done buying this round: the purchase locks now instead of
+// when the GM ends the round. Only the GM can reopen it ({ confirm: false }).
+api.post('/players/:id/advances/confirm', async (c) => {
+  const playerId = playerParam(c);
+  const body = await readJson(c);
+  const game = requireActiveGame();
+  if (body.confirm === false) {
+    if (!isAdminAuthed(c.req.raw)) return c.json({ error: 'Only the GM can reopen a confirmed purchase' }, 403);
+    db.setCardsConfirmed(playerId, 0);
+  } else {
+    const err = confirmPurchaseError(db.getPlayerAdvances(playerId), game.current_round, game.cities_phase === 1,
+      db.getCardsConfirmed(playerId));
+    if (err) return c.json({ error: err }, 409);
+    db.setCardsConfirmed(playerId, game.current_round);
+  }
   broadcastState(playerId);
   return c.json({ ok: true });
 });

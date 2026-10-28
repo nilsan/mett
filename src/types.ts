@@ -44,6 +44,8 @@ export interface PlayerRow {
   rank_order: number;
   late_iron_age_bonus: number;
   regressed: number;
+  /** The last round whose card purchase the player confirmed (0 = none). */
+  cards_confirmed: number;
   // joined from civs
   civ_number: number;
   civ_name: string;

@@ -2,10 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-// Clicks in an advance card picker (renderAdvancePicker): tap a card to hold
-// or drop it, Clear this round's purchase, and the Monument / Written Record
-// colour chooser. Shared by the
-// player's Cards tab and the GM's card correction dialog on the admin page.
+// Clicks in an advance card picker: Buy a card or undo it (the player's
+// Cards tab, renderCardList), tap a tile to hold or drop it (the GM's card
+// correction dialog, renderAdvancePicker), Confirm or Clear this round's
+// purchase (the GM may Reopen a confirmed one), and the Monument / Written
+// Record colour chooser.
 
 import type { CreditChoice, HeldAdvance } from '../shared/advances.js';
 
@@ -36,25 +37,45 @@ export function bindPicker(picker: HTMLElement, b: PickerBinding): void {
       b.rerender();
       return;
     }
+    if (target.closest('.adv-basket-confirm')) {
+      // Done buying: the purchase locks now, not when the GM ends the round.
+      if (!confirm('Confirm this round’s cards? After this only the GM can change them.')) return;
+      await mettPost(`/api/players/${b.playerId()}/advances/confirm`, { confirm: true });
+      return;
+    }
+    if (target.closest('.adv-basket-reopen')) {
+      await mettPost(`/api/players/${b.playerId()}/advances/confirm`, { confirm: false });
+      return;
+    }
     if (target.closest('.adv-basket-clear')) {
       // Untick everything bought this round; the broadcast re-renders.
       await mettPost(`/api/players/${b.playerId()}/advances`, { ids: b.held().filter(h => h.round !== b.round()).map(h => h.id) });
       return;
     }
-    const btn = target.closest<HTMLButtonElement>('.adv-pick');
-    // Locked (earlier round) or not buyable yet (before calamities).
-    if (!btn || btn.getAttribute('aria-disabled') === 'true') return;
+    const btn = target.closest<HTMLButtonElement>('.adv-pick, .adv-buy');
+    if (!btn) return;
+    // A Buy button sits in a card row's <summary>: don't open the row too.
+    e.preventDefault();
     const on = btn.getAttribute('aria-pressed') !== 'true';
-    btn.setAttribute('aria-pressed', String(on));
-    btn.classList.toggle('adv-held', on);
-    const ids = Array.from(picker.querySelectorAll<HTMLButtonElement>('.adv-pick[aria-pressed="true"]'))
-      .map(el => el.dataset.advance!);
+    flip(btn, on);
+    // The cards with a button on screen as they now show, plus held cards
+    // without one (locked rows on the Cards tab).
+    const toggles = Array.from(picker.querySelectorAll<HTMLButtonElement>('[data-advance][aria-pressed]'));
+    const shown = new Set(toggles.map(el => el.dataset.advance!));
+    const ids = [
+      ...toggles.filter(el => el.getAttribute('aria-pressed') === 'true').map(el => el.dataset.advance!),
+      ...b.held().map(h => h.id).filter(id => !shown.has(id)),
+    ];
     const res = await mettPost(`/api/players/${b.playerId()}/advances`, { ids });
-    if (!res.ok) {
-      btn.setAttribute('aria-pressed', String(!on));
-      btn.classList.toggle('adv-held', !on);
-    }
+    if (!res.ok) flip(btn, !on);
   });
+}
+
+/** Show a card as held or not at once, before the broadcast re-renders. */
+function flip(btn: HTMLButtonElement, on: boolean): void {
+  btn.setAttribute('aria-pressed', String(on));
+  btn.closest('.adv-pick, .adv-ref-item')?.classList.toggle('adv-held', on);
+  if (btn.classList.contains('adv-buy')) btn.textContent = on ? '✓ Buying' : 'Buy';
 }
 
 async function onChooserClick(chooser: HTMLElement, target: HTMLElement, b: PickerBinding): Promise<void> {

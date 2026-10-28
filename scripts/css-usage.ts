@@ -35,7 +35,7 @@ const KNOWN_DYNAMIC: Record<string, string> = {
   '.mett-offline-pill': 'offline pill, created by ws-client.js while the WebSocket is down',
   '.backup-section[open] summary': 'the admin backup list after the GM opens it',
   '.cal-ref-item[open] > summary': 'a calamity row on the Calamities tab after the player opens it',
-  '.adv-ref-item[open] > summary': 'a card row in All cards on the Cards tab after the player opens it',
+  '.adv-ref-item[open] > summary': 'a card row on the Cards tab after the player opens it',
   // Round-summary lines for specific transitions (logic covered by
   // computeRoundSummary tests in tests/game.test.ts).
   '.round-summary .rs-final': 'summary line: the advance triggered the final round',
@@ -67,13 +67,15 @@ try {
   const sizes = [{ width: 412, height: 915 }, { width: 1920, height: 1080 }, { width: 3840, height: 2160 }];
   let unmatched: Set<string> | null = null;
 
-  async function visit(path: string, admin = false): Promise<void> {
+  /** Load a page at each size; `act` then opens what only a click shows. */
+  async function visit(path: string, admin = false, act?: (page: Page) => Promise<void>): Promise<void> {
     for (const viewport of sizes) {
       const ctx = await browser.newContext({ viewport });
       if (admin) await ctx.addCookies([{ name: 'mett_admin', value: token, url: BASE }]);
       const page = await ctx.newPage();
       await page.goto(BASE + path);
       await page.waitForLoadState('networkidle');
+      if (act) await act(page);
       unmatched = await collect(page, unmatched);
       await ctx.close();
     }
@@ -126,7 +128,19 @@ try {
   await post(`/api/players/${ps[0]!.id}/advances`, { ids: ['military', 'wonder-of-the-world', 'monotheism', 'monument', 'naval-warfare'] });
   await post(`/api/players/${ps[0]!.id}/advances/monument/choice`, { choice: { arts: 10, science: 10 } });
   await post(`/api/players/${ps[1]!.id}/advances`, { ids: ['written-record'] });
+  // A player who confirmed their purchase (the GM dialog offers Reopen).
+  const fourth = (await (await fetch(BASE + '/api/state')).json() as { advances: Record<number, Array<{ id: string }>> }).advances[ps[4]!.id] ?? [];
+  await post(`/api/players/${ps[4]!.id}/advances`, { ids: [...fourth.map(h => h.id), 'pottery', 'masonry', 'mysticism'] });
+  await post(`/api/players/${ps[4]!.id}/advances/confirm`);
   await pages();
+  // The GM's card correction dialog: a player's cards as tiles, and one whose
+  // purchase is confirmed.
+  for (const p of [ps[0]!, ps[4]!]) {
+    await visit('/admin', true, async page => {
+      await page.locator(`.adv-pts-btn[data-player-id="${p.id}"]`).click();
+      await page.locator('#gm-picker .adv-pick').first().waitFor();
+    });
+  }
   await post('/api/debug/cities', { seed: 2 });
   await post(`/api/players/${ps[5]!.id}/city-count`, { city_count: 0 });  // will regress
   await post(`/api/players/${ps[4]!.id}/ast`, { level: 30 });

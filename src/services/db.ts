@@ -18,6 +18,7 @@ export const PLAYER_SELECT = `
   SELECT
     p.id, p.civ_id, p.name, p.military, p.wonder, p.special, p.ast_level, p.adv_points,
     p.adv_1vp, p.adv_3vp, p.adv_6vp, p.region, p.rank_order, p.late_iron_age_bonus, p.regressed,
+    p.cards_confirmed,
     c.number AS civ_number, c.name AS civ_name, c.slug AS civ_slug,
     c.color AS civ_color, c.text_color AS civ_text_color
   FROM players p
@@ -83,6 +84,13 @@ const MIGRATIONS: ReadonlyArray<(db: Database) => void> = [
   //    credit_choice joined the table during development, so add it if absent.
   (db) => {
     try { db.exec('ALTER TABLE player_advances ADD COLUMN credit_choice TEXT'); } catch (e: any) {
+      if (!String(e?.message).includes('duplicate column name')) throw e;
+    }
+  },
+  // 4: a player can confirm their card purchase before the round ends. A
+  //    fresh DB already has the column from schema.sql.
+  (db) => {
+    try { db.exec('ALTER TABLE players ADD COLUMN cards_confirmed INTEGER NOT NULL DEFAULT 0'); } catch (e: any) {
       if (!String(e?.message).includes('duplicate column name')) throw e;
     }
   },

@@ -406,6 +406,18 @@ describe('CALAMITY_ROLES: who suffers what, and what cards change', () => {
     expect(summary(html, 'Flood')).not.toContain('cal-check');
     expect(plain(html.match(/data-calamity="Epidemic"[^]*?<\/details>/)![0])).toContain('Beneficiary: The player who traded the calamity to you.');
   });
+
+  it('the printed text comes first, the same for every player; the cards, then Your result', () => {
+    const famine = (held: string[]) => plain(renderCalamityReference(held, 18).match(/data-calamity="Famine"[^]*?<\/details>/)![0]);
+    const printed = cal('Famine').text.join(' ');
+    for (const held of [[], ['pottery', 'agriculture']]) {
+      const text = famine(held);
+      expect(text.indexOf(printed)).toBeGreaterThan(0);
+      expect(text.indexOf(printed)).toBeLessThan(text.indexOf('Pottery: Prevent 5 damage.'));
+      expect(text.indexOf('Pottery: Prevent 5 damage.')).toBeLessThan(text.indexOf('Your result'));
+      expect(text.indexOf('Your result')).toBeLessThan(text.indexOf('Primary victim:'));
+    }
+  });
 });
 
 describe('CALAMITIES (Quick Chart)', () => {
@@ -456,9 +468,9 @@ describe('renderCalamityReference', () => {
 
 // ─── Buying and locking cards, card text (advances.ts, advance-picker.ts) ───
 
-import { advanceLocked, playerAdvanceChangeError } from '../src/shared/advances.js';
+import { advanceLocked, confirmPurchaseError, playerAdvanceChangeError } from '../src/shared/advances.js';
 import { ADVANCE_TEXT } from '../src/shared/advance-text.js';
-import { CARD_SORTS, DEFAULT_DIR, isReversible, nextAgeCardRequirement, renderAdvancePicker, renderCardOverview, renderAdvanceReference, sortLabel, type CardSort, type SortDir } from '../src/shared/advance-picker.js';
+import { CARD_SORTS, DEFAULT_DIR, isReversible, nextAgeCardRequirement, renderAdvancePicker, renderCardList, renderCardOverview, sortLabel, type CardSort, type SortDir } from '../src/shared/advance-picker.js';
 
 describe('playerAdvanceChangeError', () => {
   const held = [{ id: 'pottery', round: 2 }, { id: 'masonry', round: 3 }];
@@ -485,26 +497,72 @@ describe('playerAdvanceChangeError', () => {
   });
 });
 
-describe('renderAdvancePicker: locks and the buying window', () => {
+describe('renderCardList: locks and the buying window', () => {
   const held = [{ id: 'pottery', round: 2 }, { id: 'masonry', round: 3 }];
-  const tile = (html: string, id: string) => html.match(new RegExp(`<button[^>]*data-advance="${id}"[^>]*>`))![0];
+  /** A card row's summary line: name, price, and Buy / Bought / Owned. */
+  const head = (html: string, id: string) => html.match(new RegExp(`data-advance-ref="${id}"[^>]*><summary>[^]*?</summary>`))![0];
 
-  it('an earlier round\'s card is locked; this round\'s is not', () => {
-    const html = renderAdvancePicker(held, 3);
-    expect(tile(html, 'pottery')).toContain('adv-locked');
-    expect(tile(html, 'pottery')).toContain('aria-disabled="true"');
-    expect(html).not.toContain('round 2'); // the round is in All cards, not on the tile
-    expect(tile(html, 'masonry')).not.toContain('aria-disabled');
+  it('an earlier round\'s card is owned and locked; this round\'s can be undone', () => {
+    const html = renderCardList(held, 3);
+    expect(head(html, 'pottery')).toContain('<span class="adv-ref-held">✓ Owned</span>');
+    expect(head(html, 'pottery')).not.toContain('<button');
+    expect(head(html, 'masonry')).toContain('<button type="button" class="adv-buy" data-advance="masonry" aria-pressed="true" title="Tap to undo">✓ Buying</button>');
+    expect(head(html, 'mysticism')).toContain('<button type="button" class="adv-buy" data-advance="mysticism" aria-pressed="false">Buy</button>');
+    // Held rows are filled in their colour.
+    expect(html).toMatch(/class="adv-ref-item adv-crafts adv-held" data-advance-ref="pottery"/);
+    expect(html).toMatch(/class="adv-ref-item adv-arts adv-dual adv-2-religion" data-advance-ref="mysticism"/);
+  });
+
+  it('no Buy buttons until the buying phase; this round\'s cards show as bought', () => {
+    const closed = renderCardList(held, 3, { canBuy: false });
+    expect(closed).not.toContain('class="adv-buy"');
+    expect(head(closed, 'masonry')).toContain('✓ Bought');
+    expect(head(closed, 'pottery')).toContain('✓ Owned');
+    expect(closed).toContain('Cards are bought after calamities are resolved.');
+    expect(closed).not.toContain('adv-basket-clear');
+  });
+
+  it('Confirm locks this round\'s purchase before the round ends', () => {
+    const open = renderCardList(held, 3);
+    expect(open).toContain('<button type="button" class="adv-basket-confirm">Confirm</button><button type="button" class="adv-basket-clear">Clear</button>');
+    const done = renderCardList(held, 3, { confirmed: 3 });
+    expect(head(done, 'masonry')).toContain('<span class="adv-ref-held">✓ Bought</span>');
+    expect(done).not.toContain('class="adv-buy"'); // nothing more to buy this round
+    expect(done).not.toContain('adv-basket-confirm');
+    expect(done).not.toContain('adv-basket-clear');
+    expect(done).toContain('Bought this round: <strong>1</strong> card');
+    expect(done).toContain('<p class="adv-basket-done">✓ Confirmed</p>');
+    // A confirmation from an earlier round does not lock this one.
+    expect(head(renderCardList(held, 3, { confirmed: 2 }), 'masonry')).toContain('✓ Buying');
+    // The GM sees it and may reopen.
+    const gm = renderAdvancePicker(held, 3, { confirmed: 3 });
+    expect(gm).toContain('Confirmed by the player');
+    expect(gm).toContain('class="adv-basket-reopen"');
+    expect(renderAdvancePicker(held, 3)).not.toContain('adv-basket-reopen');
+  });
+
+  it('confirming: once, while buying, with cards and the colours chosen; then nothing changes', () => {
+    expect(confirmPurchaseError(held, 3, true)).toBeNull();
+    expect(confirmPurchaseError(held, 3, false)).toBe('Cards are bought after calamities are resolved');
+    expect(confirmPurchaseError(held, 3, true, 3)).toBe('Your cards for this round are already confirmed');
+    expect(confirmPurchaseError([{ id: 'pottery', round: 2 }], 3, true)).toBe('No cards bought this round');
+    expect(confirmPurchaseError([{ id: 'monument', round: 3 }], 3, true)).toBe('Choose the colours of Monument first');
+    expect(confirmPurchaseError([{ id: 'monument', round: 3, choice: { arts: 20 } }], 3, true)).toBeNull();
+    expect(playerAdvanceChangeError(held, ['pottery'], 3, true, 3)).toBe('Your cards for this round are confirmed, ask the GM to correct them');
+    expect(playerAdvanceChangeError(held, ['pottery', 'masonry', 'mysticism'], 3, true, 3)).toContain('confirmed');
+    expect(playerAdvanceChangeError(held, ['pottery', 'masonry'], 3, true, 3)).toBeNull(); // no change
+    expect(advanceLocked({ id: 'masonry', round: 3 }, 3, 3)).toBe(true);
+    expect(creditChoiceOpen({ id: 'monument', round: 3, choice: { arts: 20 } }, 3, 3)).toBe(false);
   });
 
   it('tiles show the price after credits from earlier rounds, not this round\'s', () => {
     const price = advanceCost('agriculture', held, 3);
     expect(price).toBeLessThan(ADVANCE_BY_ID.get('agriculture')!.cost);
-    expect(renderAdvancePicker(held, 3)).toMatch(new RegExp(`data-advance="agriculture"[^]*?<s>${ADVANCE_BY_ID.get('agriculture')!.cost}</s> <strong class="adv-price">${price}</strong>`));
+    expect(renderCardList(held, 3)).toMatch(new RegExp(`data-advance-ref="agriculture"[^]*?<s>${ADVANCE_BY_ID.get('agriculture')!.cost}</s> <strong class="adv-price">${price}</strong>`));
     // Pottery bought this round gives no credit yet; only Library, which would
     // take 40 off it, is cheaper than its print.
-    const fresh = renderAdvancePicker([{ id: 'pottery', round: 3 }], 3);
-    const cheaper = fresh.split('<button').filter(t => t.includes('<s>')).map(t => t.match(/data-advance="([^"]+)"/)![1]);
+    const fresh = renderCardList([{ id: 'pottery', round: 3 }], 3);
+    const cheaper = fresh.split('<details').filter(t => /<summary>[^]*<s>[^]*<\/summary>/.test(t)).map(t => t.match(/data-advance-ref="([^"]+)"/)![1]);
     expect(cheaper).toEqual(['library']);
   });
 
@@ -518,7 +576,7 @@ describe('renderAdvancePicker: locks and the buying window', () => {
     expect(purchaseCost([{ id: 'library', round: 3 }, { id: 'sculpture', round: 3 }, { id: 'urbanism', round: 3 }], 3).total).toBe(220 + 50 + 10);
     // An unticked card shows what it adds: Library itself, net of the 40 it saves.
     expect(priceList([{ id: 'agriculture', round: 3 }], 3).get('library')).toBe(220 - 40);
-    expect(renderAdvancePicker(now, 3)).toContain(`<strong class="adv-basket-cost">${p.total}</strong>`);
+    expect(renderCardList(now, 3)).toContain(`<strong class="adv-basket-cost">${p.total}</strong>`);
   });
 
   it('Anatomy: one science card printed under 100 free, combined with Library for the best saving', () => {
@@ -538,21 +596,21 @@ describe('renderAdvancePicker: locks and the buying window', () => {
     const now = [{ id: 'pottery', round: 2 }, { id: 'agriculture', round: 3 }, { id: 'mysticism', round: 3 }];
     const cost = advanceCost('agriculture', now, 3) + advanceCost('mysticism', now, 3);
     const vp = ADVANCE_BY_ID.get('agriculture')!.vp + ADVANCE_BY_ID.get('mysticism')!.vp;
-    expect(renderAdvancePicker(now, 3)).toContain(`Buying this round: <strong>2</strong> cards · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP`);
-    expect(renderAdvancePicker(now, 4)).not.toContain('adv-basket');
+    expect(renderCardList(now, 3)).toContain(`Buying this round: <strong>2</strong> cards · <strong class="adv-basket-cost">${cost}</strong> · <span class="adv-basket-vp">+${vp} VP</span>`);
+    expect(renderCardList(now, 4)).not.toContain('adv-basket');
   });
 
   it('one line per kind of credit; the colour split once chosen; when it was bought', () => {
     const row = (html: string, id: string) => html.match(new RegExp(`data-advance-ref="${id}"[^]*?</details>`))![0];
     const lines = (html: string) => [...html.matchAll(/<p class="adv-ref-(?:credits|bought)">([^]*?)<\/p>/g)]
       .map(m => m[1]!.replace(/<[^>]+>/g, ''));
-    expect(lines(row(renderAdvanceReference([]), 'monument'))).toEqual([
+    expect(lines(row(renderCardList([], 1), 'monument'))).toEqual([
       'Credits: 10 Crafts · 10 Religion',
       'Credits of your choice: 20, chosen once',
       'Card credit: 20 to Wonder of the World',
       'Cheaper with: Mysticism −10',
     ]);
-    const mine = row(renderAdvanceReference([{ id: 'monument', round: 4, choice: { arts: 10, civics: 10 } }]), 'monument');
+    const mine = row(renderCardList([{ id: 'monument', round: 4, choice: { arts: 10, civics: 10 } }], 5), 'monument');
     expect(lines(mine).slice(1, 2)).toEqual(['Credits of your choice: 10 Arts · 10 Civics']);
     expect(mine).toContain('<span class="adv-ref-credit adv-arts">10 Arts</span>');
     expect(lines(mine).at(-1)).toBe('Bought in round 4');
@@ -562,16 +620,16 @@ describe('renderAdvancePicker: locks and the buying window', () => {
     const pottery = ADVANCE_BY_ID.get('pottery')!;
     const n = pottery.special['agriculture'];
     expect(n).toBeGreaterThan(0);
-    expect(renderAdvanceReference([])).toMatch(new RegExp(`data-advance-ref="agriculture"[^]*?Cheaper with: <span class="adv-ref-credit adv-${pottery.groups[0]}">Pottery −${n}</span>`));
+    expect(renderCardList([], 1)).toMatch(new RegExp(`data-advance-ref="agriculture"[^]*?Cheaper with: <span class="adv-ref-credit adv-${pottery.groups[0]}">Pottery −${n}</span>`));
   });
 
   it('a credit to a named card is in that card\'s colour', () => {
     const monument = ADVANCE_BY_ID.get('monument')!;
-    expect(renderAdvanceReference([])).toMatch(new RegExp(`data-advance-ref="mysticism"[^]*?<span class="adv-ref-credit adv-${monument.groups[0]}">\\d+ to Monument</span>`));
+    expect(renderCardList([], 1)).toMatch(new RegExp(`data-advance-ref="mysticism"[^]*?<span class="adv-ref-credit adv-${monument.groups[0]}">\\d+ to Monument</span>`));
   });
 
-  it('cards within a colour run cheapest first, in the picker and in All cards', () => {
-    for (const html of [renderAdvancePicker([], 1), renderAdvanceReference([])]) {
+  it('cards within a colour run cheapest first, in the card list and the GM tiles', () => {
+    for (const html of [renderAdvancePicker([], 1), renderCardList([], 1, { canBuy: false })]) {
       for (const section of html.split('<section').slice(1)) {
         const costs = [...section.matchAll(/data-advance(?:-ref)?="([^"]+)"/g)].map(m => ADVANCE_BY_ID.get(m[1]!)!.cost);
         expect(costs).toEqual([...costs].sort((a, b) => a - b));
@@ -579,66 +637,77 @@ describe('renderAdvancePicker: locks and the buying window', () => {
     }
   });
 
-  it('the player can sort by A–Z, cost after credits or VP, in the picker and in All cards', () => {
+  it('the player can sort by A–Z, cost after credits or VP', () => {
     // Pottery bought in round 1 makes Agriculture cheaper in round 2.
     const mine = [{ id: 'pottery', round: 1 }];
-    const ids = (html: string) => [...html.matchAll(/data-advance(?:-ref)?="([^"]+)"/g)].map(m => m[1]!);
+    const ids = (html: string) => [...html.matchAll(/data-advance-ref="([^"]+)"/g)].map(m => m[1]!);
     const price = (id: string) => advanceCost(id, mine, 2);
     expect(price('agriculture')).toBeLessThan(ADVANCE_BY_ID.get('agriculture')!.cost);
-    for (const render of [
-      (sort: CardSort, dir?: SortDir) => renderAdvancePicker(mine, 2, { sort, dir }),
-      (sort: CardSort, dir?: SortDir) => renderAdvanceReference(mine, new Set(), 2, sort, dir),
-    ]) {
-      expect(render('group')).toContain('<h4>Science</h4>');
-      const byName = ids(render('name'));
-      expect(byName).toHaveLength(51);
-      expect(render('name')).not.toContain('<h4>');
-      expect(byName.map(id => ADVANCE_BY_ID.get(id)!.name)).toEqual(ADVANCES.map(c => c.name).sort((a, b) => a.localeCompare(b)));
-      // Cost: what the card costs now (Pottery itself is held from round 1, so its print).
-      const byCost = ids(render('cost')).filter(id => id !== 'pottery').map(price);
-      expect(byCost).toEqual([...byCost].sort((a, b) => a - b));
-      const vps = ids(render('vp')).map(id => ADVANCE_BY_ID.get(id)!.vp);
-      expect(vps).toEqual([...vps].sort((a, b) => a - b));
-      // A second click turns each order round.
-      expect(ids(render('name', 'desc'))).toEqual([...byName].reverse());
-      const dearest = ids(render('cost', 'desc')).filter(id => id !== 'pottery').map(price);
-      expect(dearest).toEqual([...dearest].sort((a, b) => b - a));
-      const most = ids(render('vp', 'desc')).map(id => ADVANCE_BY_ID.get(id)!.vp);
-      expect(most).toEqual([...most].sort((a, b) => b - a));
-    }
+    const render = (sort: CardSort, dir?: SortDir) => renderCardList(mine, 2, { sort, dir });
+    expect(render('group')).toContain('<h4>Science</h4>');
+    const byName = ids(render('name'));
+    expect(byName).toHaveLength(51);
+    expect(render('name')).not.toContain('<h4>');
+    expect(byName.map(id => ADVANCE_BY_ID.get(id)!.name)).toEqual(ADVANCES.map(c => c.name).sort((a, b) => a.localeCompare(b)));
+    // Cost: what the card costs now (Pottery itself is held from round 1, so its print).
+    const byCost = ids(render('cost')).filter(id => id !== 'pottery').map(price);
+    expect(byCost).toEqual([...byCost].sort((a, b) => a - b));
+    const vps = ids(render('vp')).map(id => ADVANCE_BY_ID.get(id)!.vp);
+    expect(vps).toEqual([...vps].sort((a, b) => a - b));
+    // A second click turns each order round.
+    expect(ids(render('name', 'desc'))).toEqual([...byName].reverse());
+    const dearest = ids(render('cost', 'desc')).filter(id => id !== 'pottery').map(price);
+    expect(dearest).toEqual([...dearest].sort((a, b) => b - a));
+    const most = ids(render('vp', 'desc')).map(id => ADVANCE_BY_ID.get(id)!.vp);
+    expect(most).toEqual([...most].sort((a, b) => b - a));
     expect(CARD_SORTS.map(s => sortLabel(s, DEFAULT_DIR[s])[0])).toEqual(['Colour', 'A–Z', 'Cost ↑', 'VP ↑', 'VP/cost']);
     expect(CARD_SORTS.map(s => sortLabel(s, DEFAULT_DIR[s] === 'asc' ? 'desc' : 'asc')[0])).toEqual(['Colour', 'Z–A', 'Cost ↓', 'VP ↓', 'VP/cost']);
-    // A tile outside a colour section keeps its colour.
-    expect(renderAdvancePicker(mine, 2, { sort: 'name' })).toContain('class="adv-pick adv-crafts');
-    // All cards shows the price after credits, as the picker does.
-    expect(renderAdvanceReference(mine, new Set(), 2)).toMatch(new RegExp(`data-advance-ref="agriculture"[^]*?<s>${ADVANCE_BY_ID.get('agriculture')!.cost}</s> <strong class="adv-price">${price('agriculture')}</strong>`));
+    // A row outside a colour section keeps its colour.
+    expect(renderCardList(mine, 2, { sort: 'name' })).toContain('class="adv-ref-item adv-crafts');
+    // The GM tiles show the price after credits too.
+    expect(renderAdvancePicker(mine, 2)).toMatch(new RegExp(`data-advance="agriculture"[^]*?<s>${ADVANCE_BY_ID.get('agriculture')!.cost}</s> <strong class="adv-price">${price('agriculture')}</strong>`));
   });
 
   it('VP per cost after credits: best value first, a free card before all; one way only', () => {
     // Pottery from round 1: Agriculture costs 120 − 10 Crafts − 10 Pottery credit.
     const mine = [{ id: 'pottery', round: 1 }];
-    const ids = (html: string) => [...html.matchAll(/data-advance="([^"]+)"/g)].map(m => m[1]!).filter(id => id !== 'pottery');
+    const ids = (html: string) => [...html.matchAll(/data-advance-ref="([^"]+)"/g)].map(m => m[1]!).filter(id => id !== 'pottery');
     const value = (id: string) => { const p = advanceCost(id, mine, 2); return p ? ADVANCE_BY_ID.get(id)!.vp / p : Infinity; };
-    const best = ids(renderAdvancePicker(mine, 2, { sort: 'value' })).map(value);
+    const best = ids(renderCardList(mine, 2, { sort: 'value' })).map(value);
     expect(best).toEqual([...best].sort((a, b) => b - a));
     // Only cheapest VP first: a direction is ignored.
-    expect(ids(renderAdvancePicker(mine, 2, { sort: 'value', dir: 'asc' }))).toEqual(ids(renderAdvancePicker(mine, 2, { sort: 'value' })));
+    expect(ids(renderCardList(mine, 2, { sort: 'value', dir: 'asc' }))).toEqual(ids(renderCardList(mine, 2, { sort: 'value' })));
     expect(isReversible('value')).toBe(false);
     expect(isReversible('group')).toBe(false);
     expect(isReversible('cost')).toBe(true);
     // A card made free by credits comes first: 70 Arts credits make Mysticism free.
     const arts = ['sculpture', 'architecture', 'diplomacy', 'cultural-ascendancy', 'wonder-of-the-world'].map(id => ({ id, round: 1 }));
     expect(priceList(arts, 2).get('mysticism')).toBe(0);
-    const first = [...renderAdvancePicker(arts, 2, { sort: 'value' }).matchAll(/data-advance="([^"]+)"/g)].map(m => m[1]!).find(id => !arts.some(h => h.id === id))!;
+    const first = [...renderCardList(arts, 2, { sort: 'value' }).matchAll(/data-advance-ref="([^"]+)"/g)].map(m => m[1]!).find(id => !arts.some(h => h.id === id))!;
     expect(priceList(arts, 2).get(first)).toBe(0);
+  });
+
+  it('two-colour cards: under their first colour, drawn in both, in the card list and the GM tiles', () => {
+    const dualIds = ADVANCES.filter(c => c.groups.length === 2).map(c => c.id);
+    expect(dualIds).toHaveLength(9);
+    for (const html of [renderAdvancePicker([], 1), renderCardList([], 1)]) {
+      const marked = [...html.matchAll(/class="adv-(?:pick|ref-item) adv-(\w+) adv-dual adv-2-(\w+)[^"]*" data-advance(?:-ref)?="([^"]+)"/g)]
+        .map(m => [m[3], m[1], m[2]]);
+      expect(marked.map(m => m[0]).sort()).toEqual([...dualIds].sort());
+      for (const [id, first, second] of marked) expect([first, second]).toEqual([...ADVANCE_BY_ID.get(id!)!.groups]);
+    }
+    // The Strategy Explorer's order of colours: Mysticism blue (Arts) to yellow (Religion).
+    expect(ADVANCE_BY_ID.get('mysticism')!.groups).toEqual(['arts', 'religion']);
+    expect(ADVANCE_BY_ID.get('written-record')!.groups).toEqual(['civics', 'science']);
   });
 
   it('the purchase bar names this round\'s cards and offers Clear while buying', () => {
     const now = [{ id: 'pottery', round: 2 }, { id: 'agriculture', round: 3 }, { id: 'mysticism', round: 3 }];
-    const html = renderAdvancePicker(now, 3);
+    const html = renderCardList(now, 3);
     expect(html).toContain('<p class="adv-basket-names"><span class="adv-basket-card adv-crafts">Agriculture</span> · <span class="adv-basket-card adv-arts">Mysticism</span></p>');
     expect(html).toContain('class="adv-basket-clear"');
-    expect(renderAdvancePicker(now, 3, { canBuy: false })).not.toContain('adv-basket-clear');
+    expect(renderCardList(now, 3, { canBuy: false })).not.toContain('adv-basket-clear');
+    expect(renderAdvancePicker(now, 3)).toContain('adv-basket-clear');
   });
 
   it('colour credit totals: from earlier rounds now, with this round\'s cards from next round', () => {
@@ -664,34 +733,26 @@ describe('renderAdvancePicker: locks and the buying window', () => {
     expect(renderCardOverview([...held, { id: 'masonry', round: 2 }], 2, { level: 15, civNumber: 5, expert: true })).toContain('adv-req-met');
   });
 
-  it('GM correction: nothing is locked or closed, and the hint says so', () => {
-    const html = renderAdvancePicker(held, 3, { canBuy: false, gm: true });
-    for (const id of ['pottery', 'masonry', 'mysticism']) expect(tile(html, id)).not.toContain('aria-disabled');
+  it('GM correction: every card a tile to toggle, nothing locked, and the hint says so', () => {
+    const html = renderAdvancePicker(held, 3);
+    expect(html).not.toContain('aria-disabled');
+    expect([...html.matchAll(/<button type="button" class="adv-pick /g)]).toHaveLength(51);
     expect(html).toContain('GM correction:');
-    expect(html).toMatch(/data-advance="monument"/);
-  });
-
-  it('cards not locked are closed until the buying phase, held ones too', () => {
-    const closed = renderAdvancePicker(held, 3, { canBuy: false });
-    expect(tile(closed, 'mysticism')).toContain('adv-closed');
-    expect(tile(closed, 'masonry')).toContain('adv-closed');
-    expect(tile(closed, 'masonry')).toContain('aria-disabled="true"');
-    expect(tile(closed, 'pottery')).not.toContain('adv-closed');
-    expect(tile(renderAdvancePicker(held, 3, { canBuy: true }), 'mysticism')).not.toContain('aria-disabled');
+    expect(html).toMatch(/class="adv-pick adv-crafts adv-held" data-advance="pottery" aria-pressed="true"/);
   });
 });
 
-describe('ADVANCE_TEXT and the All cards list', () => {
+describe('ADVANCE_TEXT and the card list', () => {
   it('is keyed by real card ids, and every special-ability card has its text', () => {
     for (const id of Object.keys(ADVANCE_TEXT)) expect([id, ADVANCE_BY_ID.has(id)]).toEqual([id, true]);
     for (const id of SPECIAL_ABILITY_IDS) expect([id, (ADVANCE_TEXT[id] ?? []).length > 0]).toEqual([id, true]);
     expect(Object.keys(ADVANCE_TEXT)).toHaveLength(35);
   });
 
-  it('lists all 51 cards, ✓ on held ones, opened rows kept open', () => {
-    const html = renderAdvanceReference([{ id: 'politics', round: 1 }], new Set(['politics']));
+  it('lists all 51 cards, held ones marked, opened rows kept open', () => {
+    const html = renderCardList([{ id: 'politics', round: 1 }], 2, { open: new Set(['politics']) });
     expect([...html.matchAll(/data-advance-ref="/g)]).toHaveLength(51);
-    expect(html).toMatch(/data-advance-ref="politics" open><summary>.*?<span class="adv-ref-held"[^>]*>✓<\/span><\/summary>/);
+    expect(html).toMatch(/data-advance-ref="politics" open><summary>.*?<span class="adv-ref-held">✓ Owned<\/span><\/span><\/summary>/);
     expect(html).toContain('<strong>Special ability:</strong> You may choose one of two options:');
     expect(html).toContain('<strong>Barbarian Hordes:</strong> 5 additional barbarian tokens are used.');
     expect(html).not.toMatch(/data-advance-ref="pottery" open/);

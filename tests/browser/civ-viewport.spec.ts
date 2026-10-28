@@ -45,7 +45,14 @@ test.describe('civ page: never scrolls horizontally', () => {
 // Pixel "Large" ≈ 1.3× = 21px, maximum ≈ 2.0× = 32px.
 test.describe('civ page with OS font scaling: no horizontal overflow', () => {
   for (const [scale, std] of [[1.3, 21], [2.0, 32]] as const) {
-    test(`412×915 at ${scale}× font scale: never scrolls horizontally`, async ({ page }) => {
+    test(`412×915 at ${scale}× font scale: never scrolls horizontally`, async ({ page, request }) => {
+      await request.post('/api/game/cities/clear'); // buying: Buy buttons on the Cards tab
+      // Written Record bought this round: its colour chooser is open in the
+      // list, and must not widen the rows.
+      const state = await (await request.get('/api/state')).json();
+      const minoa = state.players.find((p: { civ_slug: string }) => p.civ_slug === 'minoa');
+      const held = (state.advances[minoa.id] ?? []).map((h: { id: string }) => h.id);
+      await request.post(`/api/players/${minoa.id}/advances`, { data: { ids: [...new Set([...held, 'written-record'])] } });
       await page.setViewportSize({ width: 412, height: 915 });
       const cdp = await page.context().newCDPSession(page);
       await cdp.send('Page.enable');
@@ -60,10 +67,11 @@ test.describe('civ page with OS font scaling: no horizontal overflow', () => {
         );
         expect(h, `horizontal overflow on the ${tab} tab at ${scale}× font scale`).toBeLessThanOrEqual(0);
       }
-      // The page hides sideways overflow, so also check that every tab and
-      // card sort button is fully on screen (those bars wrap instead).
+      // The page hides sideways overflow, so also check that every tab, card
+      // sort button and Buy button is fully on screen (those rows wrap instead).
       await page.locator('#tab-btn-cards').click();
-      const offscreen = await page.locator('.civ-tab, .adv-sort-btn').evaluateAll(els =>
+      await expect(page.locator('.adv-buy').first()).toBeVisible();
+      const offscreen = await page.locator('.civ-tab, .adv-sort-btn, .adv-buy').evaluateAll(els =>
         els.filter(e => e.getBoundingClientRect().right > window.innerWidth + 0.5).map(e => e.textContent));
       expect(offscreen, `buttons off-screen at ${scale}× font scale`).toEqual([]);
     });

@@ -64,4 +64,20 @@ test.describe('admin: cards', () => {
     await dialog.locator('.gm-cards-close').click();
     await expect(dialog).toBeHidden();
   });
+  test('the GM reopens a purchase the player confirmed', async ({ page, request }) => {
+    await adminLogin(page.context().request);
+    const state = await (await request.get('/api/state')).json();
+    const id = state.players.find((p: { civ_slug: string }) => p.civ_slug === 'minoa').id;
+    await request.post('/api/game/cities/clear');
+    await request.post(`/api/players/${id}/advances`, { data: { ids: [...state.advances[id] ?? []].map((h: { id: string }) => h.id).concat('pottery') } });
+    await request.post(`/api/players/${id}/advances/confirm`, { data: {} });
+    await page.goto('/admin');
+    await page.locator(`.adv-pts-btn[data-player-id="${id}"]`).click();
+    const dialog = page.locator('#gm-cards');
+    await expect(dialog.locator('.adv-basket')).toContainText('Confirmed by the player');
+    await dialog.locator('.adv-basket-reopen').click();
+    await expect(dialog.locator('.adv-basket-clear')).toBeVisible();
+    await expect.poll(async () => (await (await request.get('/api/state')).json()).players
+      .find((p: { id: number }) => p.id === id).cards_confirmed).toBe(0);
+  });
 });

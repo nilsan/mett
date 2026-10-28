@@ -144,32 +144,50 @@ export interface HeldAdvance {
 }
 
 /** Whether a held card's colour choice may still be made or changed in
- *  `round`: while none is set, or during the round the card was bought. */
-export function creditChoiceOpen(held: HeldAdvance, round: number): boolean {
-  return !held.choice || held.round === round;
+ *  `round`: while none is set, or during the round the card was bought until
+ *  the player confirms that round's purchase (`confirmed`, the last round
+ *  they confirmed). */
+export function creditChoiceOpen(held: HeldAdvance, round: number, confirmed = 0): boolean {
+  return !held.choice || (held.round === round && confirmed < round);
 }
 
-/** A card bought in an earlier round is locked: the player can no longer
- *  untick it (the GM still can, to correct a mistake). */
-export function advanceLocked(held: HeldAdvance, round: number): boolean {
-  return held.round < round;
+/** A card bought in an earlier round, or in a round whose purchase the player
+ *  has confirmed, is locked: the player can no longer untick it (the GM still
+ *  can, to correct a mistake). */
+export function advanceLocked(held: HeldAdvance, round: number, confirmed = 0): boolean {
+  return held.round < round || held.round <= confirmed;
 }
 
 /** Why a player may not change their cards from `held` to `ids` in `round`,
  *  or null when they may. Cards are bought in phase 12, after calamities
- *  (`buyingOpen`), and lock when the round ends. */
+ *  (`buyingOpen`), and lock when the round ends or the player confirms the
+ *  purchase (`confirmed`, the last round they confirmed). */
 export function playerAdvanceChangeError(held: readonly HeldAdvance[], ids: readonly string[],
-  round: number, buyingOpen: boolean): string | null {
+  round: number, buyingOpen: boolean, confirmed = 0): string | null {
   const want = new Set(ids);
+  const had = new Set(held.map(h => h.id));
+  const changed = want.size !== had.size || [...want].some(id => !had.has(id));
+  if (changed && confirmed >= round) return 'Your cards for this round are confirmed, ask the GM to correct them';
   const dropped = held.filter(h => !want.has(h.id) && advanceLocked(h, round));
   if (dropped.length) {
     return `${dropped.map(h => ADVANCE_BY_ID.get(h.id)?.name ?? h.id).join(', ')}: bought in an earlier round, ask the GM to correct it`;
   }
   // Outside phase 12 nothing changes, not even a card ticked this round.
-  const had = new Set(held.map(h => h.id));
-  if (!buyingOpen && (want.size !== had.size || [...want].some(id => !had.has(id)))) {
-    return 'Cards are bought after calamities are resolved';
-  }
+  if (!buyingOpen && changed) return 'Cards are bought after calamities are resolved';
+  return null;
+}
+
+/** Why a player may not confirm this round's purchase, or null when they
+ *  may: only while buying, once, with at least one card, and with the colours
+ *  of a new Monument / Written Record chosen. */
+export function confirmPurchaseError(held: readonly HeldAdvance[], round: number, buyingOpen: boolean,
+  confirmed = 0): string | null {
+  if (!buyingOpen) return 'Cards are bought after calamities are resolved';
+  if (confirmed >= round) return 'Your cards for this round are already confirmed';
+  const fresh = held.filter(h => h.round === round);
+  if (!fresh.length) return 'No cards bought this round';
+  const unchosen = fresh.filter(h => ADVANCE_BY_ID.get(h.id)?.choiceCredits && !h.choice);
+  if (unchosen.length) return `Choose the colours of ${unchosen.map(h => ADVANCE_BY_ID.get(h.id)!.name).join(' and ')} first`;
   return null;
 }
 

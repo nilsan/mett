@@ -381,7 +381,7 @@ function initActive(): void {
   const renderGmCards = () => {
     if (!gmPicker || !gmState || !gmDialog?.open) return;
     gmPicker.innerHTML = renderAdvancePicker(gmState.advances[gmPlayer] ?? [], gmState.game.current_round,
-      { canBuy: true, gm: true, drafts: gmDrafts });
+      { drafts: gmDrafts, confirmed: gmState.players.find(p => p.id === gmPlayer)?.cards_confirmed ?? 0 });
   };
   if (gmDialog && gmPicker) {
     bindPicker(gmPicker, {

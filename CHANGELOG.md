@@ -2,6 +2,19 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.5 — 2026-10-28
+
+### Added
+- **Confirm** next to Clear on the purchase bar: a player who is done buying locks this round's cards (and a new Monument / Written Record's colours, which must be chosen first) without waiting for the GM to end the round. The bar then says **✓ Confirmed**. The GM's card dialog shows "Confirmed by the player" with **Reopen**. Database migration 4 adds `players.cards_confirmed`.
+
+### Changed
+- The Cards tab has one list instead of tiles above and All cards below. Each card is a row that opens to its full text, with a **Buy** button while buying; a card picked this round shows **✓ Buying** (tap to undo) until the purchase is confirmed or the round ends, then **✓ Bought**, and earlier cards **✓ Owned**. Held cards are filled in their colour. The GM's card correction keeps the tiles.
+- Two-colour cards are drawn as the game draws them: listed under their first colour (as on the Strategy Explorer), with a stripe in both colours and, when held, a fade from the first colour to the second.
+- Calamities show their printed text first, the same for every player, then what the cards change, and last **Your result**: the primary and secondary victims, other players and the beneficiary as it works out for the player's cards.
+
+### Fixed
+- With large fonts, the purchase bar puts Clear under the text instead of squeezing it.
+
 ## 2.0.0-beta.4 — 2026-10-28
 
 ### Added

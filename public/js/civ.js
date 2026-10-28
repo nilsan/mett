@@ -301,11 +301,11 @@
     "trade-routes",
     "universal-doctrine"
   ];
-  function creditChoiceOpen(held, round) {
-    return !held.choice || held.round === round;
+  function creditChoiceOpen(held, round, confirmed = 0) {
+    return !held.choice || held.round === round && confirmed < round;
   }
-  function advanceLocked(held, round) {
-    return held.round < round;
+  function advanceLocked(held, round, confirmed = 0) {
+    return held.round < round || held.round <= confirmed;
   }
   function advanceTotals(ids, catalogue = ADVANCE_BY_ID) {
     const t = { adv_1vp: 0, adv_3vp: 0, adv_6vp: 0, adv_points: 0 };
@@ -822,36 +822,41 @@
     return [{ cards: [...ADVANCES].sort((a, b) => sign * primary(a, b) || byPrice(a, b) || byName(a, b)) }];
   }
   var section = (group, inner) => group ? `<section class="adv-group adv-${group}"><h4>${GROUP_LABEL[group]}</h4>${inner}</section>` : `<section class="adv-group">${inner}</section>`;
-  function renderAdvancePicker(held, round, { canBuy = true, drafts = new Map, gm = false, sort = "group", dir = DEFAULT_DIR[sort] } = {}) {
-    const heldById = new Map(held.map((h) => [h.id, h]));
-    const t = advanceTotals(heldById.keys());
-    const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${gm ? "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before." : canBuy ? "Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends." : "Cards are bought after calamities are resolved."}</p>`;
-    const prices = priceList(held, round);
-    const groups = sections(sort, dir, prices).map(({ group, cards }) => {
-      const buttons = cards.map((c) => {
-        const h = heldById.get(c.id);
-        const bought = h ? advanceLocked(h, round) : false;
-        const locked = bought && !gm;
-        const closed = !locked && !canBuy && !gm;
-        const cost = priceHtml(c, prices.get(c.id));
-        const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
-        const chooser = open && (!h.choice || drafts.has(c.id)) ? renderChooser(c, drafts.get(c.id) ?? h.choice ?? {}) : "";
-        const change = open && h.choice && !drafts.has(c.id) ? `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>` : "";
-        const cls = `adv-pick adv-${c.groups[0]}${h ? " adv-held" : ""}${locked ? " adv-locked" : ""}${closed ? " adv-closed" : ""}`;
-        return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}"${locked || closed ? ' aria-disabled="true"' : ""}>` + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-pick-meta">${cost} · ${c.vp} VP${h && h.round === round ? " · <em>new</em>" : ""}</span>` + `</button>` + change + chooser;
-      }).join("");
-      return section(group, `<div class="adv-pick-grid">${buttons}</div>`);
-    }).join("");
-    return summary + groups + basket(held, round, canBuy || gm);
+  function pickSummary(held, hint) {
+    const t = advanceTotals(held.map((h) => h.id));
+    return `<p class="adv-pick-summary"><strong>${held.length}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${hint}</p>`;
   }
-  function basket(held, round, canClear) {
+  function chooserFor(c, h, round, drafts, gm, confirmed = 0) {
+    if (!h || !c.choiceCredits || !(gm || creditChoiceOpen(h, round, confirmed)))
+      return "";
+    if (!h.choice || drafts.has(c.id))
+      return renderChooser(c, drafts.get(c.id) ?? h.choice ?? {});
+    return `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>`;
+  }
+  function renderCardList(held, round, { canBuy = true, drafts = new Map, sort = "group", dir = DEFAULT_DIR[sort], open = new Set, confirmed = 0 } = {}) {
+    const done = confirmed >= round;
+    const heldById = new Map(held.map((h) => [h.id, h]));
+    const prices = priceList(held, round);
+    const list = sections(sort, dir, prices).map(({ group, cards }) => {
+      const rows = cards.map((c) => {
+        const h = heldById.get(c.id);
+        const fresh = !!h && !advanceLocked(h, round, confirmed);
+        const action = h && !(fresh && canBuy) ? `<span class="adv-ref-held">✓ ${h.round === round ? "Bought" : "Owned"}</span>` : canBuy && !done ? `<button type="button" class="adv-buy" data-advance="${c.id}" aria-pressed="${fresh}"${fresh ? ' title="Tap to undo"' : ""}>${fresh ? "✓ Buying" : "Buy"}</button>` : "";
+        return `<details class="adv-ref-item adv-${c.groups[0]}${dual(c)}${h ? " adv-held" : ""}" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-ref-end"><span class="adv-ref-meta">${priceHtml(c, prices.get(c.id))} · ${c.vp} VP</span>${action}</span>` + `</summary>${cardBody(c, h)}</details>` + chooserFor(c, h, round, drafts, false, confirmed);
+      }).join("");
+      return section(group, `<div class="adv-ref-list">${rows}</div>`);
+    }).join("");
+    return pickSummary(held, done ? "Your cards for this round are confirmed; ask the GM if one needs correcting. Tap a card to read it." : canBuy ? "Tap Buy on the cards you buy this round, then Confirm. Prices include credits from cards bought in earlier rounds. Tap a card to read it." : "Cards are bought after calamities are resolved. Tap a card to read it.") + list + basket(held, round, done ? { done: "✓ Confirmed" } : canBuy ? { buttons: `<button type="button" class="adv-basket-confirm">Confirm</button>${CLEAR}` } : {});
+  }
+  var CLEAR = `<button type="button" class="adv-basket-clear">Clear</button>`;
+  function basket(held, round, { buttons = "", done }) {
     const fresh = held.filter((h) => h.round === round && ADVANCE_BY_ID.has(h.id));
     if (!fresh.length)
       return "";
     const cost = purchaseCost(held, round).total;
     const vp = fresh.reduce((sum, h) => sum + ADVANCE_BY_ID.get(h.id).vp, 0);
     const names = fresh.map((h) => ADVANCE_BY_ID.get(h.id)).map((c) => `<span class="adv-basket-card adv-${c.groups[0]}">${escapeHtml(c.name)}</span>`).join(" · ");
-    return `<div class="adv-basket" role="status"><div class="adv-basket-text">` + `<p>Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>` + `<p class="adv-basket-names">${names}</p></div>` + (canClear ? `<button type="button" class="adv-basket-clear">Clear</button>` : "") + `</div>`;
+    return `<div class="adv-basket" role="status"><div class="adv-basket-text">` + `<p>${done ? "Bought" : "Buying"} this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · <span class="adv-basket-vp">+${vp} VP</span></p>` + `<p class="adv-basket-names">${names}</p></div>` + (done ? `<p class="adv-basket-done">${done}</p>` : "") + (buttons ? `<div class="adv-basket-buttons">${buttons}</div>` : "") + `</div>`;
   }
   function nextAgeCardRequirement({ level, civNumber, expert }) {
     const here = ageOfLevel(level);
@@ -883,6 +888,7 @@
     const chars = [label, ...texts.map((x) => x.text)].join(" + ").length + 1;
     return credits + `<p class="adv-overview-line adv-next-age" style="--chars: ${chars}"><span class="adv-overview-label">${escapeHtml(label)}</span>${parts}</p>`;
   }
+  var dual = (c) => c.groups[1] ? ` adv-dual adv-2-${c.groups[1]}` : "";
   var dot = (c) => c.groups[1] ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : "";
   var CREDITS_FROM = (() => {
     const m = new Map;
@@ -905,14 +911,6 @@
       return to ? [credit(to.groups[0], `${n} to ${to.name}`)] : [];
     })) + line("Cheaper with", (CREDITS_FROM.get(c.id) ?? []).map(({ from, n }) => credit(from.groups[0], `${from.name} −${n}`))) + (held ? `<p class="adv-ref-bought">Bought in round ${held.round}</p>` : "");
   }
-  function renderAdvanceReference(held, open = new Set, round = 0, sort = "group", dir = DEFAULT_DIR[sort]) {
-    const heldById = new Map(held.map((h) => [h.id, h]));
-    const prices = priceList(held, round);
-    return sections(sort, dir, prices).map(({ group, cards }) => {
-      const rows = cards.map((c) => `<details class="adv-ref-item adv-${c.groups[0]}" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-ref-meta">${priceHtml(c, prices.get(c.id))} · ${c.vp} VP</span>` + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : "") + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join("");
-      return section(group, `<div class="adv-ref-list">${rows}</div>`);
-    }).join("");
-  }
 
   // src/client/picker.ts
   function bindPicker(picker, b) {
@@ -930,23 +928,42 @@
         b.rerender();
         return;
       }
+      if (target.closest(".adv-basket-confirm")) {
+        if (!confirm("Confirm this round’s cards? After this only the GM can change them."))
+          return;
+        await mettPost(`/api/players/${b.playerId()}/advances/confirm`, { confirm: true });
+        return;
+      }
+      if (target.closest(".adv-basket-reopen")) {
+        await mettPost(`/api/players/${b.playerId()}/advances/confirm`, { confirm: false });
+        return;
+      }
       if (target.closest(".adv-basket-clear")) {
         await mettPost(`/api/players/${b.playerId()}/advances`, { ids: b.held().filter((h) => h.round !== b.round()).map((h) => h.id) });
         return;
       }
-      const btn = target.closest(".adv-pick");
-      if (!btn || btn.getAttribute("aria-disabled") === "true")
+      const btn = target.closest(".adv-pick, .adv-buy");
+      if (!btn)
         return;
+      e.preventDefault();
       const on = btn.getAttribute("aria-pressed") !== "true";
-      btn.setAttribute("aria-pressed", String(on));
-      btn.classList.toggle("adv-held", on);
-      const ids = Array.from(picker.querySelectorAll('.adv-pick[aria-pressed="true"]')).map((el) => el.dataset.advance);
+      flip(btn, on);
+      const toggles = Array.from(picker.querySelectorAll("[data-advance][aria-pressed]"));
+      const shown = new Set(toggles.map((el) => el.dataset.advance));
+      const ids = [
+        ...toggles.filter((el) => el.getAttribute("aria-pressed") === "true").map((el) => el.dataset.advance),
+        ...b.held().map((h) => h.id).filter((id) => !shown.has(id))
+      ];
       const res = await mettPost(`/api/players/${b.playerId()}/advances`, { ids });
-      if (!res.ok) {
-        btn.setAttribute("aria-pressed", String(!on));
-        btn.classList.toggle("adv-held", !on);
-      }
+      if (!res.ok)
+        flip(btn, !on);
     });
+  }
+  function flip(btn, on) {
+    btn.setAttribute("aria-pressed", String(on));
+    btn.closest(".adv-pick, .adv-ref-item")?.classList.toggle("adv-held", on);
+    if (btn.classList.contains("adv-buy"))
+      btn.textContent = on ? "✓ Buying" : "Buy";
   }
   async function onChooserClick(chooser, target, b) {
     const cardId = chooser.dataset.choiceFor;
@@ -1005,7 +1022,7 @@
   }
   function renderRoles(cal, held) {
     const roles = CALAMITY_ROLES[cal.name];
-    return `<div class="cal-roles">` + roleLines(cal, "primary", held) + roleLines(cal, "secondary", held) + (roles?.others ? `<p class="cal-role"><span class="cal-role-name">Other players:</span> ${escapeHtml(roles.others)}</p>` : "") + (roles?.beneficiary ? `<p class="cal-role"><span class="cal-role-name">Beneficiary:</span> ${escapeHtml(roles.beneficiary[0].toUpperCase() + roles.beneficiary.slice(1))}</p>` : "") + `</div>`;
+    return `<div class="cal-roles"><p class="cal-result-head">Your result</p>` + roleLines(cal, "primary", held) + roleLines(cal, "secondary", held) + (roles?.others ? `<p class="cal-role"><span class="cal-role-name">Other players:</span> ${escapeHtml(roles.others)}</p>` : "") + (roles?.beneficiary ? `<p class="cal-role"><span class="cal-role-name">Beneficiary:</span> ${escapeHtml(roles.beneficiary[0].toUpperCase() + roles.beneficiary.slice(1))}</p>` : "") + `</div>`;
   }
   function heldMarks(cal, held) {
     const mine = cardsFor(cal).filter((c) => held.has(c.id)).map((c) => c.e.effect);
@@ -1025,7 +1042,7 @@
     const held = new Set(heldIds);
     const item = (cal) => {
       const mods = cardsFor(cal).map(({ id, e }) => `<li class="cal-${e.effect}${held.has(id) ? " cal-held" : ""}">` + mark(e.effect) + `<span><span class="cal-mod-card">${cardName(id)}:</span> ${escapeHtml(e.text)}</span>` + (held.has(id) ? '<span class="cal-check" aria-label="you hold this card">✓</span>' : "") + `</li>`).join("");
-      return `<details class="cal-ref-item" data-calamity="${escapeHtml(cal.name)}"${open.has(cal.name) ? " open" : ""}>` + `<summary><span class="cal-stack">${cal.stack}</span><span class="cal-ref-name">${escapeHtml(cal.name)}</span>${heldMarks(cal, held)}` + `<span class="cal-kind cal-kind-${cal.kind}">${KIND_LABEL[cal.kind]}</span></summary>` + renderRoles(cal, held) + cal.text.map((t) => `<p class="cal-chart">${escapeHtml(t)}</p>`).join("") + (mods ? `<ul class="cal-mods">${mods}</ul>` : "") + `</details>`;
+      return `<details class="cal-ref-item" data-calamity="${escapeHtml(cal.name)}"${open.has(cal.name) ? " open" : ""}>` + `<summary><span class="cal-stack">${cal.stack}</span><span class="cal-ref-name">${escapeHtml(cal.name)}</span>${heldMarks(cal, held)}` + `<span class="cal-kind cal-kind-${cal.kind}">${KIND_LABEL[cal.kind]}</span></summary>` + cal.text.map((t) => `<p class="cal-chart">${escapeHtml(t)}</p>`).join("") + (mods ? `<ul class="cal-mods">${mods}</ul>` : "") + renderRoles(cal, held) + `</details>`;
     };
     const major = `<h4>Major calamities</h4><div class="cal-ref-list">${CALAMITIES.filter((c) => c.kind !== "minor").map(item).join("")}</div>`;
     return minorCalamitiesInPlay(playerCount) ? `<h4>Minor calamities</h4><div class="cal-ref-list">${CALAMITIES.filter((c) => c.kind === "minor").map(item).join("")}</div>` + major : major + `<p class="cal-none">Minor calamities are not used with ${playerCount} players, only with 9–11 or 15–18.</p>`;
@@ -1210,14 +1227,17 @@
       if (el)
         el.outerHTML = renderCivSummary(player, playerTotalVp(player, game.active ? null : census?.city_count));
     }, syncPicker = function(held, game) {
-      const picker = document.getElementById("adv-picker");
-      if (picker) {
-        const focused = document.activeElement?.dataset?.advance;
-        picker.innerHTML = renderAdvancePicker(held, game.current_round, { canBuy: game.cities_phase === 1, drafts: choiceDrafts, sort: cardSort, dir: cardDir });
-        if (focused)
-          picker.querySelector(`[data-advance="${focused}"]`)?.focus();
-      }
-      rerenderKeepingOpen("adv-ref", "advanceRef", (open) => renderAdvanceReference(held, open, game.current_round, cardSort, cardDir));
+      const focused = document.activeElement?.dataset?.advance;
+      rerenderKeepingOpen("adv-picker", "advanceRef", (open) => renderCardList(held, game.current_round, {
+        canBuy: game.cities_phase === 1,
+        drafts: choiceDrafts,
+        sort: cardSort,
+        dir: cardDir,
+        open,
+        confirmed: lastState?.players.find((p) => p.id === playerId)?.cards_confirmed ?? 0
+      }));
+      if (focused)
+        document.querySelector(`#adv-picker [data-advance="${focused}"]`)?.focus();
     }, rerenderKeepingOpen = function(id, key, render) {
       const el = document.getElementById(id);
       if (!el)

@@ -239,10 +239,21 @@ export function getAllPlayerAdvances(): Record<number, HeldAdvance[]> {
 export function setCreditChoice(playerId: number, advanceId: string, choice: CreditChoice, round: number,
   gm = false): boolean {
   const held = getPlayerAdvances(playerId).find(h => h.id === advanceId);
-  if (!held || !(gm || creditChoiceOpen(held, round))) return false;
+  if (!held || !(gm || creditChoiceOpen(held, round, getCardsConfirmed(playerId)))) return false;
   getDb().query('UPDATE player_advances SET credit_choice=? WHERE player_id=? AND advance_id=?')
     .run(JSON.stringify(choice), playerId, advanceId);
   return true;
+}
+
+/** The last round whose card purchase the player confirmed (0 = none). */
+export function getCardsConfirmed(playerId: number): number {
+  return getDb().query<{ n: number }, [number]>('SELECT cards_confirmed AS n FROM players WHERE id=?').get(playerId)?.n ?? 0;
+}
+
+/** Record that the player confirmed their card purchase in `round`, which
+ *  locks it; 0 reopens it (the GM). */
+export function setCardsConfirmed(playerId: number, round: number): void {
+  getDb().query('UPDATE players SET cards_confirmed=? WHERE id=?').run(round, playerId);
 }
 
 /** Replace a player's advance cards with `ids` and derive the tier counts and

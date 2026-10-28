@@ -100,21 +100,63 @@ test.describe('civ page: tabs', () => {
     const id = await page.locator('#civ-content').getAttribute('data-player-id');
     const round = Number(await page.locator('#census-round').textContent());
     await request.post(`/api/players/${id}/advances`, { data: { ids: [] } });
-    const tile = page.locator('.adv-pick[data-advance="mysticism"]');
+    const row = page.locator('#adv-picker details[data-advance-ref="mysticism"]');
+    const buy = row.locator('.adv-buy');
+    await expect(buy).toHaveCount(0); // not before calamities are resolved
     await request.post('/api/game/cities/clear'); // calamities resolved: phase 12
-    await expect(tile).not.toHaveAttribute('aria-disabled', 'true');
-    await tile.click();
-    await expect(tile).toHaveAttribute('aria-pressed', 'true');
-    await expect(tile).toContainText('new');
+    await expect(buy).toHaveText('Buy');
+    await buy.click();
+    await expect(buy).toHaveText('✓ Buying');
+    await expect(buy).toHaveAttribute('aria-pressed', 'true');
+    await expect(row).toHaveClass(/adv-held/);
+    await expect(row).not.toHaveAttribute('open', ''); // Buy does not open the row
     await expect(page.locator('.adv-basket')).toContainText('Buying this round: 1 card');
     await expect(page.locator('.adv-basket')).toBeInViewport();
+    // Undo, and buy again.
+    await buy.click();
+    await expect(buy).toHaveText('Buy');
+    await expect(page.locator('.adv-basket')).toHaveCount(0);
+    await buy.click();
+    await expect(buy).toHaveText('✓ Buying');
     await request.post('/api/debug/set-round', { data: { round: round + 1 } });
-    await expect(tile).toHaveClass(/adv-locked/);
-    await expect(page.locator('#adv-ref details[data-advance-ref="mysticism"]')).toContainText(`Bought in round ${round}`);
-    // aria-disabled: Playwright would refuse a normal click. The handler flips
-    // aria-pressed synchronously, so a toggle would show at once.
-    await tile.click({ force: true });
-    await expect(tile).toHaveAttribute('aria-pressed', 'true');
+    await expect(row.locator('.adv-ref-held')).toHaveText('✓ Owned');
+    await expect(buy).toHaveCount(0);
+    await row.locator('summary').click();
+    await expect(row).toContainText(`Bought in round ${round}`);
+  });
+
+  test('Cards: Confirm locks the purchase before the round ends', async ({ page, request }) => {
+    await page.goto('/minoa#cards');
+    const id = await page.locator('#civ-content').getAttribute('data-player-id');
+    await request.post(`/api/players/${id}/advances`, { data: { ids: [] } });
+    await request.post('/api/game/cities/clear');
+    await page.locator('.adv-buy[data-advance="pottery"]').click();
+    await expect(page.locator('.adv-basket-confirm')).toBeVisible();
+    // The browser asks first; dismissing keeps the purchase open.
+    page.once('dialog', d => d.dismiss());
+    await page.locator('.adv-basket-confirm').click();
+    await expect(page.locator('.adv-buy[data-advance="pottery"]')).toHaveText('✓ Buying');
+    page.once('dialog', d => d.accept());
+    await page.locator('.adv-basket-confirm').click();
+    const row = page.locator('#adv-picker details[data-advance-ref="pottery"]');
+    await expect(row.locator('.adv-ref-held')).toHaveText('✓ Bought');
+    await expect(page.locator('.adv-basket-done')).toHaveText('✓ Confirmed');
+    await expect(page.locator('.adv-basket')).toContainText('Bought this round: 1 card');
+    await expect(page.locator('.adv-buy')).toHaveCount(0);
+    await expect(page.locator('.adv-basket-clear')).toHaveCount(0);
+  });
+
+  test('Cards: buying one card keeps the cards bought in earlier rounds', async ({ page, request }) => {
+    await page.goto('/minoa#cards');
+    const id = await page.locator('#civ-content').getAttribute('data-player-id');
+    const round = Number(await page.locator('#census-round').textContent());
+    await request.post(`/api/players/${id}/advances`, { data: { ids: ['pottery'] } });
+    await request.post('/api/debug/set-round', { data: { round: round + 1 } });
+    await request.post('/api/game/cities/clear');
+    await page.locator('#adv-picker details[data-advance-ref="mysticism"] .adv-buy').click();
+    await expect(page.locator('.adv-basket-names')).toHaveText('Mysticism');
+    const state = await (await request.get('/api/state')).json();
+    expect(state.advances[id!].map((h: { id: string }) => h.id).sort()).toEqual(['mysticism', 'pottery']);
   });
 
   test('the GM session does not unlock cards on a player page', async ({ page, request }) => {
@@ -124,15 +166,16 @@ test.describe('civ page: tabs', () => {
     const round = Number(await page.locator('#census-round').textContent());
     await request.post(`/api/players/${id}/advances`, { data: { ids: ['mysticism'] } });
     await request.post('/api/debug/set-round', { data: { round: round + 1 } });
-    await expect(page.locator('.adv-pick[data-advance="mysticism"]')).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.locator('#adv-picker details[data-advance-ref="mysticism"] .adv-ref-held')).toHaveText('✓ Owned');
+    await expect(page.locator('#adv-picker details[data-advance-ref="mysticism"] .adv-buy')).toHaveCount(0);
     await expect(page.locator('#tab-cards')).not.toContainText('GM correction');
   });
 
-  test('All cards: a row shows the card text and stays open through a live update', async ({ page, request }) => {
+  test('Cards: a row shows the card text and stays open through a live update', async ({ page, request }) => {
     await page.goto('/minoa#cards');
     const id = await page.locator('#civ-content').getAttribute('data-player-id');
     await request.post(`/api/players/${id}/advances`, { data: { ids: [] } });
-    const politics = page.locator('#adv-ref details[data-advance-ref="politics"]');
+    const politics = page.locator('#adv-picker details[data-advance-ref="politics"]');
     await politics.locator('summary').click();
     await expect(politics).toContainText('Special ability: You may choose one of two options:');
     await expect(politics.locator('.adv-ref-held')).toHaveCount(0);
@@ -141,11 +184,11 @@ test.describe('civ page: tabs', () => {
     await expect(politics).toHaveAttribute('open', '');
   });
 
-  test('All cards: a changed colour choice shows in the open row', async ({ page, request }) => {
+  test('Cards: a changed colour choice shows in the open row', async ({ page, request }) => {
     await page.goto('/minoa#cards');
     const id = await page.locator('#civ-content').getAttribute('data-player-id');
     await request.post(`/api/players/${id}/advances`, { data: { ids: ['monument'] } });
-    const monument = page.locator('#adv-ref details[data-advance-ref="monument"]');
+    const monument = page.locator('#adv-picker details[data-advance-ref="monument"]');
     await monument.locator('summary').click();
     await expect(monument).toContainText('Credits of your choice: 20, chosen once');
     await request.post(`/api/players/${id}/advances/monument/choice`, { data: { choice: { arts: 20 } } });
@@ -155,41 +198,38 @@ test.describe('civ page: tabs', () => {
     await expect(monument).toHaveAttribute('open', '');
   });
 
-  test('Cards: the chosen order, either way round, applies to both lists and is kept on reload', async ({ page }) => {
+  test('Cards: the chosen order, either way round, is kept on reload', async ({ page }) => {
     await page.goto('/minoa#cards');
-    const first = () => page.locator('.adv-pick').first();
-    const firstRef = () => page.locator('#adv-ref details').first();
+    const first = () => page.locator('#adv-picker details').first();
     await expect(page.locator('[data-card-sort="group"]')).toHaveAttribute('aria-pressed', 'true');
     await page.locator('[data-card-sort="name"]').click();
     await expect(page.locator('[data-card-sort="name"]')).toHaveAttribute('aria-pressed', 'true');
-    await expect(first()).toHaveAttribute('data-advance', 'advanced-military');
-    await expect(firstRef()).toHaveAttribute('data-advance-ref', 'advanced-military');
+    await expect(first()).toHaveAttribute('data-advance-ref', 'advanced-military');
     await expect(page.locator('#adv-picker h4')).toHaveCount(0);
     await page.reload();
     await expect(page.locator('[data-card-sort="name"]')).toHaveAttribute('aria-pressed', 'true');
-    await expect(first()).toHaveAttribute('data-advance', 'advanced-military');
+    await expect(first()).toHaveAttribute('data-advance-ref', 'advanced-military');
     // A second click on the same button turns the order round.
     await page.locator('[data-card-sort="name"]').click();
     await expect(page.locator('[data-card-sort="name"]')).toHaveText('Z–A');
-    await expect(first()).toHaveAttribute('data-advance', 'written-record');
-    await expect(firstRef()).toHaveAttribute('data-advance-ref', 'written-record');
+    await expect(first()).toHaveAttribute('data-advance-ref', 'written-record');
     await page.reload();
     await expect(page.locator('[data-card-sort="name"]')).toHaveText('Z–A');
-    await expect(first()).toHaveAttribute('data-advance', 'written-record');
+    await expect(first()).toHaveAttribute('data-advance-ref', 'written-record');
     await page.locator('[data-card-sort="vp"]').click();
     await expect(page.locator('[data-card-sort="vp"]')).toHaveText('VP ↑');
     await expect(page.locator('[data-card-sort="name"]')).toHaveText('A–Z');
-    await expect(first().locator('.adv-pick-meta')).toContainText('1 VP');
+    await expect(first().locator('.adv-ref-meta')).toContainText('1 VP');
     await page.locator('[data-card-sort="vp"]').click();
     await expect(page.locator('[data-card-sort="vp"]')).toHaveText('VP ↓');
-    await expect(first().locator('.adv-pick-meta')).toContainText('6 VP');
+    await expect(first().locator('.adv-ref-meta')).toContainText('6 VP');
     // VP/cost only goes one way: a second click keeps the order.
     await page.locator('[data-card-sort="value"]').click();
     await expect(page.locator('[data-card-sort="value"]')).toHaveAttribute('aria-pressed', 'true');
-    const best = await first().getAttribute('data-advance');
+    const best = await first().getAttribute('data-advance-ref');
     await page.locator('[data-card-sort="value"]').click();
     await expect(page.locator('[data-card-sort="value"]')).toHaveText('VP/cost');
-    await expect(first()).toHaveAttribute('data-advance', best!);
+    await expect(first()).toHaveAttribute('data-advance-ref', best!);
     await page.locator('[data-card-sort="group"]').click();
     await expect(page.locator('#adv-picker h4').first()).toHaveText('Science');
   });
@@ -199,12 +239,13 @@ test.describe('civ page: tabs', () => {
     const id = await page.locator('#civ-content').getAttribute('data-player-id');
     await request.post(`/api/players/${id}/advances`, { data: { ids: [] } });
     await request.post('/api/game/cities/clear'); // phase 12
-    await page.locator('.adv-pick[data-advance="pottery"]').click();
-    await page.locator('.adv-pick[data-advance="mysticism"]').click();
+    await page.locator('.adv-buy[data-advance="pottery"]').click();
+    await page.locator('.adv-buy[data-advance="mysticism"]').click();
     await expect(page.locator('.adv-basket-names')).toHaveText('Mysticism · Pottery');
     await page.locator('.adv-basket-clear').click();
     await expect(page.locator('.adv-basket')).toHaveCount(0);
-    await expect(page.locator('.adv-pick[aria-pressed="true"]')).toHaveCount(0);
+    await expect(page.locator('.adv-buy[aria-pressed="true"]')).toHaveCount(0);
+    await expect(page.locator('#adv-picker .adv-held')).toHaveCount(0);
   });
 
   test('Cards: colour credits and the next age\'s cards sit under the sort buttons', async ({ page, request }) => {

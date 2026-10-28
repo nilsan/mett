@@ -3,8 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 // The Calamities tab on the player page: every calamity in the game as a
-// lookup list, worked out per victim role for the player's cards, with a ✓
-// on the calamities their cards change. Shared by the server
+// lookup list, its printed text first and then worked out per victim role for
+// the player's cards, with a ✓ on the calamities their cards change. Shared by the server
 // render and the live client re-render.
 
 import { escapeHtml } from './html.js';
@@ -39,11 +39,12 @@ function roleLines(cal: Calamity, role: 'primary' | 'secondary', held: ReadonlyS
     + r.notes.map(({ card, e }) => `<p class="cal-role-note cal-${e.effect}">${mark(e.effect)}<span><strong>${cardName(card)}:</strong> ${escapeHtml(e.text)}</span></p>`).join('');
 }
 
-/** Everyone a calamity touches: the primary victim and any secondary victims,
- *  as it works out for this player, then other players and the beneficiary. */
+/** At the bottom of a calamity: everyone it touches, worked out for this
+ *  player's cards (the primary victim and any secondary victims), then other
+ *  players and the beneficiary. */
 function renderRoles(cal: Calamity, held: ReadonlySet<string>): string {
   const roles = CALAMITY_ROLES[cal.name];
-  return `<div class="cal-roles">`
+  return `<div class="cal-roles"><p class="cal-result-head">Your result</p>`
     + roleLines(cal, 'primary', held)
     + roleLines(cal, 'secondary', held)
     + (roles?.others ? `<p class="cal-role"><span class="cal-role-name">Other players:</span> ${escapeHtml(roles.others)}</p>` : '')
@@ -70,9 +71,10 @@ function cardsFor(cal: Calamity): { id: string; e: CalamityEffect }[] {
   return [...out.filter(c => c.e.effect === 'help'), ...out.filter(c => c.e.effect === 'hurt')];
 }
 
-/** Every calamity in this game as a collapsible row: stack, name, kind, who
- *  suffers what (as it works out for this player), the Quick Chart text and
- *  what each card does to it, ✓ on the player's own.
+/** Every calamity in this game as a collapsible row: stack, name, kind, then
+ *  the Quick Chart text (the same for every player), what each card does to
+ *  it with ✓ on the player's own, and last who suffers what as it works out
+ *  for this player.
  *  Minor calamities only when the player count uses them. `open` names the
  *  rows to render expanded, so a live re-render keeps what the player opened. */
 export function renderCalamityReference(heldIds: Iterable<string>, playerCount: number,
@@ -87,9 +89,9 @@ export function renderCalamityReference(heldIds: Iterable<string>, playerCount: 
     return `<details class="cal-ref-item" data-calamity="${escapeHtml(cal.name)}"${open.has(cal.name) ? ' open' : ''}>`
       + `<summary><span class="cal-stack">${cal.stack}</span><span class="cal-ref-name">${escapeHtml(cal.name)}</span>${heldMarks(cal, held)}`
       + `<span class="cal-kind cal-kind-${cal.kind}">${KIND_LABEL[cal.kind]}</span></summary>`
-      + renderRoles(cal, held)
       + cal.text.map(t => `<p class="cal-chart">${escapeHtml(t)}</p>`).join('')
       + (mods ? `<ul class="cal-mods">${mods}</ul>` : '')
+      + renderRoles(cal, held)
       + `</details>`;
   };
   const major = `<h4>Major calamities</h4><div class="cal-ref-list">${CALAMITIES.filter(c => c.kind !== 'minor').map(item).join('')}</div>`;

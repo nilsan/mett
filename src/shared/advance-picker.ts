@@ -2,9 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-// The Cards tab on the player page: every advance card as a tap-to-toggle
-// button, grouped by colour. Rendered by the server on load and re-rendered by
-// src/client/civ.ts on every state update, so both share this one function.
+// The Cards tab on the player page (every advance card as a row with a Buy
+// button) and the GM's card correction tiles on the admin page. Rendered by
+// the server on load and re-rendered by the client on every state update, so
+// both share these functions.
 
 import { escapeHtml } from './html.js';
 import {
@@ -38,15 +39,18 @@ function renderChooser(card: AdvanceCard, values: CreditChoice): string {
 }
 
 export interface PickerOptions {
-  /** Phase 12 (after calamities): new cards may be ticked. */
+  /** Phase 12 (after calamities): new cards may be bought. */
   canBuy?: boolean;
   /** Colour splits being edited on this page, kept across live re-renders. */
   drafts?: ReadonlyMap<string, CreditChoice>;
-  /** The GM is correcting this player's cards: nothing is locked or closed. */
-  gm?: boolean;
   /** How the player has chosen to order the cards. */
   sort?: CardSort;
   dir?: SortDir;
+  /** The card rows to render expanded, so a live re-render keeps what the
+   *  player opened. */
+  open?: ReadonlySet<string>;
+  /** The last round whose purchase the player confirmed (0 = none). */
+  confirmed?: number;
 }
 
 /** The orders a player can pick on the Cards tab. A–Z, Cost and VP turn
@@ -103,54 +107,95 @@ const section = (group: AdvanceGroup | undefined, inner: string) => group
   ? `<section class="adv-group adv-${group}"><h4>${GROUP_LABEL[group]}</h4>${inner}</section>`
   : `<section class="adv-group">${inner}</section>`;
 
-/** Inner HTML of the Cards tab picker. Dual-group cards are listed under their
- *  first group, with a dot in the second group's colour. Cards bought in an
- *  earlier round are locked; unheld cards can only be ticked while buying. */
-export function renderAdvancePicker(held: readonly HeldAdvance[], round: number,
-  { canBuy = true, drafts = new Map(), gm = false, sort = 'group', dir = DEFAULT_DIR[sort] }: PickerOptions = {}): string {
-  const heldById = new Map(held.map(h => [h.id, h]));
-  const t = advanceTotals(heldById.keys());
-  const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP`
+/** The player's card count and VP, then a line on how buying works. */
+function pickSummary(held: readonly HeldAdvance[], hint: string): string {
+  const t = advanceTotals(held.map(h => h.id));
+  return `<p class="adv-pick-summary"><strong>${held.length}</strong> cards · <strong>${t.adv_points}</strong> VP`
     + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>`
-    + `<p class="adv-pick-hint">${gm
-      ? '<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before.'
-      : canBuy
-      ? 'Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends.'
-      : 'Cards are bought after calamities are resolved.'}</p>`;
-  // Tile prices: after credits, with Library and Anatomy counted (priceList).
+    + `<p class="adv-pick-hint">${hint}</p>`;
+}
+
+/** Under a held Monument / Written Record: the colour chooser, which opens by
+ *  itself until a choice is saved; after that, while it may still be
+ *  corrected, it opens only on "Change colours". */
+function chooserFor(c: AdvanceCard, h: HeldAdvance | undefined, round: number,
+  drafts: ReadonlyMap<string, CreditChoice>, gm: boolean, confirmed = 0): string {
+  if (!h || !c.choiceCredits || !(gm || creditChoiceOpen(h, round, confirmed))) return '';
+  if (!h.choice || drafts.has(c.id)) return renderChooser(c, drafts.get(c.id) ?? h.choice ?? {});
+  return `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>`;
+}
+
+/** The GM's card correction on the admin page: every card as a tap-to-toggle
+ *  tile, grouped by colour, locked or not and in any phase. Dual-group cards
+ *  are listed under their first group, with a dot in the second group's
+ *  colour. */
+export function renderAdvancePicker(held: readonly HeldAdvance[], round: number,
+  { drafts = new Map(), confirmed = 0 }: Pick<PickerOptions, 'drafts' | 'confirmed'> = {}): string {
+  const heldById = new Map(held.map(h => [h.id, h]));
   const prices = priceList(held, round);
-  const groups = sections(sort, dir, prices).map(({ group, cards }) => {
+  const groups = sections('group', 'asc', prices).map(({ group, cards }) => {
     const buttons = cards.map(c => {
       const h = heldById.get(c.id);
-      const bought = h ? advanceLocked(h, round) : false;
-      const locked = bought && !gm;
-      const closed = !locked && !canBuy && !gm;
-      const cost = priceHtml(c, prices.get(c.id)!);
-      // The chooser opens by itself until a choice is saved; after that, while
-      // it may still be corrected, it opens only on "Change colours".
-      const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
-      const chooser = open && (!h.choice || drafts.has(c.id))
-        ? renderChooser(c, drafts.get(c.id) ?? h.choice ?? {}) : '';
-      const change = open && h.choice && !drafts.has(c.id)
-        ? `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>` : '';
-      // The tile carries its colour, so it keeps it outside a colour section.
-      const cls = `adv-pick adv-${c.groups[0]}${h ? ' adv-held' : ''}${locked ? ' adv-locked' : ''}${closed ? ' adv-closed' : ''}`;
-      return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}"${locked || closed ? ' aria-disabled="true"' : ''}>`
+      const cls = `adv-pick adv-${c.groups[0]}${dual(c)}${h ? ' adv-held' : ''}`;
+      return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}">`
         + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>`
-        + `<span class="adv-pick-meta">${cost} · ${c.vp} VP${h && h.round === round ? ' · <em>new</em>' : ''}</span>`
+        + `<span class="adv-pick-meta">${priceHtml(c, prices.get(c.id)!)} · ${c.vp} VP${h && h.round === round ? ' · <em>new</em>' : ''}</span>`
         + `</button>`
-        + change
-        + chooser;
+        + chooserFor(c, h, round, drafts, true);
     }).join('');
     return section(group, `<div class="adv-pick-grid">${buttons}</div>`);
   }).join('');
-  return summary + groups + basket(held, round, canBuy || gm);
+  return pickSummary(held, '<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before.')
+    + groups + basket(held, round, confirmed >= round
+    ? { done: 'Confirmed by the player', buttons: `<button type="button" class="adv-basket-reopen">Reopen</button>` }
+    : { buttons: CLEAR });
 }
 
-/** What this round's ticked cards are and cost together, after credits, with
- *  Clear to untick them all while buying. It sits at the bottom of the screen
+/** The Cards tab: every card as a row that opens to its full text, in the
+ *  order the player picked (by colour, cheapest first, unless chosen
+ *  otherwise). Held cards are filled in their colour. While buying, a Buy
+ *  button on each card not yet held; this round's cards show as Buying and
+ *  can be undone until the player confirms the purchase or the round ends,
+ *  when they lock. Prices are after credits, with Library and Anatomy
+ *  counted (priceList). */
+export function renderCardList(held: readonly HeldAdvance[], round: number,
+  { canBuy = true, drafts = new Map(), sort = 'group', dir = DEFAULT_DIR[sort], open = new Set(), confirmed = 0 }: PickerOptions = {}): string {
+  const done = confirmed >= round;
+  const heldById = new Map(held.map(h => [h.id, h]));
+  const prices = priceList(held, round);
+  const list = sections(sort, dir, prices).map(({ group, cards }) => {
+    const rows = cards.map(c => {
+      const h = heldById.get(c.id);
+      const fresh = !!h && !advanceLocked(h, round, confirmed);
+      const action = h && !(fresh && canBuy)
+        ? `<span class="adv-ref-held">✓ ${h.round === round ? 'Bought' : 'Owned'}</span>`
+        : canBuy && !done
+        ? `<button type="button" class="adv-buy" data-advance="${c.id}" aria-pressed="${fresh}"${fresh ? ' title="Tap to undo"' : ''}>${fresh ? '✓ Buying' : 'Buy'}</button>`
+        : '';
+      return `<details class="adv-ref-item adv-${c.groups[0]}${dual(c)}${h ? ' adv-held' : ''}" data-advance-ref="${c.id}"${open.has(c.id) ? ' open' : ''}>`
+        + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>`
+        + `<span class="adv-ref-end"><span class="adv-ref-meta">${priceHtml(c, prices.get(c.id)!)} · ${c.vp} VP</span>${action}</span>`
+        + `</summary>${cardBody(c, h)}</details>`
+        + chooserFor(c, h, round, drafts, false, confirmed);
+    }).join('');
+    return section(group, `<div class="adv-ref-list">${rows}</div>`);
+  }).join('');
+  return pickSummary(held, done
+    ? 'Your cards for this round are confirmed; ask the GM if one needs correcting. Tap a card to read it.'
+    : canBuy
+    ? 'Tap Buy on the cards you buy this round, then Confirm. Prices include credits from cards bought in earlier rounds. Tap a card to read it.'
+    : 'Cards are bought after calamities are resolved. Tap a card to read it.')
+    + list + basket(held, round, done ? { done: '✓ Confirmed' }
+      : canBuy ? { buttons: `<button type="button" class="adv-basket-confirm">Confirm</button>${CLEAR}` } : {});
+}
+
+const CLEAR = `<button type="button" class="adv-basket-clear">Clear</button>`;
+
+/** What this round's cards are and cost together, after credits, with the
+ *  buttons that apply (Confirm and Clear while buying, Reopen for the GM), or
+ *  `done` once the purchase is confirmed. It sits at the bottom of the screen
  *  while the player scrolls the cards. */
-function basket(held: readonly HeldAdvance[], round: number, canClear: boolean): string {
+function basket(held: readonly HeldAdvance[], round: number, { buttons = '', done }: { buttons?: string; done?: string }): string {
   const fresh = held.filter(h => h.round === round && ADVANCE_BY_ID.has(h.id));
   if (!fresh.length) return '';
   const cost = purchaseCost(held, round).total;
@@ -158,10 +203,11 @@ function basket(held: readonly HeldAdvance[], round: number, canClear: boolean):
   const names = fresh.map(h => ADVANCE_BY_ID.get(h.id)!)
     .map(c => `<span class="adv-basket-card adv-${c.groups[0]}">${escapeHtml(c.name)}</span>`).join(' · ');
   return `<div class="adv-basket" role="status"><div class="adv-basket-text">`
-    + `<p>Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? 'card' : 'cards'}`
-    + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>`
+    + `<p>${done ? 'Bought' : 'Buying'} this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? 'card' : 'cards'}`
+    + ` · <strong class="adv-basket-cost">${cost}</strong> · <span class="adv-basket-vp">+${vp} VP</span></p>`
     + `<p class="adv-basket-names">${names}</p></div>`
-    + (canClear ? `<button type="button" class="adv-basket-clear">Clear</button>` : '')
+    + (done ? `<p class="adv-basket-done">${done}</p>` : '')
+    + (buttons ? `<div class="adv-basket-buttons">${buttons}</div>` : '')
     + `</div>`;
 }
 
@@ -206,6 +252,11 @@ export function renderCardOverview(held: readonly HeldAdvance[], round: number, 
   return credits + `<p class="adv-overview-line adv-next-age" style="--chars: ${chars}"><span class="adv-overview-label">${escapeHtml(label)}</span>${parts}</p>`;
 }
 
+/** A two-colour card is drawn as the game draws it: listed under its first
+ *  colour, with a stripe in both colours and, when held, a fade from the
+ *  first colour to the second (the Strategy Explorer's banner). */
+const dual = (c: AdvanceCard) => c.groups[1] ? ` adv-dual adv-2-${c.groups[1]}` : '';
+
 const dot = (c: AdvanceCard) => c.groups[1]
   ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : '';
 
@@ -246,23 +297,4 @@ function cardBody(c: AdvanceCard, held?: HeldAdvance): string {
     }))
     + line('Cheaper with', (CREDITS_FROM.get(c.id) ?? []).map(({ from, n }) => credit(from.groups[0]!, `${from.name} −${n}`)))
     + (held ? `<p class="adv-ref-bought">Bought in round ${held.round}</p>` : '');
-}
-
-/** Every card as a collapsible row, in the order the player picked (by
- *  colour, cheapest first, unless chosen otherwise), so players can read what
- *  a card does. Prices are as in the picker. `open` names the rows to render
- *  expanded, so a live re-render keeps what the player opened. */
-export function renderAdvanceReference(held: readonly HeldAdvance[], open: ReadonlySet<string> = new Set(),
-  round = 0, sort: CardSort = 'group', dir: SortDir = DEFAULT_DIR[sort]): string {
-  const heldById = new Map(held.map(h => [h.id, h]));
-  const prices = priceList(held, round);
-  return sections(sort, dir, prices).map(({ group, cards }) => {
-    const rows = cards.map(c =>
-      `<details class="adv-ref-item adv-${c.groups[0]}" data-advance-ref="${c.id}"${open.has(c.id) ? ' open' : ''}>`
-      + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>`
-      + `<span class="adv-ref-meta">${priceHtml(c, prices.get(c.id)!)} · ${c.vp} VP</span>`
-      + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : '')
-      + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join('');
-    return section(group, `<div class="adv-ref-list">${rows}</div>`);
-  }).join('');
 }

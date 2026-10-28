@@ -6,7 +6,7 @@ import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
 import { SUPPORT_LINE } from './layout.js';
-import { CARD_SORTS, renderAdvancePicker, renderCardOverview, renderSortButton, renderAdvanceReference } from '../shared/advance-picker.js';
+import { CARD_SORTS, renderCardList, renderCardOverview, renderSortButton } from '../shared/advance-picker.js';
 import { renderCivSummary } from '../shared/civ-summary.js';
 import { renderCalamityReference } from '../shared/calamity-panel.js';
 import { sortCensusOrder, playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
@@ -266,11 +266,7 @@ export function renderCivFragment(
     </div>
     <div class="adv-overview" id="adv-overview">${renderCardOverview(state.advances[player.id] ?? [], game.current_round, { level: player.ast_level, civNumber: player.civ_number, expert })}</div>
     <section class="civ-section adv-picker" id="adv-picker">
-      ${renderAdvancePicker(state.advances[player.id] ?? [], game.current_round, { canBuy: game.cities_phase === 1 })}
-    </section>
-    <section class="civ-section adv-picker">
-      <h3>All cards</h3>
-      <div id="adv-ref">${renderAdvanceReference(state.advances[player.id] ?? [], new Set(), game.current_round)}</div>
+      ${renderCardList(state.advances[player.id] ?? [], game.current_round, { canBuy: game.cities_phase === 1, confirmed: player.cards_confirmed })}
     </section>
     ${SUPPORT_LINE}
   </div><!-- #tab-cards -->

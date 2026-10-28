@@ -60,11 +60,8 @@
     { id: "advanced-military", name: "Advanced Military", cost: 240, vp: 6, groups: ["civics"], credits: { science: 5, civics: 20 }, special: {} }
   ];
   var ADVANCE_BY_ID = new Map(ADVANCES.map((a) => [a.id, a]));
-  function creditChoiceOpen(held, round) {
-    return !held.choice || held.round === round;
-  }
-  function advanceLocked(held, round) {
-    return held.round < round;
+  function creditChoiceOpen(held, round, confirmed = 0) {
+    return !held.choice || held.round === round && confirmed < round;
   }
   function advanceTotals(ids, catalogue = ADVANCE_BY_ID) {
     const t = { adv_1vp: 0, adv_3vp: 0, adv_6vp: 0, adv_points: 0 };
@@ -267,37 +264,41 @@
     return [{ cards: [...ADVANCES].sort((a, b) => sign * primary(a, b) || byPrice(a, b) || byName(a, b)) }];
   }
   var section = (group, inner) => group ? `<section class="adv-group adv-${group}"><h4>${GROUP_LABEL[group]}</h4>${inner}</section>` : `<section class="adv-group">${inner}</section>`;
-  function renderAdvancePicker(held, round, { canBuy = true, drafts = new Map, gm = false, sort = "group", dir = DEFAULT_DIR[sort] } = {}) {
+  function pickSummary(held, hint) {
+    const t = advanceTotals(held.map((h) => h.id));
+    return `<p class="adv-pick-summary"><strong>${held.length}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${hint}</p>`;
+  }
+  function chooserFor(c, h, round, drafts, gm, confirmed = 0) {
+    if (!h || !c.choiceCredits || !(gm || creditChoiceOpen(h, round, confirmed)))
+      return "";
+    if (!h.choice || drafts.has(c.id))
+      return renderChooser(c, drafts.get(c.id) ?? h.choice ?? {});
+    return `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>`;
+  }
+  function renderAdvancePicker(held, round, { drafts = new Map, confirmed = 0 } = {}) {
     const heldById = new Map(held.map((h) => [h.id, h]));
-    const t = advanceTotals(heldById.keys());
-    const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${gm ? "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before." : canBuy ? "Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends." : "Cards are bought after calamities are resolved."}</p>`;
     const prices = priceList(held, round);
-    const groups = sections(sort, dir, prices).map(({ group, cards }) => {
+    const groups = sections("group", "asc", prices).map(({ group, cards }) => {
       const buttons = cards.map((c) => {
         const h = heldById.get(c.id);
-        const bought = h ? advanceLocked(h, round) : false;
-        const locked = bought && !gm;
-        const closed = !locked && !canBuy && !gm;
-        const cost = priceHtml(c, prices.get(c.id));
-        const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
-        const chooser = open && (!h.choice || drafts.has(c.id)) ? renderChooser(c, drafts.get(c.id) ?? h.choice ?? {}) : "";
-        const change = open && h.choice && !drafts.has(c.id) ? `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>` : "";
-        const cls = `adv-pick adv-${c.groups[0]}${h ? " adv-held" : ""}${locked ? " adv-locked" : ""}${closed ? " adv-closed" : ""}`;
-        return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}"${locked || closed ? ' aria-disabled="true"' : ""}>` + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-pick-meta">${cost} · ${c.vp} VP${h && h.round === round ? " · <em>new</em>" : ""}</span>` + `</button>` + change + chooser;
+        const cls = `adv-pick adv-${c.groups[0]}${dual(c)}${h ? " adv-held" : ""}`;
+        return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}">` + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-pick-meta">${priceHtml(c, prices.get(c.id))} · ${c.vp} VP${h && h.round === round ? " · <em>new</em>" : ""}</span>` + `</button>` + chooserFor(c, h, round, drafts, true);
       }).join("");
       return section(group, `<div class="adv-pick-grid">${buttons}</div>`);
     }).join("");
-    return summary + groups + basket(held, round, canBuy || gm);
+    return pickSummary(held, "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before.") + groups + basket(held, round, confirmed >= round ? { done: "Confirmed by the player", buttons: `<button type="button" class="adv-basket-reopen">Reopen</button>` } : { buttons: CLEAR });
   }
-  function basket(held, round, canClear) {
+  var CLEAR = `<button type="button" class="adv-basket-clear">Clear</button>`;
+  function basket(held, round, { buttons = "", done }) {
     const fresh = held.filter((h) => h.round === round && ADVANCE_BY_ID.has(h.id));
     if (!fresh.length)
       return "";
     const cost = purchaseCost(held, round).total;
     const vp = fresh.reduce((sum, h) => sum + ADVANCE_BY_ID.get(h.id).vp, 0);
     const names = fresh.map((h) => ADVANCE_BY_ID.get(h.id)).map((c) => `<span class="adv-basket-card adv-${c.groups[0]}">${escapeHtml(c.name)}</span>`).join(" · ");
-    return `<div class="adv-basket" role="status"><div class="adv-basket-text">` + `<p>Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>` + `<p class="adv-basket-names">${names}</p></div>` + (canClear ? `<button type="button" class="adv-basket-clear">Clear</button>` : "") + `</div>`;
+    return `<div class="adv-basket" role="status"><div class="adv-basket-text">` + `<p>${done ? "Bought" : "Buying"} this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · <span class="adv-basket-vp">+${vp} VP</span></p>` + `<p class="adv-basket-names">${names}</p></div>` + (done ? `<p class="adv-basket-done">${done}</p>` : "") + (buttons ? `<div class="adv-basket-buttons">${buttons}</div>` : "") + `</div>`;
   }
+  var dual = (c) => c.groups[1] ? ` adv-dual adv-2-${c.groups[1]}` : "";
   var dot = (c) => c.groups[1] ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : "";
   var CREDITS_FROM = (() => {
     const m = new Map;
@@ -324,23 +325,42 @@
         b.rerender();
         return;
       }
+      if (target.closest(".adv-basket-confirm")) {
+        if (!confirm("Confirm this round’s cards? After this only the GM can change them."))
+          return;
+        await mettPost(`/api/players/${b.playerId()}/advances/confirm`, { confirm: true });
+        return;
+      }
+      if (target.closest(".adv-basket-reopen")) {
+        await mettPost(`/api/players/${b.playerId()}/advances/confirm`, { confirm: false });
+        return;
+      }
       if (target.closest(".adv-basket-clear")) {
         await mettPost(`/api/players/${b.playerId()}/advances`, { ids: b.held().filter((h) => h.round !== b.round()).map((h) => h.id) });
         return;
       }
-      const btn = target.closest(".adv-pick");
-      if (!btn || btn.getAttribute("aria-disabled") === "true")
+      const btn = target.closest(".adv-pick, .adv-buy");
+      if (!btn)
         return;
+      e.preventDefault();
       const on = btn.getAttribute("aria-pressed") !== "true";
-      btn.setAttribute("aria-pressed", String(on));
-      btn.classList.toggle("adv-held", on);
-      const ids = Array.from(picker.querySelectorAll('.adv-pick[aria-pressed="true"]')).map((el) => el.dataset.advance);
+      flip(btn, on);
+      const toggles = Array.from(picker.querySelectorAll("[data-advance][aria-pressed]"));
+      const shown = new Set(toggles.map((el) => el.dataset.advance));
+      const ids = [
+        ...toggles.filter((el) => el.getAttribute("aria-pressed") === "true").map((el) => el.dataset.advance),
+        ...b.held().map((h) => h.id).filter((id) => !shown.has(id))
+      ];
       const res = await mettPost(`/api/players/${b.playerId()}/advances`, { ids });
-      if (!res.ok) {
-        btn.setAttribute("aria-pressed", String(!on));
-        btn.classList.toggle("adv-held", !on);
-      }
+      if (!res.ok)
+        flip(btn, !on);
     });
+  }
+  function flip(btn, on) {
+    btn.setAttribute("aria-pressed", String(on));
+    btn.closest(".adv-pick, .adv-ref-item")?.classList.toggle("adv-held", on);
+    if (btn.classList.contains("adv-buy"))
+      btn.textContent = on ? "✓ Buying" : "Buy";
   }
   async function onChooserClick(chooser, target, b) {
     const cardId = chooser.dataset.choiceFor;
@@ -698,7 +718,7 @@
     const renderGmCards = () => {
       if (!gmPicker || !gmState || !gmDialog?.open)
         return;
-      gmPicker.innerHTML = renderAdvancePicker(gmState.advances[gmPlayer] ?? [], gmState.game.current_round, { canBuy: true, gm: true, drafts: gmDrafts });
+      gmPicker.innerHTML = renderAdvancePicker(gmState.advances[gmPlayer] ?? [], gmState.game.current_round, { drafts: gmDrafts, confirmed: gmState.players.find((p) => p.id === gmPlayer)?.cards_confirmed ?? 0 });
     };
     if (gmDialog && gmPicker) {
       bindPicker(gmPicker, {
