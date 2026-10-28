@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'bun:test';
 import {
-  ADVANCES, ADVANCE_BY_ID, ADVANCE_GROUPS, advanceTotals, advanceCost, advanceFlags,
+  ADVANCES, ADVANCE_BY_ID, ADVANCE_GROUPS, advanceTotals, advanceCost, advanceFlags, colourCredits, priceList, purchaseCost,
   creditChoiceError, creditChoiceOpen,
   MILITARY_ID, WONDER_ID, SPECIAL_ABILITY_IDS, type AdvanceCard,
 } from '../src/shared/advances.js';
@@ -265,7 +265,7 @@ describe('setPlayerAdvances', () => {
 // ─── Calamity effects of held cards (src/shared/calamities.ts) ───────────────
 
 import {
-  CALAMITIES, CARD_CALAMITIES, calamityNamed, minorCalamitiesInPlay,
+  CALAMITIES, CALAMITY_ROLES, CARD_CALAMITIES, calamityNamed, minorCalamitiesInPlay, roleResult,
 } from '../src/shared/calamities.js';
 import { renderCalamityReference } from '../src/shared/calamity-panel.js';
 
@@ -329,6 +329,85 @@ describe('CARD_CALAMITIES', () => {
   });
 });
 
+describe('CALAMITY_ROLES: who suffers what, and what cards change', () => {
+  const cal = (name: string) => calamityNamed(name)!;
+  const plain = (html: string) => html.replace(/<[^>]+>/g, '');
+
+  it('every calamity has its roles; the ones with a beneficiary are those the rulebook names', () => {
+    expect(Object.keys(CALAMITY_ROLES).sort()).toEqual(CALAMITIES.map(c => c.name).sort());
+    expect(Object.keys(CALAMITY_ROLES).filter(n => CALAMITY_ROLES[n]!.beneficiary).sort()).toEqual(
+      ['Barbarian Hordes', 'Civil War', 'Epidemic', 'Iconoclasm and Heresy', 'Piracy', 'Treachery', 'Tyranny']);
+    expect(Object.keys(CALAMITY_ROLES).filter(n => CALAMITY_ROLES[n]!.secondary).sort()).toEqual(
+      ['Cyclone', 'Epidemic', 'Famine', 'Flood', 'Iconoclasm and Heresy', 'Piracy']);
+    // Tradeable ones: the trading partner, else most cities in stock. Non-tradeable: most cities in stock.
+    expect(CALAMITY_ROLES['Treachery']!.beneficiary).toMatch(/^the player who traded the calamity to you\. If you drew it yourself.*most cities in stock \(tie: most tokens in stock/);
+    expect(CALAMITY_ROLES['Civil War']!.beneficiary).toMatch(/^the player with the most cities in stock \(tie: most tokens in stock/);
+  });
+
+  it('each card effect has the role its text names, and a number only where the role has one', () => {
+    for (const [id, effects] of Object.entries(CARD_CALAMITIES)) {
+      for (const e of effects) {
+        const where = [id, e.calamity];
+        // Engineering's Earthquake: only the primary victim has a city destroyed.
+        const primaryOnly = e.text.startsWith('If you are the primary victim') || (id === 'engineering' && e.calamity === 'Earthquake');
+        expect([...where, e.role ?? null]).toEqual([...where,
+          primaryOnly ? 'primary' : e.text.startsWith('If you are a secondary victim') ? 'secondary' : null]);
+        if (e.delta !== undefined) {
+          const roles = CALAMITY_ROLES[calamityNamed(e.calamity)!.name]!;
+          expect([...where, roles[e.role ?? 'primary']?.n !== undefined]).toEqual([...where, true]);
+          // Help moves the number the victim's way: down, or up where more is better.
+          expect([...where, e.effect === 'help']).toEqual([...where, roles.higherIsBetter ? e.delta > 0 : e.delta < 0]);
+        }
+      }
+    }
+  });
+
+  it('Famine with Pottery and Agriculture: 10 damage as primary victim, none as a secondary one', () => {
+    const held = ['pottery', 'agriculture'];
+    expect(roleResult(cal('Famine'), 'primary', held)).toMatchObject({ text: 'Take 10 damage.', base: 10 });
+    expect(roleResult(cal('Famine'), 'secondary', held)!.text).toBe('No damage.');
+    expect(roleResult(cal('Famine'), 'secondary', held)!.changes.map(c => c.card)).toEqual(['pottery']);
+    const famine = plain(renderCalamityReference(held, 18).match(/data-calamity="Famine"[^]*?<\/details>/)![0]);
+    expect(famine).toContain('Primary victim: Take 10 damage. 10 −5 Pottery +5 Agriculture');
+    expect(famine).toContain('Secondary victims (3 players the primary victim picks): No damage. 5 −5 Pottery');
+  });
+
+  it('works out the rulebook examples and the special cases', () => {
+    // Tony holds Mysticism and Deism: Superstition reduces 1 city.
+    expect(roleResult(cal('Superstition'), 'primary', ['mysticism', 'deism'])!.text).toBe('Reduce 1 of your cities.');
+    // More kept is better: Music and Law keep 5 cities in Civil Disorder; Naval Warfare one less.
+    expect(roleResult(cal('Civil Disorder'), 'primary', ['music', 'law', 'naval-warfare'])!.text).toBe('Reduce all but 4 of your cities.');
+    expect(roleResult(cal('Civil War'), 'primary', ['democracy', 'military'])!.text).toMatch(/beyond 40 unit points/);
+    // Naval Warfare: one city less as primary victim, can't be picked as a secondary one.
+    expect(roleResult(cal('Piracy'), 'primary', ['naval-warfare'])!.text).toMatch(/turns 1 of your coastal cities/);
+    expect(roleResult(cal('Piracy'), 'secondary', ['naval-warfare'])!.immune).toBe('naval-warfare');
+    // Anatomy only as a secondary victim; Medicine either way.
+    expect(roleResult(cal('Epidemic'), 'primary', ['anatomy', 'medicine'])!.text).toBe('Take 10 damage.');
+    expect(roleResult(cal('Epidemic'), 'secondary', ['anatomy', 'medicine'])!.text).toBe('No damage.');
+    // Engineering: 5 less on the flood plain and on the coast.
+    expect(roleResult(cal('Flood'), 'primary', ['engineering'])!.text).toBe('With units on a flood plain: take 10 damage there. With none: no damage.');
+    // Effects that are not a number are listed under the role.
+    expect(roleResult(cal('Iconoclasm and Heresy'), 'secondary', ['theocracy'])!.notes.map(n => n.card)).toEqual(['theocracy']);
+    expect(roleResult(cal('Volcanic Eruption'), 'primary', ['engineering'])!.notes.map(n => n.card)).toEqual(['engineering']);
+    expect(roleResult(cal('Regression'), 'primary', ['fundamentalism'])!.text).toBe('Your A.S.T. marker moves 2 steps back.');
+    expect(roleResult(cal('Regression'), 'primary', ['library'])!.text).toBe('Your A.S.T. marker stays.');
+  });
+
+  it('the All calamities list shows the roles, the beneficiary and ✓ in the colour of the effect', () => {
+    const html = renderCalamityReference(['agriculture'], 18);
+    const famine = html.match(/data-calamity="Famine"[^]*?<\/details>/)![0];
+    expect(plain(famine)).toContain('Primary victim: Take 15 damage. 10 +5 Agriculture');
+    expect(famine).toContain('<li class="cal-hurt cal-held">');
+    // After the name: a red ✓ for a card that hurts, a green one for one that helps.
+    const summary = (html: string, name: string) => html.match(new RegExp(`data-calamity="${name}"[^]*?</summary>`))![0];
+    expect(summary(html, 'Famine')).toContain('<span class="cal-check cal-check-hurt"');
+    expect(summary(html, 'Famine')).not.toContain('cal-check-help');
+    expect(summary(renderCalamityReference(['agriculture', 'pottery'], 18), 'Famine').match(/cal-check-(help|hurt)/g)).toEqual(['cal-check-help', 'cal-check-hurt']);
+    expect(summary(html, 'Flood')).not.toContain('cal-check');
+    expect(plain(html.match(/data-calamity="Epidemic"[^]*?<\/details>/)![0])).toContain('Beneficiary: The player who traded the calamity to you.');
+  });
+});
+
 describe('CALAMITIES (Quick Chart)', () => {
   it('has one minor, one non-tradeable and one tradeable calamity in each of stacks 2-9', () => {
     expect(CALAMITIES).toHaveLength(24);
@@ -379,7 +458,7 @@ describe('renderCalamityReference', () => {
 
 import { advanceLocked, playerAdvanceChangeError } from '../src/shared/advances.js';
 import { ADVANCE_TEXT } from '../src/shared/advance-text.js';
-import { CARD_SORTS, DEFAULT_DIR, renderAdvancePicker, renderAdvanceReference, sortLabel, type CardSort, type SortDir } from '../src/shared/advance-picker.js';
+import { CARD_SORTS, DEFAULT_DIR, isReversible, nextAgeCardRequirement, renderAdvancePicker, renderCardOverview, renderAdvanceReference, sortLabel, type CardSort, type SortDir } from '../src/shared/advance-picker.js';
 
 describe('playerAdvanceChangeError', () => {
   const held = [{ id: 'pottery', round: 2 }, { id: 'masonry', round: 3 }];
@@ -422,8 +501,37 @@ describe('renderAdvancePicker: locks and the buying window', () => {
     const price = advanceCost('agriculture', held, 3);
     expect(price).toBeLessThan(ADVANCE_BY_ID.get('agriculture')!.cost);
     expect(renderAdvancePicker(held, 3)).toMatch(new RegExp(`data-advance="agriculture"[^]*?<s>${ADVANCE_BY_ID.get('agriculture')!.cost}</s> <strong class="adv-price">${price}</strong>`));
+    // Pottery bought this round gives no credit yet; only Library, which would
+    // take 40 off it, is cheaper than its print.
     const fresh = renderAdvancePicker([{ id: 'pottery', round: 3 }], 3);
-    expect(fresh).not.toContain('adv-price');
+    const cheaper = fresh.split('<button').filter(t => t.includes('<s>')).map(t => t.match(/data-advance="([^"]+)"/)![1]);
+    expect(cheaper).toEqual(['library']);
+  });
+
+  it('Library: 40 off one other card bought the same round, where it saves most', () => {
+    const now = [{ id: 'library', round: 3 }, { id: 'pottery', round: 3 }, { id: 'agriculture', round: 3 }];
+    const p = purchaseCost(now, 3);
+    expect(p.prices.get('agriculture')).toBe(120 - 40);
+    expect(p.prices.get('pottery')).toBe(60);
+    expect(p.total).toBe(220 + 60 + 80);
+    // Never below 0, and only on one card even if two are cheap (FAQ).
+    expect(purchaseCost([{ id: 'library', round: 3 }, { id: 'sculpture', round: 3 }, { id: 'urbanism', round: 3 }], 3).total).toBe(220 + 50 + 10);
+    // An unticked card shows what it adds: Library itself, net of the 40 it saves.
+    expect(priceList([{ id: 'agriculture', round: 3 }], 3).get('library')).toBe(220 - 40);
+    expect(renderAdvancePicker(now, 3)).toContain(`<strong class="adv-basket-cost">${p.total}</strong>`);
+  });
+
+  it('Anatomy: one science card printed under 100 free, combined with Library for the best saving', () => {
+    const now = [{ id: 'anatomy', round: 3 }, { id: 'astronavigation', round: 3 }, { id: 'coinage', round: 3 }];
+    const p = purchaseCost(now, 3);
+    expect(p.prices.get('coinage')).toBe(0); // the dearer one is the free one
+    expect(p.prices.get('astronavigation')).toBe(80);
+    expect(p.total).toBe(270 + 80);
+    // Not a science card, or 100 and up: no free card.
+    expect(purchaseCost([{ id: 'anatomy', round: 3 }, { id: 'pottery', round: 3 }, { id: 'medicine', round: 3 }], 3).total).toBe(270 + 60 + 140);
+    // Both: Anatomy frees Coinage, Library takes 40 off Medicine.
+    const both = purchaseCost([{ id: 'anatomy', round: 3 }, { id: 'library', round: 3 }, { id: 'coinage', round: 3 }, { id: 'medicine', round: 3 }], 3);
+    expect(both.total).toBe(270 + 220 + 0 + 100);
   });
 
   it('the basket sums this round\'s cards after credits; empty when none are new', () => {
@@ -498,12 +606,62 @@ describe('renderAdvancePicker: locks and the buying window', () => {
       const most = ids(render('vp', 'desc')).map(id => ADVANCE_BY_ID.get(id)!.vp);
       expect(most).toEqual([...most].sort((a, b) => b - a));
     }
-    expect(CARD_SORTS.map(s => sortLabel(s, DEFAULT_DIR[s])[0])).toEqual(['Colour', 'A–Z', 'Cost ↑', 'VP ↑']);
-    expect(CARD_SORTS.map(s => sortLabel(s, DEFAULT_DIR[s] === 'asc' ? 'desc' : 'asc')[0])).toEqual(['Colour', 'Z–A', 'Cost ↓', 'VP ↓']);
+    expect(CARD_SORTS.map(s => sortLabel(s, DEFAULT_DIR[s])[0])).toEqual(['Colour', 'A–Z', 'Cost ↑', 'VP ↑', 'VP/cost']);
+    expect(CARD_SORTS.map(s => sortLabel(s, DEFAULT_DIR[s] === 'asc' ? 'desc' : 'asc')[0])).toEqual(['Colour', 'Z–A', 'Cost ↓', 'VP ↓', 'VP/cost']);
     // A tile outside a colour section keeps its colour.
     expect(renderAdvancePicker(mine, 2, { sort: 'name' })).toContain('class="adv-pick adv-crafts');
     // All cards shows the price after credits, as the picker does.
     expect(renderAdvanceReference(mine, new Set(), 2)).toMatch(new RegExp(`data-advance-ref="agriculture"[^]*?<s>${ADVANCE_BY_ID.get('agriculture')!.cost}</s> <strong class="adv-price">${price('agriculture')}</strong>`));
+  });
+
+  it('VP per cost after credits: best value first, a free card before all; one way only', () => {
+    // Pottery from round 1: Agriculture costs 120 − 10 Crafts − 10 Pottery credit.
+    const mine = [{ id: 'pottery', round: 1 }];
+    const ids = (html: string) => [...html.matchAll(/data-advance="([^"]+)"/g)].map(m => m[1]!).filter(id => id !== 'pottery');
+    const value = (id: string) => { const p = advanceCost(id, mine, 2); return p ? ADVANCE_BY_ID.get(id)!.vp / p : Infinity; };
+    const best = ids(renderAdvancePicker(mine, 2, { sort: 'value' })).map(value);
+    expect(best).toEqual([...best].sort((a, b) => b - a));
+    // Only cheapest VP first: a direction is ignored.
+    expect(ids(renderAdvancePicker(mine, 2, { sort: 'value', dir: 'asc' }))).toEqual(ids(renderAdvancePicker(mine, 2, { sort: 'value' })));
+    expect(isReversible('value')).toBe(false);
+    expect(isReversible('group')).toBe(false);
+    expect(isReversible('cost')).toBe(true);
+    // A card made free by credits comes first: 70 Arts credits make Mysticism free.
+    const arts = ['sculpture', 'architecture', 'diplomacy', 'cultural-ascendancy', 'wonder-of-the-world'].map(id => ({ id, round: 1 }));
+    expect(priceList(arts, 2).get('mysticism')).toBe(0);
+    const first = [...renderAdvancePicker(arts, 2, { sort: 'value' }).matchAll(/data-advance="([^"]+)"/g)].map(m => m[1]!).find(id => !arts.some(h => h.id === id))!;
+    expect(priceList(arts, 2).get(first)).toBe(0);
+  });
+
+  it('the purchase bar names this round\'s cards and offers Clear while buying', () => {
+    const now = [{ id: 'pottery', round: 2 }, { id: 'agriculture', round: 3 }, { id: 'mysticism', round: 3 }];
+    const html = renderAdvancePicker(now, 3);
+    expect(html).toContain('<p class="adv-basket-names"><span class="adv-basket-card adv-crafts">Agriculture</span> · <span class="adv-basket-card adv-arts">Mysticism</span></p>');
+    expect(html).toContain('class="adv-basket-clear"');
+    expect(renderAdvancePicker(now, 3, { canBuy: false })).not.toContain('adv-basket-clear');
+  });
+
+  it('colour credit totals: from earlier rounds now, with this round\'s cards from next round', () => {
+    const now = [{ id: 'pottery', round: 1 }, { id: 'monument', round: 2, choice: { arts: 20 } }];
+    expect(colourCredits(now, 2)).toEqual({ science: 0, arts: 5, crafts: 10, civics: 0, religion: 0 });
+    expect(colourCredits(now)).toEqual({ science: 0, arts: 25, crafts: 20, civics: 0, religion: 10 });
+    const html = renderCardOverview(now, 2);
+    expect(html).toContain('<span class="adv-credit-total adv-arts"><span class="adv-credit-name">Arts</span> <strong>5</strong> → 25</span>');
+    expect(html).toContain('<span class="adv-credit-total adv-science"><span class="adv-credit-name">Science</span> <strong>0</strong></span>');
+  });
+
+  it('the next age\'s card requirement, counting this round\'s cards', () => {
+    const age = (level: number, expert = true) => nextAgeCardRequirement({ level, civNumber: 5, expert });
+    expect(age(15)).toMatchObject({ age: 'Middle Bronze Age', parts: [{ label: '5 VP in Advances' }] });
+    expect(age(45)!.age).toBe('Late Bronze Age');
+    expect(age(55)!.parts.map(p => p.label)).toEqual(['10 Adv <100', '38 VP']);
+    expect(age(70)!.age).toBe('Late Iron Age');
+    expect(age(75)).toBeNull();
+    expect(age(45, false)!.parts.map(p => p.label)).toEqual(['3 Adv ≥100']);
+    const held = [{ id: 'pottery', round: 1 }, { id: 'agriculture', round: 2 }];
+    const html = renderCardOverview(held, 2, { level: 15, civNumber: 5, expert: true });
+    expect(html).toContain('<span class="adv-overview-label">A.S.T. Req. Middle Bronze Age:</span><span class="adv-req adv-req-unmet">5 VP in Advances <span class="adv-req-have">(4)</span></span>');
+    expect(renderCardOverview([...held, { id: 'masonry', round: 2 }], 2, { level: 15, civNumber: 5, expert: true })).toContain('adv-req-met');
   });
 
   it('GM correction: nothing is locked or closed, and the hint says so', () => {

@@ -3,7 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 // Clicks in an advance card picker (renderAdvancePicker): tap a card to hold
-// or drop it, and the Monument / Written Record colour chooser. Shared by the
+// or drop it, Clear this round's purchase, and the Monument / Written Record
+// colour chooser. Shared by the
 // player's Cards tab and the GM's card correction dialog on the admin page.
 
 import type { CreditChoice, HeldAdvance } from '../shared/advances.js';
@@ -13,6 +14,8 @@ export interface PickerBinding {
   playerId: () => number;
   /** The cards that player holds in the latest state. */
   held: () => readonly HeldAdvance[];
+  /** The round being played. */
+  round: () => number;
   /** Re-render the picker from the latest state (keeps `drafts`). */
   rerender: () => void;
   /** Colour splits being edited, kept across live re-renders. */
@@ -31,6 +34,11 @@ export function bindPicker(picker: HTMLElement, b: PickerBinding): void {
       const id = change.dataset.choiceChange!;
       b.drafts.set(id, { ...(b.held().find(h => h.id === id)?.choice ?? {}) });
       b.rerender();
+      return;
+    }
+    if (target.closest('.adv-basket-clear')) {
+      // Untick everything bought this round; the broadcast re-renders.
+      await mettPost(`/api/players/${b.playerId()}/advances`, { ids: b.held().filter(h => h.round !== b.round()).map(h => h.id) });
       return;
     }
     const btn = target.closest<HTMLButtonElement>('.adv-pick');

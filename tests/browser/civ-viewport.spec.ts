@@ -60,11 +60,12 @@ test.describe('civ page with OS font scaling: no horizontal overflow', () => {
         );
         expect(h, `horizontal overflow on the ${tab} tab at ${scale}× font scale`).toBeLessThanOrEqual(0);
       }
-      // The page hides sideways overflow, so also check that every tab button
-      // is fully on screen (the tab bar wraps instead).
-      const offscreen = await page.locator('.civ-tab').evaluateAll(els =>
+      // The page hides sideways overflow, so also check that every tab and
+      // card sort button is fully on screen (those bars wrap instead).
+      await page.locator('#tab-btn-cards').click();
+      const offscreen = await page.locator('.civ-tab, .adv-sort-btn').evaluateAll(els =>
         els.filter(e => e.getBoundingClientRect().right > window.innerWidth + 0.5).map(e => e.textContent));
-      expect(offscreen, `tabs off-screen at ${scale}× font scale`).toEqual([]);
+      expect(offscreen, `buttons off-screen at ${scale}× font scale`).toEqual([]);
     });
   }
 });

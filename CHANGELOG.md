@@ -2,6 +2,20 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.4 — 2026-10-28
+
+### Added
+- Cards tab: the colour credit totals under the sort buttons (with what this round's cards add from next round), and an **A.S.T. Req.** line with the cards the next age asks for, counted against the player's cards, on one line at any phone font size.
+- Cards tab: a **VP/cost** sort, most VP for the money first (prices after credits). It goes one way only, like Colour.
+- The purchase bar names the cards being bought and has **Clear** to untick them all.
+- Prices, the purchase total and the VP/cost order count **Library** (40 off one other card bought the same round) and **Anatomy** (one science card printed under 100 free).
+- Calamities: each calamity spells out the primary victim, the secondary victims and the beneficiary, worked out for the player's cards (e.g. Famine with Pottery and Agriculture: 10 damage as primary victim, none as a secondary one).
+
+### Changed
+- The Calamities tab is one list; a ✓ after a calamity's name shows that the player's cards help (green) or hurt (red), and the ✓ on a card's line takes the same colour.
+- The sort buttons have no "Sort" label and fit one line on a phone.
+- The source code and Ko-fi line shows only on the Cards and Calamities tabs.
+
 ## 2.0.0-beta.3 — 2026-10-27
 
 ### Changed

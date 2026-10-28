@@ -19,11 +19,11 @@ import { playerTotalVp, makeScoreEntry, compareScores, sameScoreGroup, sortCensu
 import { AST_LEVELS, boardLevels, astNodeTitle, advancesOfTier, getAdvanceRequirement, renderAgeRequirementsList, type AstRequirement } from '../shared/ast-pure.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
-import { DEFAULT_DIR, isCardSort, isSortDir, renderAdvancePicker, renderAdvanceReference, sortLabel, type CardSort, type SortDir } from '../shared/advance-picker.js';
+import { DEFAULT_DIR, isCardSort, isReversible, isSortDir, renderAdvancePicker, renderCardOverview, renderAdvanceReference, sortLabel, type CardSort, type SortDir } from '../shared/advance-picker.js';
 import type { CreditChoice } from '../shared/advances.js';
 import { bindPicker } from './picker.js';
 import { renderCivSummary } from '../shared/civ-summary.js';
-import { renderCalamityPanel, renderCalamityReference } from '../shared/calamity-panel.js';
+import { renderCalamityReference } from '../shared/calamity-panel.js';
 
 const civEl = document.getElementById('civ-content');
 if (civEl) {
@@ -40,7 +40,7 @@ if (civEl) {
   let cardDir: SortDir = 'asc';
   try {
     const [sort, dir] = (localStorage.getItem(CARD_SORT_KEY) ?? '').split(':');
-    if (isCardSort(sort)) { cardSort = sort; cardDir = isSortDir(dir) ? dir : DEFAULT_DIR[sort]; }
+    if (isCardSort(sort)) { cardSort = sort; cardDir = isSortDir(dir) && isReversible(sort) ? dir : DEFAULT_DIR[sort]; }
   } catch { /* storage blocked: default order */ }
 
   bindTabs();
@@ -139,6 +139,7 @@ if (civEl) {
     bindPicker(picker, {
       playerId: () => playerId,
       held: () => lastState?.advances[playerId] ?? [],
+      round: () => lastState?.game.current_round ?? 0,
       rerender: () => { if (lastState) syncPicker(lastState.advances[playerId] ?? [], lastState.game); },
       drafts: choiceDrafts,
     });
@@ -148,7 +149,7 @@ if (civEl) {
       const sort = btn?.dataset.cardSort;
       if (!isCardSort(sort)) return;
       // The active button turns the order round; another starts in its usual direction.
-      if (sort === cardSort && sort !== 'group') cardDir = cardDir === 'asc' ? 'desc' : 'asc';
+      if (sort === cardSort && isReversible(sort)) cardDir = cardDir === 'asc' ? 'desc' : 'asc';
       else { cardSort = sort; cardDir = DEFAULT_DIR[sort]; }
       try { localStorage.setItem(CARD_SORT_KEY, `${cardSort}:${cardDir}`); } catch { /* private window: this visit only */ }
       showCardSort();
@@ -209,13 +210,14 @@ if (civEl) {
     syncCensus(player, census, submitted, revealed, citiesPhase, state);
     syncCity(census, cityCountSubmitted, citiesPhase, revealed);
     syncPicker(state.advances[playerId] ?? [], game);
+    const overview = document.getElementById('adv-overview');
+    if (overview) overview.innerHTML = renderCardOverview(state.advances[playerId] ?? [], game.current_round,
+      { level: player.ast_level, civNumber: player.civ_number, expert });
     syncCalamities((state.advances[playerId] ?? []).map(h => h.id), state.players.length);
     syncAst(player, census, game, state, expert);
   }
 
   function syncCalamities(heldIds: string[], playerCount: number): void {
-    const cal = document.getElementById('cal-panel');
-    if (cal) cal.innerHTML = renderCalamityPanel(heldIds);
     rerenderKeepingOpen('cal-ref', 'calamity', open => renderCalamityReference(heldIds, playerCount, open));
   }
 

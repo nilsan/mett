@@ -1245,7 +1245,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   gap: 0.4rem;
 }
 
-.civ-body > * { min-width: 0; } /* prevent grid items from expanding beyond their track */
+.civ-body > *, .civ-panel > * { min-width: 0; } /* prevent grid items (also a tab panel's sections) from expanding beyond their track */
 
 /* Tab panels take no box of their own: the open panel's sections drop straight
    into the .civ-body grid, so the layout per tab matches the old page. */
@@ -1291,12 +1291,30 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 /* Cards tab: every advance as a tap-to-toggle button, grouped by colour. */
 .adv-picker { grid-column: 1 / -1; }
+/* Above the cards: colour credit totals and the next age's card requirement. */
+.adv-overview { grid-column: 1 / -1; display: grid; gap: 0.3rem; }
+.adv-overview-line { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.6rem; font-size: 0.88rem; }
+/* The five colour totals in one row at any font size: name over number. */
+.adv-credit-totals { margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.25rem; text-align: center; font-size: 0.88rem; }
+.adv-credit-name { display: block; font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; }
+.adv-overview-label { color: var(--mett-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; }
+.adv-credit-total { color: var(--grp); white-space: nowrap; line-height: 1.25; }
+.adv-req { white-space: nowrap; }
+/* One line on a phone at any OS font size: the text scales with the screen
+   width once the font would push it onto a second line. */
+.adv-next-age { flex-wrap: nowrap; white-space: nowrap; gap: 0.35rem; font-size: min(0.88rem, 3.3vw); }
+.adv-next-age .adv-overview-label { font-size: inherit; text-transform: none; letter-spacing: 0; }
+.adv-req-met { color: var(--mett-success); }
+.adv-req-unmet { color: var(--mett-danger); }
+.adv-req-have { color: var(--mett-muted); }
 /* Card order: by colour (default), A–Z, cost after credits, VP. */
-.adv-sort { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
-.adv-sort-label { color: var(--mett-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; margin-right: 0.2rem; }
+.adv-sort { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+/* All five on one line on a phone (up to large OS fonts): they share the width. */
 .adv-sort-btn {
+  flex: 1 1 auto;
+  white-space: nowrap;
   margin: 0;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.3rem;
   min-height: 2.4rem;
   border: 0.0625rem solid var(--mett-border);
   border-radius: var(--radius-row);
@@ -1318,6 +1336,12 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   background: var(--mett-bg);
   border-top: 0.0625rem solid var(--mett-accent);
 }
+.adv-basket { display: flex; align-items: center; gap: 0.6rem; }
+.adv-basket-text { flex: 1; min-width: 0; }
+.adv-basket p { margin: 0; }
+.adv-basket-names { font-size: 0.82rem; }
+.adv-basket-card { color: var(--grp); font-weight: 700; }
+.adv-basket-clear { margin: 0; padding: 0.4rem 0.9rem; min-height: 2.6rem; width: auto; flex: none; background: var(--mett-surface2); border: 0.0625rem solid var(--mett-border); color: var(--mett-text); font-size: 0.85rem; }
 .adv-pick-hint { margin: -0.3rem 0 0.5rem; color: var(--mett-muted); font-size: 0.82rem; }
 .adv-group { --grp: var(--mett-muted); margin-bottom: 0.6rem; }
 .adv-group h4 { margin: 0 0 0.3rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--grp); }
@@ -1378,16 +1402,21 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    calamity in the game as tap-to-open rows. */
 .cal-panel { grid-column: 1 / -1; }
 .cal-none { margin: 0; color: var(--mett-muted); }
-.cal-group { margin-bottom: 0.6rem; }
 .cal-panel h4 { margin: 0 0 0.25rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--mett-text); }
-.cal-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
-.cal-group li { display: flex; gap: 0.4rem; align-items: baseline; margin: 0; padding: 0.3rem 0.5rem; border-radius: var(--radius-row); background: var(--mett-surface2); font-size: 0.88rem; }
 .cal-mark { font-weight: 800; flex: 0 0 1em; text-align: center; }
 .cal-help .cal-mark { color: var(--mett-success); }
 .cal-hurt .cal-mark { color: var(--mett-danger); }
-.cal-help { border-left: 0.25rem solid var(--mett-success); }
-.cal-hurt { border-left: 0.25rem solid var(--mett-danger); }
-.cal-card { color: var(--mett-muted); font-size: 0.78rem; white-space: nowrap; }
+/* Who suffers what: one line per victim role, as it works out for this
+   player; the cards that change the number in their help/hurt colour. */
+.cal-roles { display: grid; gap: 0.25rem; margin: 0 0.6rem 0.45rem 2.2rem; }
+.cal-ref-item .cal-roles p { margin: 0; font-size: 0.88rem; }
+.cal-role-name { font-weight: 700; }
+.cal-who { font-weight: 400; color: var(--mett-muted); }
+.cal-calc { color: var(--mett-muted); font-size: 0.8rem; white-space: nowrap; }
+.cal-calc .cal-help, .cal-role > .cal-help { color: var(--mett-success); }
+.cal-calc .cal-hurt { color: var(--mett-danger); }
+.cal-role-note { display: flex; gap: 0.4rem; align-items: baseline; }
+.cal-ref-item p.cal-chart { color: var(--mett-muted); font-size: 0.82rem; }
 .cal-ref-list { display: grid; gap: 0.25rem; margin-bottom: 0.7rem; }
 .cal-ref-item { margin: 0; border: 0; border-radius: var(--radius-row); background: var(--mett-surface2); }
 .cal-ref-item summary { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.55rem 0.6rem; line-height: 1.2; }
@@ -1401,10 +1430,15 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .cal-mods li.cal-held { color: var(--mett-text); }
 .cal-mod-card { font-weight: 700; }
 .cal-check { margin-left: auto; color: var(--mett-success); font-weight: 800; }
+.cal-hurt .cal-check { color: var(--mett-danger); }
+/* After a calamity's name: the player's cards help (green) or hurt (red). */
+.cal-ref-name + .cal-check, .cal-check + .cal-check { margin-left: 0; }
+.cal-check-help { color: var(--mett-success); }
+.cal-check-hurt { color: var(--mett-danger); }
 /* All cards on the Cards tab: tap-to-open rows in the group colours. */
 .adv-ref-list { display: grid; gap: 0.25rem; }
 .adv-ref-item { margin: 0; border: 0; border-left: 0.25rem solid var(--grp); border-radius: var(--radius-row); background: var(--mett-surface2); }
-.adv-ref-item summary { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.55rem 0.6rem; line-height: 1.2; }
+.adv-ref-item summary { display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; align-items: baseline; padding: 0.55rem 0.6rem; line-height: 1.2; }
 .adv-ref-name { font-weight: 700; display: flex; align-items: center; gap: 0.3rem; }
 .adv-ref-meta { margin-left: auto; color: var(--mett-muted); font-size: 0.8rem; white-space: nowrap; }
 .adv-ref-held { color: var(--grp); font-weight: 800; }
@@ -2394,7 +2428,8 @@ body:has(.civ-page) { overflow-x: clip; }
 }
 .default-pwd-nag strong { color: var(--mett-fg); }
 
-/* Quiet credit line at the very end of the admin and player pages. */
+/* Quiet credit line at the very end of the admin page and of the
+   player page's Cards and Calamities tabs. */
 .support-line {
   margin: 1.5rem 0 0.5rem;
   text-align: center;
@@ -2402,6 +2437,7 @@ body:has(.civ-page) { overflow-x: clip; }
   color: var(--mett-muted);
 }
 .support-line a { color: var(--mett-muted); }
+.civ-panel > .support-line { grid-column: 1 / -1; }
 
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 

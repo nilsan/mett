@@ -58,7 +58,7 @@ import { _setBackupDir } from '../src/services/backup.js';
 import { LIA_THRESHOLD, MAX_CITIES, MAX_POPULATION } from '../src/models/ast.js';
 import api from '../src/routes/api.js';
 import {
-  ADVANCES, ADVANCE_BY_ID, ADVANCE_GROUPS, MILITARY_ID, WONDER_ID, advanceCost, advanceFlags, advanceTotals,
+  ADVANCES, ADVANCE_BY_ID, ADVANCE_GROUPS, MILITARY_ID, WONDER_ID, advanceFlags, advanceTotals, purchaseCost,
   type CreditChoice, type HeldAdvance,
 } from '../src/shared/advances.js';
 import pages from '../src/routes/pages.js';
@@ -173,13 +173,14 @@ function randomChoice(total: number, random: () => number): CreditChoice {
 }
 
 /** Phase 12: each empire spends this round's trade (plus what it saved) on
- *  cards, at the price after credits, as a player would from their page. */
+ *  cards, at the price its page shows: after credits, with Library and
+ *  Anatomy counted (what ticking the card adds to this round's total). */
 async function buyCards(empires: Empire[], random: () => number, round: number): Promise<void> {
   for (const [i, e] of empires.entries()) {
     let budget = e.treasury + Math.round(e.skill * (20 + e.cities * 15 + random() * 50));
     e.spent = 0;
     const before = e.held.slice();
-    const price = (id: string) => advanceCost(id, before, round);
+    const price = (id: string) => purchaseCost([...e.held, { id, round }], round).total - purchaseCost(e.held, round).total;
     for (;;) {
       const owned = new Set(e.held.map(h => h.id));
       const affordable = ADVANCES.filter(c => !owned.has(c.id) && price(c.id) <= budget);
@@ -191,8 +192,8 @@ async function buyCards(empires: Empire[], random: () => number, round: number):
         ?? affordable.map(c => ({ c, score: (price(c.id) / c.vp) * (0.6 + random() * 0.8) }))
           .sort((a, b) => a.score - b.score)[0]!.c;
       budget -= price(want.id);
-      e.spent += price(want.id);
       e.held.push({ id: want.id, round });
+      e.spent = purchaseCost(e.held, round).total;
       if (random() < 0.3) break; // saving up
     }
     e.treasury = Math.round(budget * 0.5);

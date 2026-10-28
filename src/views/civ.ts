@@ -6,9 +6,9 @@ import type { FullState, PlayerRow, CensusRow } from '../db.js';
 import { getCivAstProfile } from '../civs.js';
 import { escapeHtml } from '../shared/html.js';
 import { SUPPORT_LINE } from './layout.js';
-import { CARD_SORTS, renderAdvancePicker, renderSortButton, renderAdvanceReference } from '../shared/advance-picker.js';
+import { CARD_SORTS, renderAdvancePicker, renderCardOverview, renderSortButton, renderAdvanceReference } from '../shared/advance-picker.js';
 import { renderCivSummary } from '../shared/civ-summary.js';
-import { renderCalamityPanel, renderCalamityReference } from '../shared/calamity-panel.js';
+import { renderCalamityReference } from '../shared/calamity-panel.js';
 import { sortCensusOrder, playerTotalVp, compareScores, sameScoreGroup, makeScoreEntry } from '../models/game.js';
 import pkg from '../../package.json' with { type: 'json' };
 const V = `?v=${pkg.version}`;
@@ -262,9 +262,9 @@ export function renderCivFragment(
 
   <div class="civ-panel" id="tab-cards" role="tabpanel" aria-labelledby="tab-btn-cards" hidden>
     <div class="adv-sort" role="toolbar" aria-label="Sort cards">
-      <span class="adv-sort-label">Sort</span>
       ${CARD_SORTS.map(s => renderSortButton(s, 'group', 'asc')).join('')}
     </div>
+    <div class="adv-overview" id="adv-overview">${renderCardOverview(state.advances[player.id] ?? [], game.current_round, { level: player.ast_level, civNumber: player.civ_number, expert })}</div>
     <section class="civ-section adv-picker" id="adv-picker">
       ${renderAdvancePicker(state.advances[player.id] ?? [], game.current_round, { canBuy: game.cities_phase === 1 })}
     </section>
@@ -272,6 +272,7 @@ export function renderCivFragment(
       <h3>All cards</h3>
       <div id="adv-ref">${renderAdvanceReference(state.advances[player.id] ?? [], new Set(), game.current_round)}</div>
     </section>
+    ${SUPPORT_LINE}
   </div><!-- #tab-cards -->
 
   <div class="civ-panel" id="tab-ast" role="tabpanel" aria-labelledby="tab-btn-ast" hidden>
@@ -328,13 +329,10 @@ export function renderCivFragment(
 
   <div class="civ-panel" id="tab-calamities" role="tabpanel" aria-labelledby="tab-btn-calamities" hidden>
     <section class="civ-section cal-panel">
-      <h3>Your cards</h3>
-      <div id="cal-panel">${renderCalamityPanel((state.advances[player.id] ?? []).map(h => h.id))}</div>
-    </section>
-    <section class="civ-section cal-panel">
       <h3>All calamities</h3>
       <div id="cal-ref">${renderCalamityReference((state.advances[player.id] ?? []).map(h => h.id), state.players.length)}</div>
     </section>
+    ${SUPPORT_LINE}
   </div><!-- #tab-calamities -->
 
   </div><!-- .civ-body -->
@@ -352,7 +350,6 @@ export function renderCiv(
   const player = state.players.find(p => p.civ_slug === slug)!;
   return `<script>window.PLAYER_ID = ${player.id};</script>
 ${fragment}
-${SUPPORT_LINE}
 <script src="/js/civ.js${V}"></script>
 `;
 }

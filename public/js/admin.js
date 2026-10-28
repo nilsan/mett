@@ -82,26 +82,161 @@
     }
     return t;
   }
+  function colourCredits(held, round = Infinity, catalogue = ADVANCE_BY_ID) {
+    const total = { science: 0, arts: 0, crafts: 0, civics: 0, religion: 0 };
+    for (const h of held) {
+      const card = catalogue.get(h.id);
+      if (!card || h.round >= round)
+        continue;
+      for (const g of ADVANCE_GROUPS)
+        total[g] += (card.credits[g] ?? 0) + (h.choice?.[g] ?? 0);
+    }
+    return total;
+  }
   function advanceCost(cardId, held, round, catalogue = ADVANCE_BY_ID) {
     const card = catalogue.get(cardId);
     if (!card)
       throw new Error(`Unknown advance: ${cardId}`);
-    const groupCredit = {};
+    const others = held.filter((h) => h.id !== cardId);
+    const groupCredit = colourCredits(others, round, catalogue);
     let special = 0;
-    for (const h of held) {
-      if (h.round >= round || h.id === cardId)
-        continue;
-      const from = catalogue.get(h.id);
-      if (!from)
-        continue;
-      for (const g of ADVANCE_GROUPS) {
-        groupCredit[g] = (groupCredit[g] ?? 0) + (from.credits[g] ?? 0) + (h.choice?.[g] ?? 0);
-      }
-      special += from.special[cardId] ?? 0;
+    for (const h of others) {
+      if (h.round < round)
+        special += catalogue.get(h.id)?.special[cardId] ?? 0;
     }
-    const bestGroup = Math.max(0, ...card.groups.map((g) => groupCredit[g] ?? 0));
+    const bestGroup = Math.max(0, ...card.groups.map((g) => groupCredit[g]));
     return Math.max(0, card.cost - bestGroup - special);
   }
+  var LIBRARY_ID = "library";
+  var ANATOMY_ID = "anatomy";
+  var LIBRARY_DISCOUNT = 40;
+  var ANATOMY_FREE_BELOW = 100;
+  function purchaseCost(held, round, catalogue = ADVANCE_BY_ID) {
+    const fresh = held.filter((h) => h.round === round && catalogue.has(h.id)).map((h) => h.id);
+    const prices = new Map(fresh.map((id) => [id, advanceCost(id, held, round, catalogue)]));
+    const anatomyPicks = fresh.includes(ANATOMY_ID) ? fresh.filter((id) => id !== ANATOMY_ID && catalogue.get(id).groups.includes("science") && catalogue.get(id).cost < ANATOMY_FREE_BELOW) : [];
+    let best = { saving: 0, free: undefined, library: undefined };
+    for (const free of [undefined, ...anatomyPicks]) {
+      let saving = free ? prices.get(free) : 0;
+      let library;
+      if (fresh.includes(LIBRARY_ID)) {
+        for (const id of fresh) {
+          if (id === LIBRARY_ID || id === free)
+            continue;
+          if (!library || prices.get(id) > prices.get(library))
+            library = id;
+        }
+        if (library)
+          saving += Math.min(LIBRARY_DISCOUNT, prices.get(library));
+      }
+      if (saving > best.saving)
+        best = { saving, free, library };
+    }
+    if (best.free)
+      prices.set(best.free, 0);
+    if (best.library)
+      prices.set(best.library, Math.max(0, prices.get(best.library) - LIBRARY_DISCOUNT));
+    return { total: [...prices.values()].reduce((a, b) => a + b, 0), prices };
+  }
+  function priceList(held, round) {
+    const now = purchaseCost(held, round);
+    const out = new Map;
+    for (const c of ADVANCES) {
+      const h = held.find((x) => x.id === c.id);
+      if (h)
+        out.set(c.id, h.round < round ? c.cost : now.prices.get(c.id) ?? c.cost);
+      else
+        out.set(c.id, purchaseCost([...held, { id: c.id, round }], round).total - now.total);
+    }
+    return out;
+  }
+
+  // src/shared/calamities.ts
+  var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  var TRADED_BENEFICIARY = "the player who traded the calamity to you. If you drew it yourself, or no one can tell who traded it: the player with the most cities in stock (tie: most tokens in stock, then A.S.T. ranking).";
+  var STOCK_BENEFICIARY = "the player with the most cities in stock (tie: most tokens in stock, then A.S.T. ranking). Never the primary victim.";
+  var CALAMITY_ROLES = {
+    Tempest: { primary: { say: () => "Take 2 damage in total from coastal areas of your choice and lose 5 treasury tokens." } },
+    "Squandered Wealth": { primary: { say: () => "Lose 10 treasury tokens." } },
+    "City Riots": { primary: { say: () => "Reduce 1 of your cities and lose 5 treasury tokens." } },
+    "City in Flames": { primary: { say: () => "Destroy 1 of your cities, or pay 10 treasury tokens to prevent it." } },
+    "Tribal Conflict": { primary: { say: () => "Take 5 damage." } },
+    "Minor Uprising": { primary: { say: () => "Destroy 1 of your cities." } },
+    Banditry: { primary: { say: () => "Discard 2 commodity cards of your choice; pay 4 treasury tokens per card to keep it." } },
+    "Coastal Migration": { primary: { say: () => "Destroy 1 of your coastal cities and lose 5 treasury tokens." } },
+    "Volcanic Eruption": {
+      primary: { say: () => "With a city on a volcano: all units in the area(s) the volcano touches are destroyed. Otherwise an Earthquake: destroy 1 of your cities and reduce 1 city next to it by land or water." },
+      others: "Their units in the volcano’s area(s) are destroyed too. An Earthquake may reduce one of their cities next to the destroyed one."
+    },
+    Treachery: {
+      primary: { n: 1, say: (n) => `The beneficiary annexes ${n} of your cities.` },
+      beneficiary: `${TRADED_BENEFICIARY} They pick the cities and annex them.`
+    },
+    Famine: {
+      primary: { n: 10, say: (n) => n > 0 ? `Take ${n} damage.` : "No damage. Famine still hits the secondary victims." },
+      secondary: { n: 5, who: "3 players the primary victim picks", say: (n) => n > 0 ? `Take ${n} damage.` : "No damage." }
+    },
+    "Slave Revolt": {
+      primary: { n: 2, say: (n) => n > 0 ? `An extra city support check with your support rate raised by ${n}. Reduce cities until they are supported.` : "An extra city support check at your normal support rate. Reduce cities until they are supported." }
+    },
+    Flood: {
+      primary: { n: 15, say: (n) => {
+        const coastal = Math.max(0, n - 10);
+        return `With units on a flood plain: ${n > 0 ? `take ${n} damage there` : "no damage"}. With none: ${coastal > 0 ? `take ${coastal} damage in total from coastal areas` : "no damage"}.`;
+      } },
+      secondary: { n: 5, who: "every other player with units on the same flood plain", say: (n) => n > 0 ? `Take ${n} damage from that flood plain.` : "No damage." }
+    },
+    Superstition: {
+      primary: { n: 3, say: (n) => n > 0 ? `Reduce ${n} of your cities.` : "No city is reduced." }
+    },
+    "Civil War": {
+      primary: { n: 35, say: (n) => `The beneficiary annexes all your units beyond ${n} unit points; you pick them, in neighbouring areas. With ${n} unit points or less: no Civil War.` },
+      beneficiary: `${STOCK_BENEFICIARY} They annex the units.`,
+      higherIsBetter: true
+    },
+    "Barbarian Hordes": {
+      primary: { n: 15, say: (n) => `${n} barbarian tokens attack one of your cities and keep attacking your units while they exceed a population limit.` },
+      beneficiary: `${TRADED_BENEFICIARY} They pick the city (a wilderness city if possible) and move the barbarians.`
+    },
+    Cyclone: {
+      primary: { n: 3, say: (n) => n > 0 ? `Reduce ${n} of your cities next to the open sea area with the most of your cities beside it.` : "No city is reduced." },
+      secondary: { n: 2, who: "every other player with cities next to that sea area", say: (n) => n > 0 ? `Reduce ${n} of your cities next to it.` : "No city is reduced." }
+    },
+    Epidemic: {
+      primary: { n: 15, say: (n) => n > 0 ? `Take ${n} damage.` : "No damage." },
+      secondary: { n: 10, who: "2 other players the primary victim picks, not the beneficiary", say: (n) => n > 0 ? `Take ${n} damage.` : "No damage." },
+      beneficiary: `${TRADED_BENEFICIARY} They can’t be picked as a secondary victim.`
+    },
+    Tyranny: {
+      primary: { n: 15, say: (n) => `The beneficiary annexes ${n} of your unit points, in neighbouring areas.` },
+      beneficiary: `${STOCK_BENEFICIARY} They pick the units and annex them.`
+    },
+    "Civil Disorder": {
+      primary: { n: 3, say: (n) => `Reduce all but ${n} of your cities.` },
+      higherIsBetter: true
+    },
+    Corruption: {
+      primary: { n: 10, say: (n) => n > 0 ? `Discard commodity cards with a face value of at least ${n}.` : "Nothing to discard." }
+    },
+    "Iconoclasm and Heresy": {
+      primary: { n: 4, say: (n) => n > 0 ? `Reduce ${n} of your cities.` : "No city is reduced. It still hits the secondary victims." },
+      secondary: { n: 1, who: "2 other players the primary victim picks, not the beneficiary", say: (n) => n > 0 ? `Reduce ${n} of your cities.` : "No city is reduced." },
+      beneficiary: `${TRADED_BENEFICIARY} They can’t be picked as a secondary victim.`
+    },
+    Regression: {
+      primary: { n: 1, say: (n) => n > 0 ? `Your A.S.T. marker moves ${plural(n, "step")} back.` : "Your A.S.T. marker stays." }
+    },
+    Piracy: {
+      primary: { n: 2, say: (n) => n > 0 ? `The beneficiary turns ${n} of your coastal cities into pirate cities.` : "None of your cities becomes a pirate city." },
+      secondary: { who: "2 other players the primary victim picks, not the beneficiary", say: () => "1 of your coastal cities becomes a pirate city." },
+      beneficiary: `${TRADED_BENEFICIARY} They pick your cities and can’t be picked as a secondary victim.`
+    }
+  };
+
+  // src/civs.ts
+  var LATE_BRONZE_BASIC = new Set([1, 2]);
+  var LATE_BRONZE_EXPERT = new Set([1, 2, 10, 13]);
+  var LATE_START = new Set([5, 7, 13, 18]);
 
   // src/shared/advance-picker.ts
   var GROUP_LABEL = {
@@ -117,21 +252,18 @@
     const rows = ADVANCE_GROUPS.map((g) => `<div class="adv-choice-row adv-${g}">` + `<span class="adv-choice-group">${GROUP_LABEL[g]}</span>` + `<button type="button" class="adv-btn" data-choice-step="-5" data-group="${g}" aria-label="5 less ${GROUP_LABEL[g]}">−</button>` + `<output class="adv-choice-val" data-group="${g}">${values[g] ?? 0}</output>` + `<button type="button" class="adv-btn" data-choice-step="5" data-group="${g}" aria-label="5 more ${GROUP_LABEL[g]}">+</button>` + `</div>`).join("");
     return `<div class="adv-choice" data-choice-for="${card.id}" data-total="${total}">` + `<p class="adv-choice-intro"><strong>${escapeHtml(card.name)}</strong>: choose the colours of ${total} extra credits. You keep them all game.</p>` + rows + `<button type="button" class="btn-submit adv-choice-save"${sum === total ? "" : " disabled"}>Save <span class="adv-choice-sum">${sum}</span> of ${total}</button>` + `</div>`;
   }
-  var DEFAULT_DIR = { group: "asc", name: "asc", cost: "asc", vp: "asc" };
+  var DEFAULT_DIR = { group: "asc", name: "asc", cost: "asc", vp: "asc", value: "desc" };
+  var isReversible = (s) => s !== "group" && s !== "value";
   var groupCards = (g) => ADVANCES.filter((c) => c.groups[0] === g).sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
-  function cardPrice(c, held, round) {
-    const h = held.find((x) => x.id === c.id);
-    return h && advanceLocked(h, round) ? c.cost : advanceCost(c.id, held, round);
-  }
   var priceHtml = (c, price) => price < c.cost ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
-  function sections(sort, dir, held, round) {
+  function sections(sort, dir, price) {
     if (sort === "group")
       return ADVANCE_GROUPS.map((g) => ({ group: g, cards: groupCards(g) }));
-    const price = new Map(ADVANCES.map((c) => [c.id, cardPrice(c, held, round)]));
     const byName = (a, b) => a.name.localeCompare(b.name);
     const byPrice = (a, b) => price.get(a.id) - price.get(b.id);
-    const primary = sort === "name" ? byName : sort === "cost" ? byPrice : (a, b) => a.vp - b.vp;
-    const sign = dir === "desc" ? -1 : 1;
+    const byValue = (a, b) => a.vp * price.get(b.id) - b.vp * price.get(a.id);
+    const primary = sort === "name" ? byName : sort === "cost" ? byPrice : sort === "vp" ? (a, b) => a.vp - b.vp : byValue;
+    const sign = (isReversible(sort) ? dir : DEFAULT_DIR[sort]) === "desc" ? -1 : 1;
     return [{ cards: [...ADVANCES].sort((a, b) => sign * primary(a, b) || byPrice(a, b) || byName(a, b)) }];
   }
   var section = (group, inner) => group ? `<section class="adv-group adv-${group}"><h4>${GROUP_LABEL[group]}</h4>${inner}</section>` : `<section class="adv-group">${inner}</section>`;
@@ -139,13 +271,14 @@
     const heldById = new Map(held.map((h) => [h.id, h]));
     const t = advanceTotals(heldById.keys());
     const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${gm ? "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before." : canBuy ? "Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends." : "Cards are bought after calamities are resolved."}</p>`;
-    const groups = sections(sort, dir, held, round).map(({ group, cards }) => {
+    const prices = priceList(held, round);
+    const groups = sections(sort, dir, prices).map(({ group, cards }) => {
       const buttons = cards.map((c) => {
         const h = heldById.get(c.id);
         const bought = h ? advanceLocked(h, round) : false;
         const locked = bought && !gm;
         const closed = !locked && !canBuy && !gm;
-        const cost = priceHtml(c, cardPrice(c, held, round));
+        const cost = priceHtml(c, prices.get(c.id));
         const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
         const chooser = open && (!h.choice || drafts.has(c.id)) ? renderChooser(c, drafts.get(c.id) ?? h.choice ?? {}) : "";
         const change = open && h.choice && !drafts.has(c.id) ? `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>` : "";
@@ -154,15 +287,16 @@
       }).join("");
       return section(group, `<div class="adv-pick-grid">${buttons}</div>`);
     }).join("");
-    return summary + groups + basket(held, round);
+    return summary + groups + basket(held, round, canBuy || gm);
   }
-  function basket(held, round) {
+  function basket(held, round, canClear) {
     const fresh = held.filter((h) => h.round === round && ADVANCE_BY_ID.has(h.id));
     if (!fresh.length)
       return "";
-    const cost = fresh.reduce((sum, h) => sum + advanceCost(h.id, held, round), 0);
+    const cost = purchaseCost(held, round).total;
     const vp = fresh.reduce((sum, h) => sum + ADVANCE_BY_ID.get(h.id).vp, 0);
-    return `<p class="adv-basket" role="status">Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>`;
+    const names = fresh.map((h) => ADVANCE_BY_ID.get(h.id)).map((c) => `<span class="adv-basket-card adv-${c.groups[0]}">${escapeHtml(c.name)}</span>`).join(" · ");
+    return `<div class="adv-basket" role="status"><div class="adv-basket-text">` + `<p>Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>` + `<p class="adv-basket-names">${names}</p></div>` + (canClear ? `<button type="button" class="adv-basket-clear">Clear</button>` : "") + `</div>`;
   }
   var dot = (c) => c.groups[1] ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : "";
   var CREDITS_FROM = (() => {
@@ -188,6 +322,10 @@
         const id = change.dataset.choiceChange;
         b.drafts.set(id, { ...b.held().find((h) => h.id === id)?.choice ?? {} });
         b.rerender();
+        return;
+      }
+      if (target.closest(".adv-basket-clear")) {
+        await mettPost(`/api/players/${b.playerId()}/advances`, { ids: b.held().filter((h) => h.round !== b.round()).map((h) => h.id) });
         return;
       }
       const btn = target.closest(".adv-pick");
@@ -566,6 +704,7 @@
       bindPicker(gmPicker, {
         playerId: () => gmPlayer,
         held: () => gmState?.advances[gmPlayer] ?? [],
+        round: () => gmState?.game.current_round ?? 0,
         rerender: renderGmCards,
         drafts: gmDrafts
       });

@@ -42,17 +42,40 @@ test.describe('civ page: tabs', () => {
     await expect(selected(page)).toHaveText('Round');
   });
 
-  test('Calamities lists what held cards change, helps first, and updates live', async ({ page, request }) => {
+  test('Calamities works out each victim role for the held cards, and updates live', async ({ page, request }) => {
     await page.goto('/minoa#calamities');
     const id = await page.locator('#civ-content').getAttribute('data-player-id');
     await request.post(`/api/players/${id}/advances`, { data: { ids: [] } });
-    await expect(page.locator('#cal-panel .cal-none')).toBeVisible();
+    const famine = page.locator('#cal-ref details[data-calamity="Famine"]');
+    await expect(famine.locator('summary .cal-check')).toHaveCount(0);
+    await famine.locator('summary').click();
     await request.post(`/api/players/${id}/advances`, { data: { ids: ['pottery', 'agriculture', 'enlightenment'] } });
-    const famine = page.locator('.cal-group', { has: page.locator('h4', { hasText: 'Famine' }) });
-    await expect(famine.locator('li')).toHaveCount(2);
-    await expect(famine.locator('li').first()).toHaveClass('cal-help');
-    await expect(famine.locator('li').last()).toHaveClass('cal-hurt');
-    await expect(page.locator('.cal-group h4')).toHaveText(['Epidemic', 'Famine', 'Regression', 'Slave Revolt', 'Superstition']);
+    await expect(famine.locator('summary .cal-check')).toHaveCount(2);
+    await expect(famine.locator('.cal-role')).toHaveText([
+      'Primary victim: Take 10 damage. 10 −5 Pottery +5 Agriculture',
+      'Secondary victims (3 players the primary victim picks): No damage. 5 −5 Pottery',
+    ]);
+    await expect(famine.locator('.cal-calc .cal-help')).toHaveText(['−5 Pottery', '−5 Pottery']);
+    await expect(famine.locator('.cal-calc .cal-hurt')).toHaveText('+5 Agriculture');
+    await expect(page.locator('#cal-ref summary:has(.cal-check) .cal-ref-name')).toHaveText(['Famine', 'Slave Revolt', 'Superstition', 'Epidemic', 'Regression']);
+  });
+
+  test('All calamities: ✓ takes the colour of the effect, and the beneficiary has its own line', async ({ page, request }) => {
+    await page.goto('/minoa#calamities');
+    const id = await page.locator('#civ-content').getAttribute('data-player-id');
+    await request.post(`/api/players/${id}/advances`, { data: { ids: ['pottery', 'agriculture'] } });
+    const famine = page.locator('#cal-ref details[data-calamity="Famine"]');
+    await famine.locator('summary').click();
+    const color = (l: import('@playwright/test').Locator) => l.evaluate(el => getComputedStyle(el).color);
+    const help = famine.locator('li.cal-help.cal-held .cal-check');
+    const hurt = famine.locator('li.cal-hurt.cal-held .cal-check');
+    expect(await color(help)).not.toBe(await color(hurt));
+    expect(await color(hurt)).toBe(await color(famine.locator('li.cal-hurt .cal-mark').first()));
+    expect(await color(famine.locator('summary .cal-check-hurt'))).toBe(await color(hurt));
+    expect(await color(famine.locator('summary .cal-check-help'))).toBe(await color(help));
+    const epidemic = page.locator('#cal-ref details[data-calamity="Epidemic"]');
+    await epidemic.locator('summary').click();
+    await expect(epidemic.locator('.cal-role', { hasText: 'Beneficiary:' })).toContainText('The player who traded the calamity to you');
   });
 
   test('All calamities: a row opens on tap and stays open through a live update', async ({ page, request }) => {
@@ -68,7 +91,7 @@ test.describe('civ page: tabs', () => {
     await expect(famine).toHaveAttribute('open', '');
     await request.post(`/api/players/${id}/advances`, { data: { ids: ['pottery'] } });
     await expect(famine.locator('.cal-held .cal-mod-card')).toHaveText('Pottery:');
-    await expect(famine.locator('.cal-check')).toHaveCount(1);
+    await expect(famine.locator('.cal-mods .cal-check')).toHaveCount(1);
     await expect(famine).toHaveAttribute('open', '');
   });
 
@@ -160,8 +183,69 @@ test.describe('civ page: tabs', () => {
     await page.locator('[data-card-sort="vp"]').click();
     await expect(page.locator('[data-card-sort="vp"]')).toHaveText('VP ↓');
     await expect(first().locator('.adv-pick-meta')).toContainText('6 VP');
+    // VP/cost only goes one way: a second click keeps the order.
+    await page.locator('[data-card-sort="value"]').click();
+    await expect(page.locator('[data-card-sort="value"]')).toHaveAttribute('aria-pressed', 'true');
+    const best = await first().getAttribute('data-advance');
+    await page.locator('[data-card-sort="value"]').click();
+    await expect(page.locator('[data-card-sort="value"]')).toHaveText('VP/cost');
+    await expect(first()).toHaveAttribute('data-advance', best!);
     await page.locator('[data-card-sort="group"]').click();
     await expect(page.locator('#adv-picker h4').first()).toHaveText('Science');
+  });
+
+  test('Cards: the purchase bar names the cards, and Clear unticks this round\'s purchase', async ({ page, request }) => {
+    await page.goto('/minoa#cards');
+    const id = await page.locator('#civ-content').getAttribute('data-player-id');
+    await request.post(`/api/players/${id}/advances`, { data: { ids: [] } });
+    await request.post('/api/game/cities/clear'); // phase 12
+    await page.locator('.adv-pick[data-advance="pottery"]').click();
+    await page.locator('.adv-pick[data-advance="mysticism"]').click();
+    await expect(page.locator('.adv-basket-names')).toHaveText('Mysticism · Pottery');
+    await page.locator('.adv-basket-clear').click();
+    await expect(page.locator('.adv-basket')).toHaveCount(0);
+    await expect(page.locator('.adv-pick[aria-pressed="true"]')).toHaveCount(0);
+  });
+
+  test('Cards: colour credits and the next age\'s cards sit under the sort buttons', async ({ page, request }) => {
+    await page.goto('/minoa#cards');
+    const id = await page.locator('#civ-content').getAttribute('data-player-id');
+    await request.post(`/api/players/${id}/advances`, { data: { ids: ['pottery'] } });
+    await expect(page.locator('#adv-overview .adv-credit-total.adv-crafts')).toContainText('Crafts');
+    await expect(page.locator('#adv-overview .adv-credit-totals')).toHaveCount(1);
+    await expect(page.locator('#adv-overview .adv-overview-line')).toHaveCount(1); // the next age
+    const sortBottom = await page.locator('.adv-sort').evaluate(el => el.getBoundingClientRect().bottom);
+    const overviewTop = await page.locator('#adv-overview').evaluate(el => el.getBoundingClientRect().top);
+    expect(overviewTop).toBeGreaterThanOrEqual(sortBottom);
+  });
+
+  test('Cards: the A.S.T. requirement line stays on one line, also at the longest and with large fonts', async ({ page, request }) => {
+    const id = await (async () => { await page.goto('/minoa#cards'); return page.locator('#civ-content').getAttribute('data-player-id'); })();
+    // From 55 the next age is Early Iron Age: the longest requirement (cards under 100 and VP).
+    await adminLogin(request);
+    await request.post(`/api/players/${id}/ast`, { data: { level: 55 } });
+    for (const [width, std] of [[390, 16], [412, 21], [412, 32]] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Page.enable');
+      await cdp.send('Page.setFontSizes', { fontSizes: { standard: std, fixed: Math.round(std * 0.8) } });
+      await page.goto('/minoa#cards');
+      const line = page.locator('.adv-next-age');
+      await expect(line).toContainText('A.S.T. Req. Early Iron Age:');
+      const fits = await line.evaluate(el => {
+        const tops = new Set(Array.from(el.children).map(c => Math.round(c.getBoundingClientRect().top)));
+        return tops.size === 1 && el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().right <= innerWidth;
+      });
+      expect(fits, `one line at ${width}px, ${std}px font`).toBe(true);
+    }
+  });
+
+  test('the source and Ko-fi line shows on the Cards and Calamities tabs only', async ({ page }) => {
+    await page.goto('/minoa');
+    for (const [tab, shown] of [['round', false], ['cards', true], ['ast', false], ['calamities', true]] as const) {
+      await page.locator(`#tab-btn-${tab}`).click();
+      await expect(page.locator('.support-line:visible')).toHaveCount(shown ? 1 : 0);
+    }
   });
 
   test('the summary line and the tab bar sit above every panel', async ({ page }) => {

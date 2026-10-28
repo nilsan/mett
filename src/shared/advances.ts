@@ -205,6 +205,20 @@ export function advanceTotals(ids: Iterable<string>, catalogue: ReadonlyMap<stri
   return t;
 }
 
+/** The colour credits a player's cards give, chosen colours included: from
+ *  cards bought before `round` (what prices use), or from all held cards when
+ *  `round` is omitted. */
+export function colourCredits(held: readonly HeldAdvance[], round = Infinity,
+  catalogue: ReadonlyMap<string, AdvanceCard> = ADVANCE_BY_ID): Record<AdvanceGroup, number> {
+  const total = { science: 0, arts: 0, crafts: 0, civics: 0, religion: 0 };
+  for (const h of held) {
+    const card = catalogue.get(h.id);
+    if (!card || h.round >= round) continue;
+    for (const g of ADVANCE_GROUPS) total[g] += (card.credits[g] ?? 0) + (h.choice?.[g] ?? 0);
+  }
+  return total;
+}
+
 /** What `cardId` costs a player in `round`, given the cards they hold. Only
  *  cards bought before `round` give credits, chosen colours included. Never
  *  below 0. */
@@ -212,17 +226,65 @@ export function advanceCost(cardId: string, held: readonly HeldAdvance[], round:
   catalogue: ReadonlyMap<string, AdvanceCard> = ADVANCE_BY_ID): number {
   const card = catalogue.get(cardId);
   if (!card) throw new Error(`Unknown advance: ${cardId}`);
-  const groupCredit: Partial<Record<AdvanceGroup, number>> = {};
+  const others = held.filter(h => h.id !== cardId);
+  const groupCredit = colourCredits(others, round, catalogue);
   let special = 0;
-  for (const h of held) {
-    if (h.round >= round || h.id === cardId) continue;
-    const from = catalogue.get(h.id);
-    if (!from) continue;
-    for (const g of ADVANCE_GROUPS) {
-      groupCredit[g] = (groupCredit[g] ?? 0) + (from.credits[g] ?? 0) + (h.choice?.[g] ?? 0);
-    }
-    special += from.special[cardId] ?? 0;
+  for (const h of others) {
+    if (h.round < round) special += catalogue.get(h.id)?.special[cardId] ?? 0;
   }
-  const bestGroup = Math.max(0, ...card.groups.map(g => groupCredit[g] ?? 0));
+  const bestGroup = Math.max(0, ...card.groups.map(g => groupCredit[g]));
   return Math.max(0, card.cost - bestGroup - special);
+}
+
+// ─── Purchase-time effects: Library and Anatomy ──────────────────────────────
+
+export const LIBRARY_ID = 'library';
+export const ANATOMY_ID = 'anatomy';
+/** Library: "discount the cost of 1 other Civilization Advance that you
+ *  purchase in the same turn as Library by 40 points" (one card only, FAQ). */
+export const LIBRARY_DISCOUNT = 40;
+/** Anatomy: "acquire 1 science card with an undiscounted cost price of less
+ *  than 100 for free" upon purchase. */
+export const ANATOMY_FREE_BELOW = 100;
+
+/** What each card bought in `round` costs, and the total: the price after
+ *  credits from earlier rounds, then Anatomy's free science card and Library's
+ *  40 off one other card, both used where they save the most. */
+export function purchaseCost(held: readonly HeldAdvance[], round: number,
+  catalogue: ReadonlyMap<string, AdvanceCard> = ADVANCE_BY_ID): { total: number; prices: Map<string, number> } {
+  const fresh = held.filter(h => h.round === round && catalogue.has(h.id)).map(h => h.id);
+  const prices = new Map(fresh.map(id => [id, advanceCost(id, held, round, catalogue)]));
+  const anatomyPicks = fresh.includes(ANATOMY_ID)
+    ? fresh.filter(id => id !== ANATOMY_ID && catalogue.get(id)!.groups.includes('science') && catalogue.get(id)!.cost < ANATOMY_FREE_BELOW)
+    : [];
+  let best = { saving: 0, free: undefined as string | undefined, library: undefined as string | undefined };
+  for (const free of [undefined, ...anatomyPicks]) {
+    let saving = free ? prices.get(free)! : 0;
+    let library: string | undefined;
+    if (fresh.includes(LIBRARY_ID)) {
+      for (const id of fresh) {
+        if (id === LIBRARY_ID || id === free) continue;
+        if (!library || prices.get(id)! > prices.get(library)!) library = id;
+      }
+      if (library) saving += Math.min(LIBRARY_DISCOUNT, prices.get(library)!);
+    }
+    if (saving > best.saving) best = { saving, free, library };
+  }
+  if (best.free) prices.set(best.free, 0);
+  if (best.library) prices.set(best.library, Math.max(0, prices.get(best.library)! - LIBRARY_DISCOUNT));
+  return { total: [...prices.values()].reduce((a, b) => a + b, 0), prices };
+}
+
+/** What every card costs the player in `round`: a card bought this round, its
+ *  share of the purchase; a card not held, what ticking it adds to this
+ *  round's total (so Library and Anatomy count); an earlier card, its print. */
+export function priceList(held: readonly HeldAdvance[], round: number): Map<string, number> {
+  const now = purchaseCost(held, round);
+  const out = new Map<string, number>();
+  for (const c of ADVANCES) {
+    const h = held.find(x => x.id === c.id);
+    if (h) out.set(c.id, h.round < round ? c.cost : now.prices.get(c.id) ?? c.cost);
+    else out.set(c.id, purchaseCost([...held, { id: c.id, round }], round).total - now.total);
+  }
+  return out;
 }

@@ -119,10 +119,11 @@ try {
   // advances for real — the admin page gets a round summary.
   await post('/api/game/cities/clear');
   await post(`/api/players/${ps[1]!.id}/regress`);
-  // Cards, bought after calamities: flags from Military / Wonder / Monotheism, a Monument with its
+  // Cards, bought after calamities: flags from Military / Wonder / Monotheism,
+  // Naval Warfare (can't be picked as a Piracy victim), a Monument with its
   // colours chosen (and still correctable this round), a Written Record not
   // chosen yet (open chooser).
-  await post(`/api/players/${ps[0]!.id}/advances`, { ids: ['military', 'wonder-of-the-world', 'monotheism', 'monument'] });
+  await post(`/api/players/${ps[0]!.id}/advances`, { ids: ['military', 'wonder-of-the-world', 'monotheism', 'monument', 'naval-warfare'] });
   await post(`/api/players/${ps[0]!.id}/advances/monument/choice`, { choice: { arts: 10, science: 10 } });
   await post(`/api/players/${ps[1]!.id}/advances`, { ids: ['written-record'] });
   await pages();

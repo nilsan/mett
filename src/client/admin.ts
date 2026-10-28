@@ -387,6 +387,7 @@ function initActive(): void {
     bindPicker(gmPicker, {
       playerId: () => gmPlayer,
       held: () => gmState?.advances[gmPlayer] ?? [],
+      round: () => gmState?.game.current_round ?? 0,
       rerender: renderGmCards,
       drafts: gmDrafts,
     });

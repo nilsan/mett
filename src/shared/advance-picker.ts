@@ -8,11 +8,12 @@
 
 import { escapeHtml } from './html.js';
 import {
-  ADVANCES, ADVANCE_BY_ID, ADVANCE_GROUPS, SPECIAL_ABILITY_IDS, advanceCost, advanceLocked, advanceTotals, creditChoiceOpen,
+  ADVANCES, ADVANCE_BY_ID, ADVANCE_GROUPS, SPECIAL_ABILITY_IDS, advanceLocked, advanceTotals, colourCredits, creditChoiceOpen, priceList, purchaseCost,
   type AdvanceCard, type AdvanceGroup, type CreditChoice, type HeldAdvance,
 } from './advances.js';
 import { ADVANCE_TEXT } from './advance-text.js';
 import { CARD_CALAMITIES } from './calamities.js';
+import { AST_LEVELS, advancesOfTier, ageOfLevel, getAdvanceRequirement, requirementParts, type AgeReqPart } from './ast-pure.js';
 
 export const GROUP_LABEL: Readonly<Record<AdvanceGroup, string>> = {
   science: 'Science', arts: 'Arts', crafts: 'Crafts', civics: 'Civics', religion: 'Religion',
@@ -49,19 +50,23 @@ export interface PickerOptions {
 }
 
 /** The orders a player can pick on the Cards tab. A–Z, Cost and VP turn
- *  round on a second click; each starts in the direction players want most. */
-export type CardSort = 'group' | 'name' | 'cost' | 'vp';
+ *  round on a second click; each starts in the direction players want most.
+ *  Colour and VP/cost (most VP for the money) only go one way. */
+export type CardSort = 'group' | 'name' | 'cost' | 'vp' | 'value';
 export type SortDir = 'asc' | 'desc';
-export const CARD_SORTS: readonly CardSort[] = ['group', 'name', 'cost', 'vp'];
-export const DEFAULT_DIR: Readonly<Record<CardSort, SortDir>> = { group: 'asc', name: 'asc', cost: 'asc', vp: 'asc' };
+export const CARD_SORTS: readonly CardSort[] = ['group', 'name', 'cost', 'vp', 'value'];
+export const DEFAULT_DIR: Readonly<Record<CardSort, SortDir>> = { group: 'asc', name: 'asc', cost: 'asc', vp: 'asc', value: 'desc' };
 export const isCardSort = (s: unknown): s is CardSort => CARD_SORTS.includes(s as CardSort);
 export const isSortDir = (s: unknown): s is SortDir => s === 'asc' || s === 'desc';
+/** Whether a second click on the sort's button turns the order round. */
+export const isReversible = (s: CardSort) => s !== 'group' && s !== 'value';
 
 const SORT_LABEL: Readonly<Record<CardSort, Record<SortDir, [label: string, title: string]>>> = {
   group: { asc: ['Colour', 'By colour, cheapest first'], desc: ['Colour', 'By colour, cheapest first'] },
   name: { asc: ['A–Z', 'A to Z'], desc: ['Z–A', 'Z to A'] },
   cost: { asc: ['Cost ↑', 'Cheapest first, after credits'], desc: ['Cost ↓', 'Dearest first, after credits'] },
   vp: { asc: ['VP ↑', 'Fewest VP first'], desc: ['VP ↓', 'Most VP first'] },
+  value: { asc: ['VP/cost', 'Most VP for the money first, after credits'], desc: ['VP/cost', 'Most VP for the money first, after credits'] },
 };
 /** A sort button's text and tooltip in a direction. */
 export const sortLabel = (sort: CardSort, dir: SortDir) => SORT_LABEL[sort][dir];
@@ -77,27 +82,20 @@ const groupCards = (g: AdvanceGroup): AdvanceCard[] => ADVANCES
   .filter(c => c.groups[0] === g)
   .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
 
-/** The price a tile shows: what it costs this round after credits from cards
- *  bought earlier (for this round's cards: what was paid). A card from an
- *  earlier round shows its print. */
-function cardPrice(c: AdvanceCard, held: readonly HeldAdvance[], round: number): number {
-  const h = held.find(x => x.id === c.id);
-  return h && advanceLocked(h, round) ? c.cost : advanceCost(c.id, held, round);
-}
-
 const priceHtml = (c: AdvanceCard, price: number) => price < c.cost
   ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
 
 /** The cards in sections: one per colour, or a single unheaded list by name,
- *  price after credits or VP in the chosen direction. Ties go cheapest
- *  first, then by name. */
-function sections(sort: CardSort, dir: SortDir, held: readonly HeldAdvance[], round: number): { group?: AdvanceGroup; cards: AdvanceCard[] }[] {
+ *  price after credits, VP, or VP per price after credits (a free card is the
+ *  best value) in the chosen direction. Ties go cheapest first, then by name. */
+function sections(sort: CardSort, dir: SortDir, price: ReadonlyMap<string, number>): { group?: AdvanceGroup; cards: AdvanceCard[] }[] {
   if (sort === 'group') return ADVANCE_GROUPS.map(g => ({ group: g, cards: groupCards(g) }));
-  const price = new Map(ADVANCES.map(c => [c.id, cardPrice(c, held, round)]));
   const byName = (a: AdvanceCard, b: AdvanceCard) => a.name.localeCompare(b.name);
   const byPrice = (a: AdvanceCard, b: AdvanceCard) => price.get(a.id)! - price.get(b.id)!;
-  const primary = sort === 'name' ? byName : sort === 'cost' ? byPrice : (a: AdvanceCard, b: AdvanceCard) => a.vp - b.vp;
-  const sign = dir === 'desc' ? -1 : 1;
+  // VP per price, compared crosswise so a price of 0 needs no division.
+  const byValue = (a: AdvanceCard, b: AdvanceCard) => a.vp * price.get(b.id)! - b.vp * price.get(a.id)!;
+  const primary = sort === 'name' ? byName : sort === 'cost' ? byPrice : sort === 'vp' ? (a: AdvanceCard, b: AdvanceCard) => a.vp - b.vp : byValue;
+  const sign = (isReversible(sort) ? dir : DEFAULT_DIR[sort]) === 'desc' ? -1 : 1;
   return [{ cards: [...ADVANCES].sort((a, b) => sign * primary(a, b) || byPrice(a, b) || byName(a, b)) }];
 }
 
@@ -119,13 +117,15 @@ export function renderAdvancePicker(held: readonly HeldAdvance[], round: number,
       : canBuy
       ? 'Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends.'
       : 'Cards are bought after calamities are resolved.'}</p>`;
-  const groups = sections(sort, dir, held, round).map(({ group, cards }) => {
+  // Tile prices: after credits, with Library and Anatomy counted (priceList).
+  const prices = priceList(held, round);
+  const groups = sections(sort, dir, prices).map(({ group, cards }) => {
     const buttons = cards.map(c => {
       const h = heldById.get(c.id);
       const bought = h ? advanceLocked(h, round) : false;
       const locked = bought && !gm;
       const closed = !locked && !canBuy && !gm;
-      const cost = priceHtml(c, cardPrice(c, held, round));
+      const cost = priceHtml(c, prices.get(c.id)!);
       // The chooser opens by itself until a choice is saved; after that, while
       // it may still be corrected, it opens only on "Change colours".
       const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
@@ -144,18 +144,62 @@ export function renderAdvancePicker(held: readonly HeldAdvance[], round: number,
     }).join('');
     return section(group, `<div class="adv-pick-grid">${buttons}</div>`);
   }).join('');
-  return summary + groups + basket(held, round);
+  return summary + groups + basket(held, round, canBuy || gm);
 }
 
-/** What this round's ticked cards cost together, after credits. It sits at
- *  the bottom of the screen while the player scrolls the cards. */
-function basket(held: readonly HeldAdvance[], round: number): string {
+/** What this round's ticked cards are and cost together, after credits, with
+ *  Clear to untick them all while buying. It sits at the bottom of the screen
+ *  while the player scrolls the cards. */
+function basket(held: readonly HeldAdvance[], round: number, canClear: boolean): string {
   const fresh = held.filter(h => h.round === round && ADVANCE_BY_ID.has(h.id));
   if (!fresh.length) return '';
-  const cost = fresh.reduce((sum, h) => sum + advanceCost(h.id, held, round), 0);
+  const cost = purchaseCost(held, round).total;
   const vp = fresh.reduce((sum, h) => sum + ADVANCE_BY_ID.get(h.id)!.vp, 0);
-  return `<p class="adv-basket" role="status">Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? 'card' : 'cards'}`
-    + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>`;
+  const names = fresh.map(h => ADVANCE_BY_ID.get(h.id)!)
+    .map(c => `<span class="adv-basket-card adv-${c.groups[0]}">${escapeHtml(c.name)}</span>`).join(' · ');
+  return `<div class="adv-basket" role="status"><div class="adv-basket-text">`
+    + `<p>Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? 'card' : 'cards'}`
+    + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>`
+    + `<p class="adv-basket-names">${names}</p></div>`
+    + (canClear ? `<button type="button" class="adv-basket-clear">Clear</button>` : '')
+    + `</div>`;
+}
+
+/** Where a player stands on the A.S.T.: their square, civ and game mode. */
+export interface AstStanding { level: number; civNumber: number; expert: boolean }
+
+/** The card part of the requirement for the next age that has one, or null
+ *  at the top of the board. Ages past the current one only. */
+export function nextAgeCardRequirement({ level, civNumber, expert }: AstStanding): { age: string; parts: AgeReqPart[] } | null {
+  const here = ageOfLevel(level);
+  for (const from of AST_LEVELS.filter(l => l >= level)) {
+    const age = ageOfLevel(from + 5);
+    if (age === here || from + 5 > AST_LEVELS.at(-1)!) continue;
+    const parts = requirementParts(getAdvanceRequirement({ ast_level: from, civ_number: civNumber }, expert))
+      .filter(p => p.type !== 'cities');
+    if (parts.length) return { age: age.name, parts };
+  }
+  return null;
+}
+
+/** Above the cards: the colour credits the player's cards give, unlabelled to
+ *  fit one line on a phone (and what this
+ *  round's cards add from next round), and the cards the next age asks for,
+ *  counting this round's cards, so the player need not switch tabs. */
+export function renderCardOverview(held: readonly HeldAdvance[], round: number, ast?: AstStanding): string {
+  const now = colourCredits(held, round);
+  const next = colourCredits(held);
+  const chips = ADVANCE_GROUPS.map(g => `<span class="adv-credit-total adv-${g}"><span class="adv-credit-name">${GROUP_LABEL[g]}</span> <strong>${now[g]}</strong>`
+    + (next[g] > now[g] ? ` → ${next[g]}` : '') + `</span>`).join('');
+  const credits = `<p class="adv-credit-totals" aria-label="Colour credits">${chips}</p>`;
+  const req = ast && nextAgeCardRequirement(ast);
+  if (!req) return credits;
+  const t = advanceTotals(held.map(h => h.id));
+  const parts = req.parts.map(p => {
+    const have = p.type === 'adv' ? advancesOfTier(t, p.tier) : t.adv_points;
+    return `<span class="adv-req ${have >= p.n ? 'adv-req-met' : 'adv-req-unmet'}">${escapeHtml(p.label)} <span class="adv-req-have">(${have})</span></span>`;
+  }).join(' + ');
+  return credits + `<p class="adv-overview-line adv-next-age"><span class="adv-overview-label">A.S.T. Req. ${escapeHtml(req.age)}:</span>${parts}</p>`;
 }
 
 const dot = (c: AdvanceCard) => c.groups[1]
@@ -207,11 +251,12 @@ function cardBody(c: AdvanceCard, held?: HeldAdvance): string {
 export function renderAdvanceReference(held: readonly HeldAdvance[], open: ReadonlySet<string> = new Set(),
   round = 0, sort: CardSort = 'group', dir: SortDir = DEFAULT_DIR[sort]): string {
   const heldById = new Map(held.map(h => [h.id, h]));
-  return sections(sort, dir, held, round).map(({ group, cards }) => {
+  const prices = priceList(held, round);
+  return sections(sort, dir, prices).map(({ group, cards }) => {
     const rows = cards.map(c =>
       `<details class="adv-ref-item adv-${c.groups[0]}" data-advance-ref="${c.id}"${open.has(c.id) ? ' open' : ''}>`
       + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>`
-      + `<span class="adv-ref-meta">${priceHtml(c, cardPrice(c, held, round))} · ${c.vp} VP</span>`
+      + `<span class="adv-ref-meta">${priceHtml(c, prices.get(c.id)!)} · ${c.vp} VP</span>`
       + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : '')
       + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join('');
     return section(group, `<div class="adv-ref-list">${rows}</div>`);

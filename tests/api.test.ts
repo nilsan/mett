@@ -520,13 +520,14 @@ describe('POST /api/players/:id/regress — calamity AST regression', () => {
     expect(html).toContain('href="https://ko-fi.com/nilsan"');
   });
 
-  it('player page ends with the source and Ko-fi links, outside the swapped fragment', async () => {
-    const html = await (await app.request('/minoa')).text();
-    expect(html).toContain('class="support-line"');
-    expect(html.indexOf('class="support-line"')).toBeGreaterThan(html.indexOf('<!-- #civ-content -->'));
-    // htmx re-renders only #civ-content; the line must not be duplicated into it.
-    const fragment = await (await app.request('/minoa', { headers: { 'HX-Request': 'true' } })).text();
-    expect(fragment).not.toContain('support-line');
+  it('player page: the source and Ko-fi links end the Cards and Calamities tabs only', async () => {
+    for (const html of [await (await app.request('/minoa')).text(),
+      await (await app.request('/minoa', { headers: { 'HX-Request': 'true' } })).text()]) {
+      const panel = (id: string) => html.slice(html.indexOf(`id="${id}"`), html.indexOf(`<!-- #${id} -->`));
+      expect(html.match(/class="support-line"/g)).toHaveLength(2);
+      for (const id of ['tab-cards', 'tab-calamities']) expect(panel(id)).toContain('class="support-line"');
+      for (const id of ['tab-round', 'tab-ast']) expect(panel(id)).not.toContain('support-line');
+    }
   });
 });
 

@@ -323,25 +323,73 @@
     }
     return t;
   }
+  function colourCredits(held, round = Infinity, catalogue = ADVANCE_BY_ID) {
+    const total = { science: 0, arts: 0, crafts: 0, civics: 0, religion: 0 };
+    for (const h of held) {
+      const card = catalogue.get(h.id);
+      if (!card || h.round >= round)
+        continue;
+      for (const g of ADVANCE_GROUPS)
+        total[g] += (card.credits[g] ?? 0) + (h.choice?.[g] ?? 0);
+    }
+    return total;
+  }
   function advanceCost(cardId, held, round, catalogue = ADVANCE_BY_ID) {
     const card = catalogue.get(cardId);
     if (!card)
       throw new Error(`Unknown advance: ${cardId}`);
-    const groupCredit = {};
+    const others = held.filter((h) => h.id !== cardId);
+    const groupCredit = colourCredits(others, round, catalogue);
     let special = 0;
-    for (const h of held) {
-      if (h.round >= round || h.id === cardId)
-        continue;
-      const from = catalogue.get(h.id);
-      if (!from)
-        continue;
-      for (const g of ADVANCE_GROUPS) {
-        groupCredit[g] = (groupCredit[g] ?? 0) + (from.credits[g] ?? 0) + (h.choice?.[g] ?? 0);
-      }
-      special += from.special[cardId] ?? 0;
+    for (const h of others) {
+      if (h.round < round)
+        special += catalogue.get(h.id)?.special[cardId] ?? 0;
     }
-    const bestGroup = Math.max(0, ...card.groups.map((g) => groupCredit[g] ?? 0));
+    const bestGroup = Math.max(0, ...card.groups.map((g) => groupCredit[g]));
     return Math.max(0, card.cost - bestGroup - special);
+  }
+  var LIBRARY_ID = "library";
+  var ANATOMY_ID = "anatomy";
+  var LIBRARY_DISCOUNT = 40;
+  var ANATOMY_FREE_BELOW = 100;
+  function purchaseCost(held, round, catalogue = ADVANCE_BY_ID) {
+    const fresh = held.filter((h) => h.round === round && catalogue.has(h.id)).map((h) => h.id);
+    const prices = new Map(fresh.map((id) => [id, advanceCost(id, held, round, catalogue)]));
+    const anatomyPicks = fresh.includes(ANATOMY_ID) ? fresh.filter((id) => id !== ANATOMY_ID && catalogue.get(id).groups.includes("science") && catalogue.get(id).cost < ANATOMY_FREE_BELOW) : [];
+    let best = { saving: 0, free: undefined, library: undefined };
+    for (const free of [undefined, ...anatomyPicks]) {
+      let saving = free ? prices.get(free) : 0;
+      let library;
+      if (fresh.includes(LIBRARY_ID)) {
+        for (const id of fresh) {
+          if (id === LIBRARY_ID || id === free)
+            continue;
+          if (!library || prices.get(id) > prices.get(library))
+            library = id;
+        }
+        if (library)
+          saving += Math.min(LIBRARY_DISCOUNT, prices.get(library));
+      }
+      if (saving > best.saving)
+        best = { saving, free, library };
+    }
+    if (best.free)
+      prices.set(best.free, 0);
+    if (best.library)
+      prices.set(best.library, Math.max(0, prices.get(best.library) - LIBRARY_DISCOUNT));
+    return { total: [...prices.values()].reduce((a, b) => a + b, 0), prices };
+  }
+  function priceList(held, round) {
+    const now = purchaseCost(held, round);
+    const out = new Map;
+    for (const c of ADVANCES) {
+      const h = held.find((x) => x.id === c.id);
+      if (h)
+        out.set(c.id, h.round < round ? c.cost : now.prices.get(c.id) ?? c.cost);
+      else
+        out.set(c.id, purchaseCost([...held, { id: c.id, round }], round).total - now.total);
+    }
+    return out;
   }
 
   // src/shared/advance-text.ts
@@ -499,132 +547,238 @@
   function calamityNamed(name) {
     return CALAMITIES.find((c) => c.name === name || c.alias === name);
   }
+  var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  var TRADED_BENEFICIARY = "the player who traded the calamity to you. If you drew it yourself, or no one can tell who traded it: the player with the most cities in stock (tie: most tokens in stock, then A.S.T. ranking).";
+  var STOCK_BENEFICIARY = "the player with the most cities in stock (tie: most tokens in stock, then A.S.T. ranking). Never the primary victim.";
+  var CALAMITY_ROLES = {
+    Tempest: { primary: { say: () => "Take 2 damage in total from coastal areas of your choice and lose 5 treasury tokens." } },
+    "Squandered Wealth": { primary: { say: () => "Lose 10 treasury tokens." } },
+    "City Riots": { primary: { say: () => "Reduce 1 of your cities and lose 5 treasury tokens." } },
+    "City in Flames": { primary: { say: () => "Destroy 1 of your cities, or pay 10 treasury tokens to prevent it." } },
+    "Tribal Conflict": { primary: { say: () => "Take 5 damage." } },
+    "Minor Uprising": { primary: { say: () => "Destroy 1 of your cities." } },
+    Banditry: { primary: { say: () => "Discard 2 commodity cards of your choice; pay 4 treasury tokens per card to keep it." } },
+    "Coastal Migration": { primary: { say: () => "Destroy 1 of your coastal cities and lose 5 treasury tokens." } },
+    "Volcanic Eruption": {
+      primary: { say: () => "With a city on a volcano: all units in the area(s) the volcano touches are destroyed. Otherwise an Earthquake: destroy 1 of your cities and reduce 1 city next to it by land or water." },
+      others: "Their units in the volcano’s area(s) are destroyed too. An Earthquake may reduce one of their cities next to the destroyed one."
+    },
+    Treachery: {
+      primary: { n: 1, say: (n) => `The beneficiary annexes ${n} of your cities.` },
+      beneficiary: `${TRADED_BENEFICIARY} They pick the cities and annex them.`
+    },
+    Famine: {
+      primary: { n: 10, say: (n) => n > 0 ? `Take ${n} damage.` : "No damage. Famine still hits the secondary victims." },
+      secondary: { n: 5, who: "3 players the primary victim picks", say: (n) => n > 0 ? `Take ${n} damage.` : "No damage." }
+    },
+    "Slave Revolt": {
+      primary: { n: 2, say: (n) => n > 0 ? `An extra city support check with your support rate raised by ${n}. Reduce cities until they are supported.` : "An extra city support check at your normal support rate. Reduce cities until they are supported." }
+    },
+    Flood: {
+      primary: { n: 15, say: (n) => {
+        const coastal = Math.max(0, n - 10);
+        return `With units on a flood plain: ${n > 0 ? `take ${n} damage there` : "no damage"}. With none: ${coastal > 0 ? `take ${coastal} damage in total from coastal areas` : "no damage"}.`;
+      } },
+      secondary: { n: 5, who: "every other player with units on the same flood plain", say: (n) => n > 0 ? `Take ${n} damage from that flood plain.` : "No damage." }
+    },
+    Superstition: {
+      primary: { n: 3, say: (n) => n > 0 ? `Reduce ${n} of your cities.` : "No city is reduced." }
+    },
+    "Civil War": {
+      primary: { n: 35, say: (n) => `The beneficiary annexes all your units beyond ${n} unit points; you pick them, in neighbouring areas. With ${n} unit points or less: no Civil War.` },
+      beneficiary: `${STOCK_BENEFICIARY} They annex the units.`,
+      higherIsBetter: true
+    },
+    "Barbarian Hordes": {
+      primary: { n: 15, say: (n) => `${n} barbarian tokens attack one of your cities and keep attacking your units while they exceed a population limit.` },
+      beneficiary: `${TRADED_BENEFICIARY} They pick the city (a wilderness city if possible) and move the barbarians.`
+    },
+    Cyclone: {
+      primary: { n: 3, say: (n) => n > 0 ? `Reduce ${n} of your cities next to the open sea area with the most of your cities beside it.` : "No city is reduced." },
+      secondary: { n: 2, who: "every other player with cities next to that sea area", say: (n) => n > 0 ? `Reduce ${n} of your cities next to it.` : "No city is reduced." }
+    },
+    Epidemic: {
+      primary: { n: 15, say: (n) => n > 0 ? `Take ${n} damage.` : "No damage." },
+      secondary: { n: 10, who: "2 other players the primary victim picks, not the beneficiary", say: (n) => n > 0 ? `Take ${n} damage.` : "No damage." },
+      beneficiary: `${TRADED_BENEFICIARY} They can’t be picked as a secondary victim.`
+    },
+    Tyranny: {
+      primary: { n: 15, say: (n) => `The beneficiary annexes ${n} of your unit points, in neighbouring areas.` },
+      beneficiary: `${STOCK_BENEFICIARY} They pick the units and annex them.`
+    },
+    "Civil Disorder": {
+      primary: { n: 3, say: (n) => `Reduce all but ${n} of your cities.` },
+      higherIsBetter: true
+    },
+    Corruption: {
+      primary: { n: 10, say: (n) => n > 0 ? `Discard commodity cards with a face value of at least ${n}.` : "Nothing to discard." }
+    },
+    "Iconoclasm and Heresy": {
+      primary: { n: 4, say: (n) => n > 0 ? `Reduce ${n} of your cities.` : "No city is reduced. It still hits the secondary victims." },
+      secondary: { n: 1, who: "2 other players the primary victim picks, not the beneficiary", say: (n) => n > 0 ? `Reduce ${n} of your cities.` : "No city is reduced." },
+      beneficiary: `${TRADED_BENEFICIARY} They can’t be picked as a secondary victim.`
+    },
+    Regression: {
+      primary: { n: 1, say: (n) => n > 0 ? `Your A.S.T. marker moves ${plural(n, "step")} back.` : "Your A.S.T. marker stays." }
+    },
+    Piracy: {
+      primary: { n: 2, say: (n) => n > 0 ? `The beneficiary turns ${n} of your coastal cities into pirate cities.` : "None of your cities becomes a pirate city." },
+      secondary: { who: "2 other players the primary victim picks, not the beneficiary", say: () => "1 of your coastal cities becomes a pirate city." },
+      beneficiary: `${TRADED_BENEFICIARY} They pick your cities and can’t be picked as a secondary victim.`
+    }
+  };
+  function roleResult(cal, role, heldIds) {
+    const roles = CALAMITY_ROLES[cal.name];
+    const outcome = roles?.[role];
+    if (!outcome)
+      return null;
+    const changes = [];
+    const notes = [];
+    let immune;
+    for (const id of new Set(heldIds)) {
+      for (const e of CARD_CALAMITIES[id] ?? []) {
+        if (calamityNamed(e.calamity) !== cal)
+          continue;
+        if (role === "secondary" && e.noSecondary)
+          immune = id;
+        if (e.role && e.role !== role)
+          continue;
+        if (e.delta !== undefined && outcome.n !== undefined)
+          changes.push({ card: id, delta: e.delta, effect: e.effect });
+        else if (e.delta === undefined)
+          notes.push({ card: id, e });
+      }
+    }
+    changes.sort((a, b) => a.effect === b.effect ? a.card.localeCompare(b.card) : a.effect === "help" ? -1 : 1);
+    const n = outcome.n === undefined ? 0 : Math.max(0, outcome.n + changes.reduce((sum, c) => sum + c.delta, 0));
+    return { text: outcome.say(n), base: outcome.n, changes, notes, ...immune ? { immune } : {} };
+  }
   function minorCalamitiesInPlay(playerCount) {
     return playerCount === 9 || playerCount === 10 || playerCount === 11 || playerCount >= 15;
   }
   var CARD_CALAMITIES = {
     "advanced-military": [
-      { calamity: "Civil Disorder", effect: "hurt", text: "Reduce 1 additional city." }
+      { calamity: "Civil Disorder", effect: "hurt", text: "Reduce 1 additional city.", delta: -1 }
     ],
     agriculture: [
-      { calamity: "Famine", effect: "hurt", text: "If you are the primary victim, take 5 additional damage." }
+      { calamity: "Famine", effect: "hurt", text: "If you are the primary victim, take 5 additional damage.", role: "primary", delta: 5 }
     ],
     anatomy: [
-      { calamity: "Epidemic", effect: "help", text: "If you are a secondary victim, prevent 5 damage." }
+      { calamity: "Epidemic", effect: "help", text: "If you are a secondary victim, prevent 5 damage.", role: "secondary", delta: -5 }
     ],
     calendar: [
-      { calamity: "Famine", effect: "help", text: "Prevent 5 damage." },
-      { calamity: "Cyclone", effect: "help", text: "Reduce 2 less selected cities." }
+      { calamity: "Famine", effect: "help", text: "Prevent 5 damage.", delta: -5 },
+      { calamity: "Cyclone", effect: "help", text: "Reduce 2 less selected cities.", delta: -2 }
     ],
     cartography: [
-      { calamity: "Piracy", effect: "hurt", text: "If you are the primary victim, the beneficiary selects and replaces 1 additional coastal city." }
+      { calamity: "Piracy", effect: "hurt", text: "If you are the primary victim, the beneficiary selects and replaces 1 additional coastal city.", role: "primary", delta: 1 }
     ],
     coinage: [
-      { calamity: "Corruption", effect: "hurt", text: "Discard 5 additional points of face value." }
+      { calamity: "Corruption", effect: "hurt", text: "Discard 5 additional points of face value.", delta: 5 }
     ],
     deism: [
-      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city." }
+      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city.", delta: -1 }
     ],
     democracy: [
-      { calamity: "Civil War", effect: "help", text: "Select 10 less unit points." },
-      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city." }
+      { calamity: "Civil War", effect: "help", text: "Select 10 less unit points.", delta: 10 },
+      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city.", delta: 1 }
     ],
     diplomacy: [
-      { calamity: "Treachery", effect: "hurt", text: "The beneficiary selects and annexes 1 additional city." }
+      { calamity: "Treachery", effect: "hurt", text: "The beneficiary selects and annexes 1 additional city.", delta: 1 }
     ],
     "drama-and-poetry": [
-      { calamity: "Civil War", effect: "help", text: "Select 5 less unit points." },
-      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city." }
+      { calamity: "Civil War", effect: "help", text: "Select 5 less unit points.", delta: 5 },
+      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city.", delta: 1 }
     ],
     engineering: [
-      { calamity: "Earthquake", effect: "help", text: "Your city is reduced instead of destroyed." },
-      { calamity: "Flood", effect: "help", text: "Prevent 5 damage." }
+      { calamity: "Earthquake", effect: "help", text: "Your city is reduced instead of destroyed.", role: "primary" },
+      { calamity: "Flood", effect: "help", text: "Prevent 5 damage.", delta: -5 }
     ],
     enlightenment: [
-      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city." },
-      { calamity: "Slave Revolt", effect: "help", text: "Your city support rate is decreased by 1 during the resolution of Slave Revolt." },
-      { calamity: "Epidemic", effect: "help", text: "If you are the primary victim, prevent 5 damage." },
+      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city.", delta: -1 },
+      { calamity: "Slave Revolt", effect: "help", text: "Your city support rate is decreased by 1 during the resolution of Slave Revolt.", delta: -1 },
+      { calamity: "Epidemic", effect: "help", text: "If you are the primary victim, prevent 5 damage.", role: "primary", delta: -5 },
       { calamity: "Regression", effect: "help", text: "For each step backward, you may choose to prevent the effect by destroying 2 of your cities (if possible non-coastal)." }
     ],
     fundamentalism: [
-      { calamity: "Regression", effect: "hurt", text: "Your marker is moved backward 1 additional step." }
+      { calamity: "Regression", effect: "hurt", text: "Your marker is moved backward 1 additional step.", delta: 1 }
     ],
     law: [
-      { calamity: "Tyranny", effect: "help", text: "The beneficiary selects and annexes 5 less unit points." },
-      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city." },
-      { calamity: "Corruption", effect: "help", text: "Discard 5 less points of face value." }
+      { calamity: "Tyranny", effect: "help", text: "The beneficiary selects and annexes 5 less unit points.", delta: -5 },
+      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city.", delta: 1 },
+      { calamity: "Corruption", effect: "help", text: "Discard 5 less points of face value.", delta: -5 }
     ],
     library: [
-      { calamity: "Regression", effect: "help", text: "Your marker is moved backward 1 less step." }
+      { calamity: "Regression", effect: "help", text: "Your marker is moved backward 1 less step.", delta: -1 }
     ],
     masonry: [
-      { calamity: "Cyclone", effect: "help", text: "Reduce 1 less of your selected cities." }
+      { calamity: "Cyclone", effect: "help", text: "Reduce 1 less of your selected cities.", delta: -1 }
     ],
     medicine: [
-      { calamity: "Epidemic", effect: "help", text: "Prevent 5 damage." }
+      { calamity: "Epidemic", effect: "help", text: "Prevent 5 damage.", delta: -5 }
     ],
     military: [
-      { calamity: "Civil War", effect: "hurt", text: "Select 5 additional unit points." }
+      { calamity: "Civil War", effect: "hurt", text: "Select 5 additional unit points.", delta: -5 }
     ],
     mining: [
-      { calamity: "Slave Revolt", effect: "hurt", text: "Your city support rate is increased by 1 during the resolution of Slave Revolt." }
+      { calamity: "Slave Revolt", effect: "hurt", text: "Your city support rate is increased by 1 during the resolution of Slave Revolt.", delta: 1 }
     ],
     monarchy: [
-      { calamity: "Barbarian Hordes", effect: "help", text: "5 less barbarian tokens are used." },
-      { calamity: "Tyranny", effect: "hurt", text: "The beneficiary selects and annexes 5 additional unit points." }
+      { calamity: "Barbarian Hordes", effect: "help", text: "5 less barbarian tokens are used.", delta: -5 },
+      { calamity: "Tyranny", effect: "hurt", text: "The beneficiary selects and annexes 5 additional unit points.", delta: 5 }
     ],
     monotheism: [
-      { calamity: "Iconoclasm and Heresy", effect: "hurt", text: "Reduce 1 additional city." }
+      { calamity: "Iconoclasm and Heresy", effect: "hurt", text: "Reduce 1 additional city.", delta: 1 }
     ],
     music: [
-      { calamity: "Civil War", effect: "help", text: "Select 5 less unit points." },
-      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city." }
+      { calamity: "Civil War", effect: "help", text: "Select 5 less unit points.", delta: 5 },
+      { calamity: "Civil Disorder", effect: "help", text: "Reduce 1 less city.", delta: 1 }
     ],
     mysticism: [
-      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city." }
+      { calamity: "Superstition", effect: "help", text: "Reduce 1 less city.", delta: -1 }
     ],
     mythology: [
-      { calamity: "Slave Revolt", effect: "help", text: "Your city support rate is decreased by 1 during the resolution of Slave Revolt." }
+      { calamity: "Slave Revolt", effect: "help", text: "Your city support rate is decreased by 1 during the resolution of Slave Revolt.", delta: -1 }
     ],
     "naval-warfare": [
-      { calamity: "Piracy", effect: "help", text: "If you are the primary victim, the beneficiary selects and replaces 1 less coastal city. You may not be selected as a secondary victim." },
-      { calamity: "Civil Disorder", effect: "hurt", text: "Reduce 1 additional city." }
+      { calamity: "Piracy", effect: "help", text: "If you are the primary victim, the beneficiary selects and replaces 1 less coastal city. You may not be selected as a secondary victim.", role: "primary", delta: -1, noSecondary: true },
+      { calamity: "Civil Disorder", effect: "hurt", text: "Reduce 1 additional city.", delta: -1 }
     ],
     philosophy: [
-      { calamity: "Iconoclasm and Heresy", effect: "help", text: "Reduce 2 less cities." },
-      { calamity: "Civil War", effect: "hurt", text: "Select 5 additional unit points." }
+      { calamity: "Iconoclasm and Heresy", effect: "help", text: "Reduce 2 less cities.", delta: -2 },
+      { calamity: "Civil War", effect: "hurt", text: "Select 5 additional unit points.", delta: -5 }
     ],
     politics: [
-      { calamity: "Barbarian Hordes", effect: "hurt", text: "5 additional barbarian tokens are used." }
+      { calamity: "Barbarian Hordes", effect: "hurt", text: "5 additional barbarian tokens are used.", delta: 5 }
     ],
     pottery: [
-      { calamity: "Famine", effect: "help", text: "Prevent 5 damage." }
+      { calamity: "Famine", effect: "help", text: "Prevent 5 damage.", delta: -5 }
     ],
     "provincial-empire": [
-      { calamity: "Barbarian Hordes", effect: "hurt", text: "5 additional barbarian tokens are used." },
-      { calamity: "Tyranny", effect: "hurt", text: "The beneficiary selects and annexes 5 additional unit points." }
+      { calamity: "Barbarian Hordes", effect: "hurt", text: "5 additional barbarian tokens are used.", delta: 5 },
+      { calamity: "Tyranny", effect: "hurt", text: "The beneficiary selects and annexes 5 additional unit points.", delta: 5 }
     ],
     roadbuilding: [
-      { calamity: "Epidemic", effect: "hurt", text: "If you are the primary victim, take 5 additional damage." }
+      { calamity: "Epidemic", effect: "hurt", text: "If you are the primary victim, take 5 additional damage.", role: "primary", delta: 5 }
     ],
     sculpture: [
-      { calamity: "Tyranny", effect: "help", text: "The beneficiary selects and annexes 5 less unit points." }
+      { calamity: "Tyranny", effect: "help", text: "The beneficiary selects and annexes 5 less unit points.", delta: -5 }
     ],
     theocracy: [
       { calamity: "Iconoclasm and Heresy", effect: "help", text: "You may choose to discard 2 commodity cards to prevent the city reduction effect for you." }
     ],
     theology: [
-      { calamity: "Iconoclasm and Heresy", effect: "help", text: "Reduce 3 less cities." }
+      { calamity: "Iconoclasm and Heresy", effect: "help", text: "Reduce 3 less cities.", delta: -3 }
     ],
     "trade-empire": [
-      { calamity: "Cyclone", effect: "hurt", text: "Select and reduce 1 additional city adjacent to the open sea area." },
-      { calamity: "Epidemic", effect: "hurt", text: "If you are the primary victim, take 5 additional damage." }
+      { calamity: "Cyclone", effect: "hurt", text: "Select and reduce 1 additional city adjacent to the open sea area.", delta: 1 },
+      { calamity: "Epidemic", effect: "hurt", text: "If you are the primary victim, take 5 additional damage.", role: "primary", delta: 5 }
     ],
     "universal-doctrine": [
-      { calamity: "Superstition", effect: "hurt", text: "Reduce 1 additional city." }
+      { calamity: "Superstition", effect: "hurt", text: "Reduce 1 additional city.", delta: 1 }
     ],
     "wonder-of-the-world": [
-      { calamity: "Corruption", effect: "hurt", text: "Discard 5 additional points of face value." }
+      { calamity: "Corruption", effect: "hurt", text: "Discard 5 additional points of face value.", delta: 5 }
     ]
   };
 
@@ -642,31 +796,29 @@
     const rows = ADVANCE_GROUPS.map((g) => `<div class="adv-choice-row adv-${g}">` + `<span class="adv-choice-group">${GROUP_LABEL[g]}</span>` + `<button type="button" class="adv-btn" data-choice-step="-5" data-group="${g}" aria-label="5 less ${GROUP_LABEL[g]}">−</button>` + `<output class="adv-choice-val" data-group="${g}">${values[g] ?? 0}</output>` + `<button type="button" class="adv-btn" data-choice-step="5" data-group="${g}" aria-label="5 more ${GROUP_LABEL[g]}">+</button>` + `</div>`).join("");
     return `<div class="adv-choice" data-choice-for="${card.id}" data-total="${total}">` + `<p class="adv-choice-intro"><strong>${escapeHtml(card.name)}</strong>: choose the colours of ${total} extra credits. You keep them all game.</p>` + rows + `<button type="button" class="btn-submit adv-choice-save"${sum === total ? "" : " disabled"}>Save <span class="adv-choice-sum">${sum}</span> of ${total}</button>` + `</div>`;
   }
-  var CARD_SORTS = ["group", "name", "cost", "vp"];
-  var DEFAULT_DIR = { group: "asc", name: "asc", cost: "asc", vp: "asc" };
+  var CARD_SORTS = ["group", "name", "cost", "vp", "value"];
+  var DEFAULT_DIR = { group: "asc", name: "asc", cost: "asc", vp: "asc", value: "desc" };
   var isCardSort = (s) => CARD_SORTS.includes(s);
   var isSortDir = (s) => s === "asc" || s === "desc";
+  var isReversible = (s) => s !== "group" && s !== "value";
   var SORT_LABEL = {
     group: { asc: ["Colour", "By colour, cheapest first"], desc: ["Colour", "By colour, cheapest first"] },
     name: { asc: ["A–Z", "A to Z"], desc: ["Z–A", "Z to A"] },
     cost: { asc: ["Cost ↑", "Cheapest first, after credits"], desc: ["Cost ↓", "Dearest first, after credits"] },
-    vp: { asc: ["VP ↑", "Fewest VP first"], desc: ["VP ↓", "Most VP first"] }
+    vp: { asc: ["VP ↑", "Fewest VP first"], desc: ["VP ↓", "Most VP first"] },
+    value: { asc: ["VP/cost", "Most VP for the money first, after credits"], desc: ["VP/cost", "Most VP for the money first, after credits"] }
   };
   var sortLabel = (sort, dir) => SORT_LABEL[sort][dir];
   var groupCards = (g) => ADVANCES.filter((c) => c.groups[0] === g).sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
-  function cardPrice(c, held, round) {
-    const h = held.find((x) => x.id === c.id);
-    return h && advanceLocked(h, round) ? c.cost : advanceCost(c.id, held, round);
-  }
   var priceHtml = (c, price) => price < c.cost ? `<s>${c.cost}</s> <strong class="adv-price">${price}</strong>` : `${c.cost}`;
-  function sections(sort, dir, held, round) {
+  function sections(sort, dir, price) {
     if (sort === "group")
       return ADVANCE_GROUPS.map((g) => ({ group: g, cards: groupCards(g) }));
-    const price = new Map(ADVANCES.map((c) => [c.id, cardPrice(c, held, round)]));
     const byName = (a, b) => a.name.localeCompare(b.name);
     const byPrice = (a, b) => price.get(a.id) - price.get(b.id);
-    const primary = sort === "name" ? byName : sort === "cost" ? byPrice : (a, b) => a.vp - b.vp;
-    const sign = dir === "desc" ? -1 : 1;
+    const byValue = (a, b) => a.vp * price.get(b.id) - b.vp * price.get(a.id);
+    const primary = sort === "name" ? byName : sort === "cost" ? byPrice : sort === "vp" ? (a, b) => a.vp - b.vp : byValue;
+    const sign = (isReversible(sort) ? dir : DEFAULT_DIR[sort]) === "desc" ? -1 : 1;
     return [{ cards: [...ADVANCES].sort((a, b) => sign * primary(a, b) || byPrice(a, b) || byName(a, b)) }];
   }
   var section = (group, inner) => group ? `<section class="adv-group adv-${group}"><h4>${GROUP_LABEL[group]}</h4>${inner}</section>` : `<section class="adv-group">${inner}</section>`;
@@ -674,13 +826,14 @@
     const heldById = new Map(held.map((h) => [h.id, h]));
     const t = advanceTotals(heldById.keys());
     const summary = `<p class="adv-pick-summary"><strong>${heldById.size}</strong> cards · <strong>${t.adv_points}</strong> VP` + ` <span class="adv-pick-tiers">(${t.adv_1vp} × 1 · ${t.adv_3vp} × 3 · ${t.adv_6vp} × 6)</span></p>` + `<p class="adv-pick-hint">${gm ? "<strong>GM correction:</strong> tick or untick any card, also locked ones and in any phase. A card added now counts as bought this round in the buying phase, otherwise in the round before." : canBuy ? "Tick the cards you buy this round. Prices include credits from cards bought in earlier rounds. Cards lock when the round ends." : "Cards are bought after calamities are resolved."}</p>`;
-    const groups = sections(sort, dir, held, round).map(({ group, cards }) => {
+    const prices = priceList(held, round);
+    const groups = sections(sort, dir, prices).map(({ group, cards }) => {
       const buttons = cards.map((c) => {
         const h = heldById.get(c.id);
         const bought = h ? advanceLocked(h, round) : false;
         const locked = bought && !gm;
         const closed = !locked && !canBuy && !gm;
-        const cost = priceHtml(c, cardPrice(c, held, round));
+        const cost = priceHtml(c, prices.get(c.id));
         const open = h && c.choiceCredits && (gm || creditChoiceOpen(h, round));
         const chooser = open && (!h.choice || drafts.has(c.id)) ? renderChooser(c, drafts.get(c.id) ?? h.choice ?? {}) : "";
         const change = open && h.choice && !drafts.has(c.id) ? `<button type="button" class="adv-choice-change" data-choice-change="${c.id}">Change colours</button>` : "";
@@ -689,15 +842,43 @@
       }).join("");
       return section(group, `<div class="adv-pick-grid">${buttons}</div>`);
     }).join("");
-    return summary + groups + basket(held, round);
+    return summary + groups + basket(held, round, canBuy || gm);
   }
-  function basket(held, round) {
+  function basket(held, round, canClear) {
     const fresh = held.filter((h) => h.round === round && ADVANCE_BY_ID.has(h.id));
     if (!fresh.length)
       return "";
-    const cost = fresh.reduce((sum, h) => sum + advanceCost(h.id, held, round), 0);
+    const cost = purchaseCost(held, round).total;
     const vp = fresh.reduce((sum, h) => sum + ADVANCE_BY_ID.get(h.id).vp, 0);
-    return `<p class="adv-basket" role="status">Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>`;
+    const names = fresh.map((h) => ADVANCE_BY_ID.get(h.id)).map((c) => `<span class="adv-basket-card adv-${c.groups[0]}">${escapeHtml(c.name)}</span>`).join(" · ");
+    return `<div class="adv-basket" role="status"><div class="adv-basket-text">` + `<p>Buying this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · +${vp} VP</p>` + `<p class="adv-basket-names">${names}</p></div>` + (canClear ? `<button type="button" class="adv-basket-clear">Clear</button>` : "") + `</div>`;
+  }
+  function nextAgeCardRequirement({ level, civNumber, expert }) {
+    const here = ageOfLevel(level);
+    for (const from of AST_LEVELS.filter((l) => l >= level)) {
+      const age = ageOfLevel(from + 5);
+      if (age === here || from + 5 > AST_LEVELS.at(-1))
+        continue;
+      const parts = requirementParts(getAdvanceRequirement({ ast_level: from, civ_number: civNumber }, expert)).filter((p) => p.type !== "cities");
+      if (parts.length)
+        return { age: age.name, parts };
+    }
+    return null;
+  }
+  function renderCardOverview(held, round, ast) {
+    const now = colourCredits(held, round);
+    const next = colourCredits(held);
+    const chips = ADVANCE_GROUPS.map((g) => `<span class="adv-credit-total adv-${g}"><span class="adv-credit-name">${GROUP_LABEL[g]}</span> <strong>${now[g]}</strong>` + (next[g] > now[g] ? ` → ${next[g]}` : "") + `</span>`).join("");
+    const credits = `<p class="adv-credit-totals" aria-label="Colour credits">${chips}</p>`;
+    const req = ast && nextAgeCardRequirement(ast);
+    if (!req)
+      return credits;
+    const t = advanceTotals(held.map((h) => h.id));
+    const parts = req.parts.map((p) => {
+      const have = p.type === "adv" ? advancesOfTier(t, p.tier) : t.adv_points;
+      return `<span class="adv-req ${have >= p.n ? "adv-req-met" : "adv-req-unmet"}">${escapeHtml(p.label)} <span class="adv-req-have">(${have})</span></span>`;
+    }).join(" + ");
+    return credits + `<p class="adv-overview-line adv-next-age"><span class="adv-overview-label">A.S.T. Req. ${escapeHtml(req.age)}:</span>${parts}</p>`;
   }
   var dot = (c) => c.groups[1] ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : "";
   var CREDITS_FROM = (() => {
@@ -723,8 +904,9 @@
   }
   function renderAdvanceReference(held, open = new Set, round = 0, sort = "group", dir = DEFAULT_DIR[sort]) {
     const heldById = new Map(held.map((h) => [h.id, h]));
-    return sections(sort, dir, held, round).map(({ group, cards }) => {
-      const rows = cards.map((c) => `<details class="adv-ref-item adv-${c.groups[0]}" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-ref-meta">${priceHtml(c, cardPrice(c, held, round))} · ${c.vp} VP</span>` + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : "") + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join("");
+    const prices = priceList(held, round);
+    return sections(sort, dir, prices).map(({ group, cards }) => {
+      const rows = cards.map((c) => `<details class="adv-ref-item adv-${c.groups[0]}" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-ref-meta">${priceHtml(c, prices.get(c.id))} · ${c.vp} VP</span>` + (heldById.has(c.id) ? '<span class="adv-ref-held" aria-label="you hold this card">✓</span>' : "") + `</summary>${cardBody(c, heldById.get(c.id))}</details>`).join("");
       return section(group, `<div class="adv-ref-list">${rows}</div>`);
     }).join("");
   }
@@ -743,6 +925,10 @@
         const id = change.dataset.choiceChange;
         b.drafts.set(id, { ...b.held().find((h) => h.id === id)?.choice ?? {} });
         b.rerender();
+        return;
+      }
+      if (target.closest(".adv-basket-clear")) {
+        await mettPost(`/api/players/${b.playerId()}/advances`, { ids: b.held().filter((h) => h.round !== b.round()).map((h) => h.id) });
         return;
       }
       const btn = target.closest(".adv-pick");
@@ -800,22 +986,27 @@
     "non-tradeable": "Non tradeable",
     tradeable: "Tradeable"
   };
-  function renderCalamityPanel(heldIds) {
-    const byCalamity = new Map;
-    for (const id of heldIds) {
-      for (const e of CARD_CALAMITIES[id] ?? []) {
-        const list = byCalamity.get(e.calamity) ?? [];
-        list.push({ card: ADVANCE_BY_ID.get(id)?.name ?? id, e });
-        byCalamity.set(e.calamity, list);
-      }
+  var mark = (effect) => `<span class="cal-mark" aria-label="${effect === "help" ? "helps" : "hurts"}">${effect === "help" ? "＋" : "−"}</span>`;
+  var cardName = (id) => escapeHtml(ADVANCE_BY_ID.get(id)?.name ?? id);
+  function roleLines(cal, role, held) {
+    const r = roleResult(cal, role, held);
+    if (!r)
+      return "";
+    const roles = CALAMITY_ROLES[cal.name];
+    const label = role === "primary" ? "Primary victim" : `Secondary victims <span class="cal-who">(${escapeHtml(roles.secondary.who)})</span>`;
+    if (r.immune) {
+      return `<p class="cal-role"><span class="cal-role-name">${label}:</span> <span class="cal-help">You can’t be picked (${cardName(r.immune)}).</span></p>`;
     }
-    if (!byCalamity.size) {
-      return '<p class="cal-none">None of your cards change a calamity.</p>';
-    }
-    return [...byCalamity.keys()].sort().map((cal) => {
-      const rows = byCalamity.get(cal).sort((a, b) => a.e.effect === b.e.effect ? 0 : a.e.effect === "help" ? -1 : 1).map(({ card, e }) => `<li class="cal-${e.effect}">` + `<span class="cal-mark" aria-label="${e.effect === "help" ? "helps" : "hurts"}">${e.effect === "help" ? "＋" : "−"}</span>` + `<span class="cal-text">${escapeHtml(e.text)} <span class="cal-card">${escapeHtml(card)}</span></span></li>`).join("");
-      return `<section class="cal-group"><h4>${escapeHtml(cal)}</h4><ul>${rows}</ul></section>`;
-    }).join("");
+    const calc = r.changes.length ? ` <span class="cal-calc">${r.base}${r.changes.map((c) => ` <span class="cal-${c.effect}">${c.delta > 0 ? "+" : "−"}${Math.abs(c.delta)} ${cardName(c.card)}</span>`).join("")}</span>` : "";
+    return `<p class="cal-role"><span class="cal-role-name">${label}:</span> ${escapeHtml(r.text)}${calc}</p>` + r.notes.map(({ card, e }) => `<p class="cal-role-note cal-${e.effect}">${mark(e.effect)}<span><strong>${cardName(card)}:</strong> ${escapeHtml(e.text)}</span></p>`).join("");
+  }
+  function renderRoles(cal, held) {
+    const roles = CALAMITY_ROLES[cal.name];
+    return `<div class="cal-roles">` + roleLines(cal, "primary", held) + roleLines(cal, "secondary", held) + (roles?.others ? `<p class="cal-role"><span class="cal-role-name">Other players:</span> ${escapeHtml(roles.others)}</p>` : "") + (roles?.beneficiary ? `<p class="cal-role"><span class="cal-role-name">Beneficiary:</span> ${escapeHtml(roles.beneficiary[0].toUpperCase() + roles.beneficiary.slice(1))}</p>` : "") + `</div>`;
+  }
+  function heldMarks(cal, held) {
+    const mine = cardsFor(cal).filter((c) => held.has(c.id)).map((c) => c.e.effect);
+    return ["help", "hurt"].filter((f) => mine.includes(f)).map((f) => `<span class="cal-check cal-check-${f}" aria-label="your cards ${f === "help" ? "help" : "hurt"}">✓</span>`).join("");
   }
   function cardsFor(cal) {
     const out = [];
@@ -830,8 +1021,8 @@
   function renderCalamityReference(heldIds, playerCount, open = new Set) {
     const held = new Set(heldIds);
     const item = (cal) => {
-      const mods = cardsFor(cal).map(({ id, e }) => `<li class="cal-${e.effect}${held.has(id) ? " cal-held" : ""}">` + `<span class="cal-mark" aria-label="${e.effect === "help" ? "helps" : "hurts"}">${e.effect === "help" ? "＋" : "−"}</span>` + `<span><span class="cal-mod-card">${escapeHtml(ADVANCE_BY_ID.get(id).name)}:</span> ${escapeHtml(e.text)}</span>` + (held.has(id) ? '<span class="cal-check" aria-label="you hold this card">✓</span>' : "") + `</li>`).join("");
-      return `<details class="cal-ref-item" data-calamity="${escapeHtml(cal.name)}"${open.has(cal.name) ? " open" : ""}>` + `<summary><span class="cal-stack">${cal.stack}</span><span class="cal-ref-name">${escapeHtml(cal.name)}</span>` + `<span class="cal-kind cal-kind-${cal.kind}">${KIND_LABEL[cal.kind]}</span></summary>` + cal.text.map((t) => `<p>${escapeHtml(t)}</p>`).join("") + (mods ? `<ul class="cal-mods">${mods}</ul>` : "") + `</details>`;
+      const mods = cardsFor(cal).map(({ id, e }) => `<li class="cal-${e.effect}${held.has(id) ? " cal-held" : ""}">` + mark(e.effect) + `<span><span class="cal-mod-card">${cardName(id)}:</span> ${escapeHtml(e.text)}</span>` + (held.has(id) ? '<span class="cal-check" aria-label="you hold this card">✓</span>' : "") + `</li>`).join("");
+      return `<details class="cal-ref-item" data-calamity="${escapeHtml(cal.name)}"${open.has(cal.name) ? " open" : ""}>` + `<summary><span class="cal-stack">${cal.stack}</span><span class="cal-ref-name">${escapeHtml(cal.name)}</span>${heldMarks(cal, held)}` + `<span class="cal-kind cal-kind-${cal.kind}">${KIND_LABEL[cal.kind]}</span></summary>` + renderRoles(cal, held) + cal.text.map((t) => `<p class="cal-chart">${escapeHtml(t)}</p>`).join("") + (mods ? `<ul class="cal-mods">${mods}</ul>` : "") + `</details>`;
     };
     const major = `<h4>Major calamities</h4><div class="cal-ref-list">${CALAMITIES.filter((c) => c.kind !== "minor").map(item).join("")}</div>`;
     return minorCalamitiesInPlay(playerCount) ? `<h4>Minor calamities</h4><div class="cal-ref-list">${CALAMITIES.filter((c) => c.kind === "minor").map(item).join("")}</div>` + major : major + `<p class="cal-none">Minor calamities are not used with ${playerCount} players, only with 9–11 or 15–18.</p>`;
@@ -934,6 +1125,7 @@
       bindPicker(picker, {
         playerId: () => playerId,
         held: () => lastState?.advances[playerId] ?? [],
+        round: () => lastState?.game.current_round ?? 0,
         rerender: () => {
           if (lastState)
             syncPicker(lastState.advances[playerId] ?? [], lastState.game);
@@ -946,7 +1138,7 @@
         const sort = btn?.dataset.cardSort;
         if (!isCardSort(sort))
           return;
-        if (sort === cardSort && sort !== "group")
+        if (sort === cardSort && isReversible(sort))
           cardDir = cardDir === "asc" ? "desc" : "asc";
         else {
           cardSort = sort;
@@ -1003,12 +1195,12 @@
       syncCensus(player, census, submitted, revealed, citiesPhase, state);
       syncCity(census, cityCountSubmitted, citiesPhase, revealed);
       syncPicker(state.advances[playerId] ?? [], game);
+      const overview = document.getElementById("adv-overview");
+      if (overview)
+        overview.innerHTML = renderCardOverview(state.advances[playerId] ?? [], game.current_round, { level: player.ast_level, civNumber: player.civ_number, expert });
       syncCalamities((state.advances[playerId] ?? []).map((h) => h.id), state.players.length);
       syncAst(player, census, game, state, expert);
     }, syncCalamities = function(heldIds, playerCount) {
-      const cal = document.getElementById("cal-panel");
-      if (cal)
-        cal.innerHTML = renderCalamityPanel(heldIds);
       rerenderKeepingOpen("cal-ref", "calamity", (open) => renderCalamityReference(heldIds, playerCount, open));
     }, syncSummary = function(player, census, game) {
       const el = document.getElementById("civ-summary");
@@ -1293,7 +1485,7 @@
       const [sort, dir] = (localStorage.getItem(CARD_SORT_KEY) ?? "").split(":");
       if (isCardSort(sort)) {
         cardSort = sort;
-        cardDir = isSortDir(dir) ? dir : DEFAULT_DIR[sort];
+        cardDir = isSortDir(dir) && isReversible(sort) ? dir : DEFAULT_DIR[sort];
       }
     } catch {}
     bindTabs();
