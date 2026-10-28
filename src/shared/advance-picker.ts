@@ -195,11 +195,15 @@ export function renderCardOverview(held: readonly HeldAdvance[], round: number, 
   const req = ast && nextAgeCardRequirement(ast);
   if (!req) return credits;
   const t = advanceTotals(held.map(h => h.id));
-  const parts = req.parts.map(p => {
+  const label = `A.S.T. Req. ${req.age}:`;
+  const texts = req.parts.map(p => {
     const have = p.type === 'adv' ? advancesOfTier(t, p.tier) : t.adv_points;
-    return `<span class="adv-req ${have >= p.n ? 'adv-req-met' : 'adv-req-unmet'}">${escapeHtml(p.label)} <span class="adv-req-have">(${have})</span></span>`;
-  }).join(' + ');
-  return credits + `<p class="adv-overview-line adv-next-age"><span class="adv-overview-label">A.S.T. Req. ${escapeHtml(req.age)}:</span>${parts}</p>`;
+    return { p, have, text: `${p.label} (${have})` };
+  });
+  const parts = texts.map(({ p, have }) => `<span class="adv-req ${have >= p.n ? 'adv-req-met' : 'adv-req-unmet'}">${escapeHtml(p.label)} <span class="adv-req-have">(${have})</span></span>`).join(' + ');
+  // Its length in characters lets the CSS shrink a long line to fit one row.
+  const chars = [label, ...texts.map(x => x.text)].join(' + ').length + 1;
+  return credits + `<p class="adv-overview-line adv-next-age" style="--chars: ${chars}"><span class="adv-overview-label">${escapeHtml(label)}</span>${parts}</p>`;
 }
 
 const dot = (c: AdvanceCard) => c.groups[1]

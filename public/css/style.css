@@ -1292,7 +1292,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 /* Cards tab: every advance as a tap-to-toggle button, grouped by colour. */
 .adv-picker { grid-column: 1 / -1; }
 /* Above the cards: colour credit totals and the next age's card requirement. */
-.adv-overview { grid-column: 1 / -1; display: grid; gap: 0.3rem; }
+.adv-overview { grid-column: 1 / -1; display: grid; gap: 0.3rem; container-type: inline-size; }
 .adv-overview-line { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.6rem; font-size: 0.88rem; }
 /* The five colour totals in one row at any font size: name over number. */
 .adv-credit-totals { margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.25rem; text-align: center; font-size: 0.88rem; }
@@ -1300,9 +1300,10 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .adv-overview-label { color: var(--mett-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; }
 .adv-credit-total { color: var(--grp); white-space: nowrap; line-height: 1.25; }
 .adv-req { white-space: nowrap; }
-/* One line on a phone at any OS font size: the text scales with the screen
-   width once the font would push it onto a second line. */
-.adv-next-age { flex-wrap: nowrap; white-space: nowrap; gap: 0.35rem; font-size: min(0.88rem, 3.3vw); }
+/* One line on a phone at any OS font size: a line too long for its width
+   (--chars, set by the page) gets a smaller font. 0.62em is a generous
+   average character width, wide fonts like DejaVu Sans included. */
+.adv-next-age { flex-wrap: nowrap; white-space: nowrap; gap: 0.3em; font-size: min(0.88rem, calc(100cqi / (var(--chars) * 0.62))); }
 .adv-next-age .adv-overview-label { font-size: inherit; text-transform: none; letter-spacing: 0; }
 .adv-req-met { color: var(--mett-success); }
 .adv-req-unmet { color: var(--mett-danger); }

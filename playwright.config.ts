@@ -22,12 +22,12 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // The TV layout again with a wide system font (DejaVu Sans): the board
-    // once fit Noto Sans but clipped with DejaVu, the default on many Linux
-    // TV computers and on the CI runners.
+    // The TV layout and the player page's one-line rows again with a wide
+    // system font (DejaVu Sans): the board once fit Noto Sans but clipped with
+    // DejaVu, the default on many Linux TV computers and on the CI runners.
     {
       name: 'chromium-wide-font',
-      testMatch: /layout\.spec\.ts/,
+      testMatch: /(layout|civ-oneline)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: { env: { ...process.env, FONTCONFIG_FILE: resolve('tests/browser/wide-font.conf') } },
