@@ -1384,7 +1384,6 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .adv-pick-meta { font-size: 0.75rem; }
 .adv-pick-meta em { font-style: normal; color: var(--mett-accent); }
 .adv-pick-meta s { color: var(--mett-muted); }
-.adv-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--grp); flex-shrink: 0; }
 /* Two-colour cards, as the game draws them: a stripe in both colours (first
    colour on top) and, when held, a fade from the first colour to the second.
    (No card has Arts as its second colour.) */

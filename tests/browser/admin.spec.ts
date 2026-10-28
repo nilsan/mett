@@ -69,8 +69,11 @@ test.describe('admin: cards', () => {
     const state = await (await request.get('/api/state')).json();
     const id = state.players.find((p: { civ_slug: string }) => p.civ_slug === 'minoa').id;
     await request.post('/api/game/cities/clear');
-    await request.post(`/api/players/${id}/advances`, { data: { ids: [...state.advances[id] ?? []].map((h: { id: string }) => h.id).concat('pottery') } });
-    await request.post(`/api/players/${id}/advances/confirm`, { data: {} });
+    // A card Minoa doesn't hold yet in this (randomly seeded) game.
+    const held: string[] = (state.advances[id] ?? []).map((h: { id: string }) => h.id);
+    const fresh = ['pottery', 'masonry', 'mysticism', 'cloth-making'].find(c => !held.includes(c))!;
+    await request.post(`/api/players/${id}/advances`, { data: { ids: [...held, fresh] } });
+    expect((await request.post(`/api/players/${id}/advances/confirm`, { data: {} })).ok()).toBe(true);
     await page.goto('/admin');
     await page.locator(`.adv-pts-btn[data-player-id="${id}"]`).click();
     const dialog = page.locator('#gm-cards');

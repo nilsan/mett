@@ -842,7 +842,7 @@
         const h = heldById.get(c.id);
         const fresh = !!h && !advanceLocked(h, round, confirmed);
         const action = h && !(fresh && canBuy) ? `<span class="adv-ref-held">✓ ${h.round === round ? "Bought" : "Owned"}</span>` : canBuy && !done ? `<button type="button" class="adv-buy" data-advance="${c.id}" aria-pressed="${fresh}"${fresh ? ' title="Tap to undo"' : ""}>${fresh ? "✓ Buying" : "Buy"}</button>` : "";
-        return `<details class="adv-ref-item adv-${c.groups[0]}${dual(c)}${h ? " adv-held" : ""}" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-ref-end"><span class="adv-ref-meta">${priceHtml(c, prices.get(c.id))} · ${c.vp} VP</span>${action}</span>` + `</summary>${cardBody(c, h)}</details>` + chooserFor(c, h, round, drafts, false, confirmed);
+        return `<details class="adv-ref-item adv-${c.groups[0]}${dual(c)}${h ? " adv-held" : ""}" data-advance-ref="${c.id}"${open.has(c.id) ? " open" : ""}>` + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}</span>` + `<span class="adv-ref-end"><span class="adv-ref-meta">${priceHtml(c, prices.get(c.id))} · ${c.vp} VP</span>${action}</span>` + `</summary>${cardBody(c, h)}</details>` + chooserFor(c, h, round, drafts, false, confirmed);
       }).join("");
       return section(group, `<div class="adv-ref-list">${rows}</div>`);
     }).join("");
@@ -889,7 +889,6 @@
     return credits + `<p class="adv-overview-line adv-next-age" style="--chars: ${chars}"><span class="adv-overview-label">${escapeHtml(label)}</span>${parts}</p>`;
   }
   var dual = (c) => c.groups[1] ? ` adv-dual adv-2-${c.groups[1]}` : "";
-  var dot = (c) => c.groups[1] ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : "";
   var CREDITS_FROM = (() => {
     const m = new Map;
     for (const from of ADVANCES) {

@@ -126,9 +126,8 @@ function chooserFor(c: AdvanceCard, h: HeldAdvance | undefined, round: number,
 }
 
 /** The GM's card correction on the admin page: every card as a tap-to-toggle
- *  tile, grouped by colour, locked or not and in any phase. Dual-group cards
- *  are listed under their first group, with a dot in the second group's
- *  colour. */
+ *  tile, grouped by colour, locked or not and in any phase. Two-colour
+ *  cards are listed under their first colour and drawn in both. */
 export function renderAdvancePicker(held: readonly HeldAdvance[], round: number,
   { drafts = new Map(), confirmed = 0 }: Pick<PickerOptions, 'drafts' | 'confirmed'> = {}): string {
   const heldById = new Map(held.map(h => [h.id, h]));
@@ -138,7 +137,7 @@ export function renderAdvancePicker(held: readonly HeldAdvance[], round: number,
       const h = heldById.get(c.id);
       const cls = `adv-pick adv-${c.groups[0]}${dual(c)}${h ? ' adv-held' : ''}`;
       return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}">`
-        + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>`
+        + `<span class="adv-pick-name">${escapeHtml(c.name)}</span>`
         + `<span class="adv-pick-meta">${priceHtml(c, prices.get(c.id)!)} · ${c.vp} VP${h && h.round === round ? ' · <em>new</em>' : ''}</span>`
         + `</button>`
         + chooserFor(c, h, round, drafts, true);
@@ -173,7 +172,7 @@ export function renderCardList(held: readonly HeldAdvance[], round: number,
         ? `<button type="button" class="adv-buy" data-advance="${c.id}" aria-pressed="${fresh}"${fresh ? ' title="Tap to undo"' : ''}>${fresh ? '✓ Buying' : 'Buy'}</button>`
         : '';
       return `<details class="adv-ref-item adv-${c.groups[0]}${dual(c)}${h ? ' adv-held' : ''}" data-advance-ref="${c.id}"${open.has(c.id) ? ' open' : ''}>`
-        + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}${dot(c)}</span>`
+        + `<summary><span class="adv-ref-name">${escapeHtml(c.name)}</span>`
         + `<span class="adv-ref-end"><span class="adv-ref-meta">${priceHtml(c, prices.get(c.id)!)} · ${c.vp} VP</span>${action}</span>`
         + `</summary>${cardBody(c, h)}</details>`
         + chooserFor(c, h, round, drafts, false, confirmed);
@@ -257,8 +256,6 @@ export function renderCardOverview(held: readonly HeldAdvance[], round: number, 
  *  first colour to the second (the Strategy Explorer's banner). */
 const dual = (c: AdvanceCard) => c.groups[1] ? ` adv-dual adv-2-${c.groups[1]}` : '';
 
-const dot = (c: AdvanceCard) => c.groups[1]
-  ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : '';
 
 /** The named-card credits each card receives: target id → givers. */
 const CREDITS_FROM: ReadonlyMap<string, readonly { from: AdvanceCard; n: number }[]> = (() => {

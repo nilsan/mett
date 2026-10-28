@@ -282,7 +282,7 @@
       const buttons = cards.map((c) => {
         const h = heldById.get(c.id);
         const cls = `adv-pick adv-${c.groups[0]}${dual(c)}${h ? " adv-held" : ""}`;
-        return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}">` + `<span class="adv-pick-name">${escapeHtml(c.name)}${dot(c)}</span>` + `<span class="adv-pick-meta">${priceHtml(c, prices.get(c.id))} · ${c.vp} VP${h && h.round === round ? " · <em>new</em>" : ""}</span>` + `</button>` + chooserFor(c, h, round, drafts, true);
+        return `<button type="button" class="${cls}" data-advance="${c.id}" aria-pressed="${!!h}">` + `<span class="adv-pick-name">${escapeHtml(c.name)}</span>` + `<span class="adv-pick-meta">${priceHtml(c, prices.get(c.id))} · ${c.vp} VP${h && h.round === round ? " · <em>new</em>" : ""}</span>` + `</button>` + chooserFor(c, h, round, drafts, true);
       }).join("");
       return section(group, `<div class="adv-pick-grid">${buttons}</div>`);
     }).join("");
@@ -299,7 +299,6 @@
     return `<div class="adv-basket" role="status"><div class="adv-basket-text">` + `<p>${done ? "Bought" : "Buying"} this round: <strong>${fresh.length}</strong> ${fresh.length === 1 ? "card" : "cards"}` + ` · <strong class="adv-basket-cost">${cost}</strong> · <span class="adv-basket-vp">+${vp} VP</span></p>` + `<p class="adv-basket-names">${names}</p></div>` + (done ? `<p class="adv-basket-done">${done}</p>` : "") + (buttons ? `<div class="adv-basket-buttons">${buttons}</div>` : "") + `</div>`;
   }
   var dual = (c) => c.groups[1] ? ` adv-dual adv-2-${c.groups[1]}` : "";
-  var dot = (c) => c.groups[1] ? `<span class="adv-dot adv-${c.groups[1]}" title="${GROUP_LABEL[c.groups[1]]}"></span>` : "";
   var CREDITS_FROM = (() => {
     const m = new Map;
     for (const from of ADVANCES) {

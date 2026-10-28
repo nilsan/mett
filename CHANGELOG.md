@@ -2,6 +2,11 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.6 — 2026-10-28
+
+### Changed
+- Two-colour cards no longer have a dot for their second colour; the stripe and the fade show both colours.
+
 ## 2.0.0-beta.5 — 2026-10-28
 
 ### Added
