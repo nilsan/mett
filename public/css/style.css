@@ -48,6 +48,7 @@
   --radius-card: 0.25rem;     /* sections, cards */
   --radius-pill: 624.9375rem; /* fully-rounded badges */
   --radius-panel: 0.75rem;    /* panels / sections on every page */
+  --adv-stripe: 0.5rem;       /* card colour stripe on the Cards tab */
   --radius-row: 0.25rem;      /* ends of a striped table row, A.S.T. age blocks */
   --mett-stripe: rgba(255, 255, 255, 0.05); /* alternating table rows */
 
@@ -499,6 +500,11 @@ body {
 }
 .fs-supported .fullscreen-toggle { display: inline-block; }
 .fullscreen-toggle:hover { color: var(--mett-text); }
+/* Not on phones: it covered the phase steps there, and a phone browser
+   hides its own bars when the page scrolls anyway. */
+@media (max-width: 43.75em) {
+  .fs-supported .fullscreen-toggle { display: none; }
+}
 
 /* Trim Pico's vertical padding on the home page so 18 empires + the AST
    legend fit a 1080p viewport without scrolling. Other pages keep Pico's
@@ -895,6 +901,24 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .mett-table       { font-size: 0.84rem; }
   .status-grid .mett-table th    { font-size: 0.72rem; padding: 0.35rem 0.5rem; }
   .status-grid .mett-table td    { height: 2rem; padding: 0.15rem 0.5rem; }
+  /* Readable on a phone: the board's TV sizes follow the screen height and
+     come out at 7–9px here. The A.S.T. board scrolls sideways in its card, so
+     wider cells cost nothing. */
+  .status-grid .empire-player-name { font-size: 0.78rem; }
+  .status-ast td.empire-cell       { font-size: 0.84rem; }
+  .status-ast .ab-data-col,
+  .status-ast .ab-cell,
+  .status-ast .ab-level-num,
+  .status-ast .ab-round-num        { width: 2.3rem; }
+  .status-ast .ab-level-num,
+  .status-ast .ab-round-num        { font-size: 0.8rem !important; }
+  .status-ast .ab-name             { font-size: 0.85rem !important; }
+  .status-ast .ab-civ-label.ab-corner { font-size: 0.8rem; }
+  .status-ast .ab-magnet           { width: 1.7rem; font-size: 0.75rem; }
+  .status-grid .ab-legend          { font-size: 0.85rem; line-height: 1.35; gap: 0.25rem 1rem; padding-top: 0.5rem; }
+  .status-grid .ab-legend-dot      { width: 0.75rem; height: 0.75rem; }
+  .status-grid .trade-table { --trade-region-w: 1.7rem; }
+  .status-grid .trade-table td.trade-region span { font-size: 0.75rem; }
 
   /* Census: fixed layout pinned to the card width. Percentage data columns are
      font-independent, so the table can never content-size past the card edge and
@@ -1352,12 +1376,14 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .adv-basket-done { margin: 0; flex: none; color: var(--mett-success); font-weight: 700; font-size: 0.85rem; }
 .adv-pick-hint { margin: -0.3rem 0 0.5rem; color: var(--mett-muted); font-size: 0.82rem; }
 .adv-group { --grp: var(--mett-muted); margin-bottom: 0.6rem; }
+/* Card colours pushed apart for tired eyes and dull laptop screens: a light
+   sky blue next to the green, a bright yellow next to a deep orange. */
 .adv-group h4 { margin: 0 0 0.3rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--grp); }
 .adv-science  { --grp: #4caf50; }
-.adv-arts     { --grp: #4a90d9; }
-.adv-crafts   { --grp: #e08a2e; }
+.adv-arts     { --grp: #6cb8ff; }
+.adv-crafts   { --grp: #f07418; }
 .adv-civics   { --grp: #d64545; }
-.adv-religion { --grp: #d4b62c; }
+.adv-religion { --grp: #ffe22e; }
 .adv-pick-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(10rem, 100%), 1fr));
@@ -1372,7 +1398,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   min-height: 2.75rem;
   padding: 0.35rem 0.55rem;
   border: 0.0625rem solid var(--mett-border);
-  border-left: 0.25rem solid var(--grp);
+  border-left: var(--adv-stripe) solid var(--grp);
   border-radius: var(--radius-row);
   background: var(--mett-surface2);
   color: var(--mett-muted);
@@ -1388,17 +1414,17 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    colour on top) and, when held, a fade from the first colour to the second.
    (No card has Arts as its second colour.) */
 .adv-2-science  { --grp2: #4caf50; }
-.adv-2-crafts   { --grp2: #e08a2e; }
+.adv-2-crafts   { --grp2: #f07418; }
 .adv-2-civics   { --grp2: #d64545; }
-.adv-2-religion { --grp2: #d4b62c; }
+.adv-2-religion { --grp2: #ffe22e; }
 .adv-pick.adv-dual, .adv-ref-item.adv-dual { position: relative; border-left-color: transparent; }
 .adv-pick.adv-dual::before, .adv-ref-item.adv-dual::before {
   content: "";
   position: absolute;
-  left: -0.25rem;
+  left: calc(-1 * var(--adv-stripe));
   top: 0;
   bottom: 0;
-  width: 0.25rem;
+  width: var(--adv-stripe);
   border-radius: var(--radius-row) 0 0 var(--radius-row);
   background: linear-gradient(var(--grp) 50%, var(--grp2) 50%);
 }
@@ -1450,6 +1476,11 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 .cal-ref-item { margin: 0; border: 0; border-radius: var(--radius-row); background: var(--mett-surface2); }
 .cal-ref-item summary { display: flex; gap: 0.5rem; align-items: baseline; padding: 0.55rem 0.6rem; line-height: 1.2; }
 .cal-ref-item[open] > summary, .adv-ref-item[open] > summary { margin-bottom: 0; }
+/* Titles keep one colour; the chevron shows open or closed. Pico colours a
+   focused summary blue (it stayed blue after closing, and looked like an Arts
+   card) and greys an open one that lost focus. */
+details:is(.adv-ref-item, .cal-ref-item) > summary:not([role]),
+details:is(.adv-ref-item, .cal-ref-item)[open] > summary:not([role]) { color: var(--mett-text); }
 .cal-stack { flex: 0 0 1.1rem; color: var(--mett-muted); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .cal-ref-name { font-weight: 700; }
 .cal-kind { margin-left: auto; color: var(--mett-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
@@ -1468,7 +1499,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    ones filled in their colour. */
 /* One column as wide as the screen, even with an open colour chooser in it. */
 .adv-ref-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
-.adv-ref-item { margin: 0; border: 0; border-left: 0.25rem solid var(--grp); border-radius: var(--radius-row); background: var(--mett-surface2); }
+.adv-ref-item { margin: 0; border: 0; border-left: var(--adv-stripe) solid var(--grp); border-radius: var(--radius-row); background: var(--mett-surface2); }
 .adv-ref-item.adv-held { background: color-mix(in srgb, var(--grp) 22%, var(--mett-surface2)); }
 .adv-ref-item summary { position: relative; display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; align-items: center; min-height: 3rem; padding: 0.35rem 2rem 0.35rem 0.6rem; line-height: 1.2; }
 /* The open/close chevron keeps to the right edge, out of the wrapping row. */
@@ -1654,36 +1685,34 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .civ-hero-content { gap: 0.02rem; }
   .civ-hero h2 { font-size: 1.5rem; gap: 0.4rem; }
   .civ-player-name { font-size: 0.9rem; }
-  .civ-region-tag { font-size: 0.56rem; padding: 0.06rem 0.2rem; }
+  .civ-region-tag { font-size: 0.72rem; padding: 0.06rem 0.25rem; }
 
   /* Body layout — single column with air between sections */
   .civ-body { grid-template-columns: 1fr; gap: 0.3rem; }
   .civ-section { padding: 0.3rem 0.45rem; }
-  .civ-section h3 { font-size: 0.64rem; margin-bottom: 0.1rem; letter-spacing: 0.04em; }
+  .civ-section h3 { font-size: 0.8rem; margin-bottom: 0.2rem; letter-spacing: 0.04em; }
 
   /* Census */
-  .census-submitted, .census-pending { font-size: 0.68rem; margin-bottom: 0.05rem; }
+  .census-submitted, .census-pending { font-size: 0.92rem; margin-bottom: 0.2rem; }
   .census-input-row { gap: 0.18rem; }
   .census-input { -webkit-appearance: none; appearance: none; font-size: 0.95rem; padding: 0 0 0 0.45rem; height: 2.6rem; min-height: 0; line-height: 2.6rem; box-sizing: border-box; border-radius: 0.1875rem; }
   .btn-submit { font-size: 0.92rem; padding: 0 0.85rem; height: 2.6rem; min-height: 0; box-sizing: border-box; }
-  .move-order { font-size: 0.64rem; margin-top: 0.06rem; }
+  .move-order { font-size: 0.92rem; margin-top: 0.2rem; }
 
   /* City stepper buttons */
   .adv-btn { width: 2.6rem; height: 2.6rem; min-height: 0; font-size: 1.2rem; }
 
   /* AST section */
   .ast-current { margin-bottom: 0.1rem; gap: 0.2rem; }
-  .ast-level-label { font-size: 0.7rem; }
-  .ast-level-value { font-size: 0.95rem; }
-  .ast-era { font-size: 0.66rem; }
-  .ast-next { padding: 0.18rem 0.3rem; margin-bottom: 0.12rem; }
-  .ast-next h4 { font-size: 0.66rem; margin-bottom: 0.08rem; }
-  .ast-req-text { font-size: 0.72rem; }
+  .ast-level-label { font-size: 0.95rem; }
+  .ast-level-value { font-size: 1.25rem; }
+  .ast-era { font-size: 0.92rem; }
+  .ast-next { padding: 0.3rem 0.45rem; margin-bottom: 0.3rem; }
+  .ast-next h4 { font-size: 0.92rem; margin-bottom: 0.15rem; }
+  .ast-req-text { font-size: 0.95rem; }
 
   /* AST strip: 17 nodes (expert) must fit ≈412px without h-scroll */
-  :root { --ast-node-size: 1.3rem; --ast-node-gap: 0.0625rem; }
-  .ast-node { font-size: 0.55rem; }
-  .ast-age-label { font-size: 0.36rem; padding: 0.0625rem 0; margin-bottom: 0.0625rem; }
+  :root { --ast-node-size: min(2rem, 8vw); --ast-node-gap: 0.0625rem; }
 
   /* Census and city rows share one grid so every column lines up: wide
      non-square steppers (numbers are always small), a narrow input, and a
@@ -1981,6 +2010,20 @@ body:has(.civ-page) { overflow-x: clip; }
 .ab-legend-dot.age-lbronze { background: #5a2e0e; }
 .ab-legend-dot.age-eiron   { background: #6a7d9e; }
 .ab-legend-dot.age-liron   { background: conic-gradient(from 45deg, #e0533a, #e0b13a, #4caf50, #3a9ad0, #9b59d0, #e0533a); }
+/* Phone: the A.S.T. track and its legend at readable sizes (after their base
+   rules, which they override). */
+@media (max-width: 43.75em) {
+  .ast-req-legend { font-size: 0.92rem; gap: 0.3rem; }
+  .ast-req-legend .ab-legend-dot { width: 0.8rem; height: 0.8rem; }
+  /* Capped by the screen width too: 17 squares share it, so with a large OS
+     font the text stays as big as fits instead of spilling into the next. */
+  .ast-node { font-size: min(0.78rem, 3.1vw); }
+  .ast-age-label { font-size: min(0.62rem, 2.45vw); padding: 0.15rem 0; margin-bottom: 0.0625rem; }
+  .ast-age-full { display: none; }
+}
+@media (min-width: 43.76em) {
+  .ast-age-short { display: none; }
+}
 
 /* Round track footer row */
 .ab-round-label {
@@ -2552,6 +2595,12 @@ body:has(.civ-page) { overflow-x: clip; }
   color: var(--mett-muted);
   vertical-align: middle;
 }
+/* Phone: the explanations at body size (after the base rules, which they
+   override). */
+@media (max-width: 43.75em) {
+  .phase-hint, .mov-hint { font-size: 0.92rem; }
+  .phase-badge { font-size: 0.72rem; }
+}
 
 /* Trade card chips */
 .trade-chips {
@@ -2632,10 +2681,9 @@ body:has(.civ-page) { overflow-x: clip; }
    it only catches genuinely short screens (≤760px, e.g. 375×667 — every
    modern Pixel/iPhone is ≥812 and keeps the roomy layout), but with the OS
    font size turned up (e.g. Pixel "Large" ≈ 1.3×) a 412×915 Pixel 8 measures
-   ≤49em and gets the compact layout, which is what lets the bigger text
-   still fit without scrolling. At ≥1.5× scaling the page scrolls vertically
-   by design — fighting a strong accessibility preference with density would
-   defeat its purpose. */
+   ≤49em and gets the compact layout. Only spacing is squeezed: since the
+   page has tabs, each tab is short enough, and smaller text there would undo
+   the larger font the player asked for. */
 @media (max-width: 43.75em) and (max-height: 49em) {
   body:has(.civ-page) .site-header { padding: 0.2rem 0.75rem 0.1rem; }
   body:has(.civ-page) .mett-wordmark { font-size: 0.9rem; }
@@ -2644,21 +2692,15 @@ body:has(.civ-page) { overflow-x: clip; }
   .civ-hero h2 { font-size: 1.2rem; }
   .civ-body { gap: 0.3rem; }
   .civ-section { padding: 0.3rem 0.45rem; }
-  .phase-hint { font-size: 0.62rem; margin-bottom: 0.08rem; }
   .census-input { height: 1.9rem; line-height: 1.9rem; }
   .btn-submit { height: 1.9rem; }
   .adv-btn { height: 1.9rem; }
   .city-count-row > .adv-btn { height: 1.9rem; }
   .ast-current { margin-bottom: 0.04rem; }
-  .ast-level-value { font-size: 0.85rem; }
   .ast-next { padding: 0.12rem 0.3rem; margin-bottom: 0.08rem; }
   .ast-next h4 { margin-bottom: 0.04rem; }
   .ast-req-status { gap: 0.12rem; }
-  .req-row { font-size: 0.78rem; gap: 0.25rem; }
-  .req-have { font-size: 0.68rem; }
   .ast-bar-wrap { margin-top: 0.12rem; }
-  :root { --ast-node-size: 1.15rem; }
-  .ast-node { font-size: 0.5rem; }
 }
 
 /* ─── Calm components (every page) ──────────────────────────────────────────

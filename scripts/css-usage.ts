@@ -133,6 +133,11 @@ try {
   await post(`/api/players/${ps[4]!.id}/advances`, { ids: [...fourth.map(h => h.id), 'pottery', 'masonry', 'mysticism'] });
   await post(`/api/players/${ps[4]!.id}/advances/confirm`);
   await pages();
+  // A card row opened to its text (titles keep their colour when open).
+  const slug = ((await (await fetch(BASE + '/api/state')).json()) as { players: Array<{ civ_slug: string }> }).players[0]!.civ_slug;
+  await visit(`/${slug}#cards`, false, async page => {
+    await page.locator('.adv-ref-item > summary').first().click();
+  });
   // The GM's card correction dialog: a player's cards as tiles, and one whose
   // purchase is confirmed.
   for (const p of [ps[0]!, ps[4]!]) {

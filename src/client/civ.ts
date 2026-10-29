@@ -342,7 +342,7 @@ if (civEl) {
     if (phaseEl) {
       phaseEl.textContent = citiesPhase
         ? 'Enter city count after calamities resolve. This is the count used for A.S.T. progression.'
-        : 'Enter city count before buying trade cards. You will re-enter after calamities resolve.';
+        : 'Enter city count before buying trade cards. You will re\u2011enter after calamities resolve.';
     }
     const phaseBadge = document.querySelector('.phase-badge');
     if (phaseBadge) {

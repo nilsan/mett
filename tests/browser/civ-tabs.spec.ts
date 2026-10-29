@@ -26,6 +26,19 @@ test.describe('civ page: tabs', () => {
     expect(new URL(page.url()).hash).toBe('#ast');
   });
 
+  // Pico coloured a focused summary blue (kept after closing) and greyed an
+  // open one that lost focus; a tester found the titles changing at random.
+  test('card titles keep one colour however rows are opened and closed', async ({ page }) => {
+    await page.goto('/minoa#cards');
+    const rows = page.locator('.adv-ref-item > summary');
+    const colours = () => rows.evaluateAll(es => es.slice(0, 2).map(e => getComputedStyle(e).color));
+    const closed = (await colours())[0];
+    for (const i of [0, 0, 0, 1, 1]) {
+      await rows.nth(i).click();
+      await expect.poll(colours).toEqual([closed, closed]);
+    }
+  });
+
   test('the hash picks the tab on load', async ({ page }) => {
     await page.goto('/minoa#cards');
     await expect(selected(page)).toHaveText('Cards');

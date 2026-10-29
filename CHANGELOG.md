@@ -2,6 +2,16 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.7 — 2026-10-29
+
+### Changed
+- Larger text on phones where it was smallest: on the status board the A.S.T. board's VP and round numbers, age names and markers, its legend, and the player names under the empires; on the player page the explanations on the Round tab, and the A.S.T. tab's text, track and requirement list. An age only one square wide shows its short name on the track (E.I.); the full name is in the list below. With a large phone font the A.S.T. track keeps its numbers and labels inside their squares instead of running them together. The TV and desktop sizes are unchanged.
+- Wider colour stripe on the cards (twice as wide), and the card colours further apart: a lighter sky blue for Arts so it doesn't blur into Science green, a bright yellow for Religion and a deeper orange for Crafts.
+
+### Fixed
+- On a phone the status board has no full-screen button; it covered the phase steps in the header.
+- Card and calamity titles no longer change colour as rows are opened and closed (a closed row stayed blue after closing, and an open row turned grey when another opened). Titles stay white; the arrow shows open or closed.
+
 ## 2.0.0-beta.6 — 2026-10-28
 
 ### Changed

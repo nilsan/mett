@@ -21,6 +21,7 @@ function getCivAgeBands(civNumber: number, expert: boolean) {
   const levels = boardLevels(expert);
   return getAgeBands(expert).map(b => ({
     label: b.cls === 'age-start' ? '' : b.name,
+    short: b.shortName,
     span: levels.filter(l => civBandClass(civNumber, l, expert) === b.cls).length,
     cls: b.cls,
   }));
@@ -103,9 +104,14 @@ function astBar(currentLevel: number, expert: boolean, civNumber: number): strin
   const levels = boardLevels(expert);
   const N = levels.length;
 
-  const labelDivs = getCivAgeBands(civNumber, expert).map(b =>
-    `<div class="ast-age-label ${b.cls}" style="grid-column:span ${b.span}">${b.label}</div>`
-  ).join('');
+  // An age one square wide also carries its short name (E.I.), which a phone
+  // shows instead: the full name no longer fits there at a readable size.
+  const labelDivs = getCivAgeBands(civNumber, expert).map(b => {
+    const text = b.span === 1 && b.short
+      ? `<span class="ast-age-full">${b.label}</span><span class="ast-age-short">${b.short}</span>`
+      : b.label;
+    return `<div class="ast-age-label ${b.cls}" style="grid-column:span ${b.span}">${text}</div>`;
+  }).join('');
 
   const nodeDivs = levels.map(l => {
     const active = l === currentLevel;
@@ -238,7 +244,7 @@ export function renderCivFragment(
 
     <section class="civ-section">
       <h3>Cities <span class="phase-badge">${game.cities_phase === 1 ? 'Phase 2 of 2 — post-calamity' : 'Phase 1 of 2 — pre-trade'}</span></h3>
-      <p class="phase-hint">${game.cities_phase === 1 ? 'Enter city count after calamities resolve. This is the count used for A.S.T. progression.' : 'Enter city count before buying trade cards. You will re-enter after calamities resolve.'}</p>
+      <p class="phase-hint">${game.cities_phase === 1 ? 'Enter city count after calamities resolve. This is the count used for A.S.T. progression.' : 'Enter city count before buying trade cards. You will re&#8209;enter after calamities resolve.'}</p>
       <div class="census-form">
         ${cityCountSubmitted
           ? `<p class="census-submitted">✓ Cities: <strong>${census!.city_count}</strong></p>`

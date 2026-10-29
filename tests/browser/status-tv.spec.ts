@@ -49,3 +49,10 @@ test('full-screen toggle enters and leaves full screen, also after a live update
   await page.locator('#fullscreen-toggle').click();
   await expect.poll(() => calls(page)).toContain('fs:exit');
 });
+
+test('no full-screen toggle on a phone, where it covered the phase steps', async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto('/');
+  await expect(page.locator('.status-header')).toBeVisible();
+  await expect(page.locator('#fullscreen-toggle')).toBeHidden();
+});
