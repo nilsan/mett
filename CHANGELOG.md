@@ -2,6 +2,14 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.8 — 2026-11-25
+
+### Added
+- Foldable phones (checked against the Galaxy Z Fold 8). Unfolded, the status board scrolls in two columns with the A.S.T. board across both, instead of cutting off its right-hand tables; the player page keeps its two-column layout with the same readable text as on a phone, and the census, city and Submit controls are finger-sized on any touch screen wider than a phone. The GM's Players table fits the inner screen held either way round (4:3 or 3:4) without sideways scrolling. The cover screen uses the phone layout.
+
+### Removed
+- The old hand-entry API: `POST /api/players/:id/adv`, `/military`, `/wonder` and `/special`. Advance VP, Military, Wonder of the World and special abilities come only from the cards a player holds.
+
 ## 2.0.0-beta.7 — 2026-10-29
 
 ### Changed

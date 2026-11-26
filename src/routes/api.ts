@@ -78,7 +78,7 @@ function expertFlag(v: unknown): 0 | 1 {
 }
 
 // Player-facing POST endpoints — no auth required (players submit from their own civ page)
-const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/military', '/wonder', '/special', '/adv', '/advances', '/choice', '/confirm', '/move']);
+const PLAYER_PUBLIC = new Set(['/census', '/city-count', '/advances', '/choice', '/confirm', '/move']);
 
 // Protect all mutating API endpoints — read-only GETs and player actions are public
 api.use('*', async (c, next) => {
@@ -246,13 +246,6 @@ api.post('/players/:id/city-count', async (c) => {
   return c.json({ ok: true });
 });
 
-api.post('/players/:id/military', (c) => {
-  const playerId = playerParam(c);
-  const next = db.toggleMilitary(playerId);
-  broadcastState(playerId);
-  return c.json({ ok: true, military: next });
-});
-
 api.post('/players/:id/move', (c) => {
   const playerId = playerParam(c);
   const game = requireActiveGame();
@@ -261,20 +254,6 @@ api.post('/players/:id/move', (c) => {
   // so neighbours see the signal on the shared TV; other civ pages are skipped.
   broadcastState(playerId);
   return c.json({ ok: true, moved: next });
-});
-
-api.post('/players/:id/wonder', (c) => {
-  const playerId = playerParam(c);
-  const next = db.toggleWonder(playerId);
-  broadcastState(playerId);
-  return c.json({ ok: true, wonder: next });
-});
-
-api.post('/players/:id/special', (c) => {
-  const playerId = playerParam(c);
-  const next = db.toggleSpecial(playerId);
-  broadcastState(playerId);
-  return c.json({ ok: true, special: next });
 });
 
 api.post('/players/:id/ast', async (c) => {
@@ -304,22 +283,6 @@ api.post('/players/:id/regress', (c) => {
   const level = db.regressAst(playerId);
   broadcastState(); // global — the status board changes for everyone
   return c.json({ ok: true, ast_level: level });
-});
-
-api.post('/players/:id/adv', async (c) => {
-  const playerId = playerParam(c);
-  const body = await readJson(c);
-  if (body.adv_1vp === undefined && body.adv_3vp === undefined && body.adv_6vp === undefined) {
-    return c.json({ error: 'Provide adv_1vp, adv_3vp, and/or adv_6vp' }, 400);
-  }
-  const counts = [body.adv_1vp, body.adv_3vp, body.adv_6vp].map(v => Math.floor(Number(v ?? 0)));
-  if (counts.some(n => !Number.isFinite(n))) {
-    return c.json({ error: 'Advance counts must be numbers' }, 400);
-  }
-  const [v1, v3, v6] = counts.map(n => Math.max(0, n)) as [number, number, number];
-  db.setAdvCards(playerId, v1, v3, v6);
-  broadcastState(playerId);
-  return c.json({ ok: true });
 });
 
 api.get('/players/:id/advances', (c) => c.json(db.getPlayerAdvances(playerParam(c))));

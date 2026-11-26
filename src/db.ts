@@ -136,30 +136,6 @@ export function updatePlayerName(playerId: number, name: string): void {
   getDb().query('UPDATE players SET name=? WHERE id=?').run(name, playerId);
 }
 
-export function toggleMilitary(playerId: number): number {
-  const db = getDb();
-  const current = db.query<{ military: number }, [number]>('SELECT military FROM players WHERE id=?').get(playerId);
-  const next = current!.military ? 0 : 1;
-  db.query('UPDATE players SET military=? WHERE id=?').run(next, playerId);
-  return next;
-}
-
-export function toggleWonder(playerId: number): number {
-  const db = getDb();
-  const current = db.query<{ wonder: number }, [number]>('SELECT wonder FROM players WHERE id=?').get(playerId);
-  const next = current!.wonder ? 0 : 1;
-  db.query('UPDATE players SET wonder=? WHERE id=?').run(next, playerId);
-  return next;
-}
-
-export function toggleSpecial(playerId: number): number {
-  const db = getDb();
-  const current = db.query<{ special: number }, [number]>('SELECT special FROM players WHERE id=?').get(playerId);
-  const next = current!.special ? 0 : 1;
-  db.query('UPDATE players SET special=? WHERE id=?').run(next, playerId);
-  return next;
-}
-
 export function setAstLevel(playerId: number, level: number): void {
   const db = getDb();
   // A deliberate level set via the admin dropdown supersedes any calamity
@@ -203,7 +179,7 @@ function reevalFinalRound(db: ReturnType<typeof getDb>): void {
   }
 }
 
-export function setAdvCards(playerId: number, v1: number, v3: number, v6: number): void {
+function setAdvCards(playerId: number, v1: number, v3: number, v6: number): void {
   const total = v1 * 1 + v3 * 3 + v6 * 6;
   getDb().query('UPDATE players SET adv_1vp=?, adv_3vp=?, adv_6vp=?, adv_points=? WHERE id=?')
     .run(v1, v3, v6, total, playerId);

@@ -5,8 +5,8 @@
 /**
  * API-level tests:
  *   1. Authorisation middleware — GETs are public, the player-action set
- *      (/census, /city-count, /military, /wonder, /special, /adv) is public, every-
- *      thing else needs the admin cookie.
+ *      (/census, /city-count, /advances, /move) is public, everything else
+ *      needs the admin cookie.
  *   2. POST /api/players/:id/rank sibling-clear + auto-resolve.
  *   3. Static civ scenario shapes (WEST/EAST/SETUP_RECOMMENDATIONS).
  *
@@ -86,10 +86,7 @@ describe('API authorisation middleware', () => {
   it.each([
     ['/api/players/1/census',     { population: 27 }],
     ['/api/players/1/city-count', { city_count: 3 }],
-    ['/api/players/1/military',   {}],
-    ['/api/players/1/wonder',     {}],
-    ['/api/players/1/special',    {}],
-    ['/api/players/1/adv',        { adv_1vp: 1 }],
+    ['/api/players/1/advances',   { ids: [] }],
     ['/api/players/1/move',       {}],
   ])('POST %s is public (no cookie, never 401)', async (path, body) => {
     const res = await jsonReq(app, 'POST', path, body);
@@ -281,8 +278,8 @@ describe('status page: special-dim rendering in AST order', () => {
   }
 
   it('dims non-special players in AST order whenever any player holds special ability', async () => {
-    // Player 1 gets special ability; player 2 does not — dim is phase-independent
-    await jsonReq(app, 'POST', '/api/players/1/special', {});
+    // Player 1 holds a special-ability card; player 2 does not — dim is phase-independent
+    await jsonReq(app, 'POST', '/api/players/1/advances', { ids: ['monotheism'] }, ADMIN);
 
     const html = await getStatusHtml();
     // Exactly 1 row should carry the dim class (player 2)
@@ -291,14 +288,14 @@ describe('status page: special-dim rendering in AST order', () => {
   });
 
   it('does not dim any players when no player has special ability', async () => {
-    // No special toggles — no one should be dimmed
+    // No special-ability cards — no one should be dimmed
     const html = await getStatusHtml();
     expect(html).not.toContain('special-dim');
   });
 
   it('does not dim any players when all players have special ability', async () => {
-    await jsonReq(app, 'POST', '/api/players/1/special', {});
-    await jsonReq(app, 'POST', '/api/players/2/special', {});
+    await jsonReq(app, 'POST', '/api/players/1/advances', { ids: ['monotheism'] }, ADMIN);
+    await jsonReq(app, 'POST', '/api/players/2/advances', { ids: ['politics'] }, ADMIN);
 
     const html = await getStatusHtml();
     expect(html).not.toContain('special-dim');
@@ -554,7 +551,7 @@ describe('/api/players/:id/advances — advance cards', () => {
   });
 
   it('an empty set derives zero tier counts, replacing hand-entered ones', async () => {
-    await jsonReq(app, 'POST', `/api/players/${p1}/adv`, { adv_1vp: 3, adv_3vp: 1, adv_6vp: 0 });
+    db.query('UPDATE players SET adv_1vp=3, adv_3vp=1, adv_points=6 WHERE id=?').run(p1);
     await jsonReq(app, 'POST', `/api/players/${p1}/advances`, { ids: [] });
     expect(db.query('SELECT adv_1vp, adv_3vp, adv_6vp, adv_points FROM players WHERE id=?').get(p1))
       .toEqual({ adv_1vp: 0, adv_3vp: 0, adv_6vp: 0, adv_points: 0 });
@@ -695,7 +692,7 @@ describe('API input validation', () => {
     expect(await res.json()).toEqual({ error: 'Invalid JSON body' });
   });
 
-  it.each(['census', 'city-count', 'military', 'move', 'wonder', 'special', 'adv', 'advances'])(
+  it.each(['census', 'city-count', 'move', 'advances'])(
     'unknown player on /%s is a 404', async (action) => {
       const res = await jsonReq(app, 'POST', `/api/players/999/${action}`, { population: 5, city_count: 1, adv_1vp: 1 });
       expect(res.status).toBe(404);
@@ -703,7 +700,7 @@ describe('API input validation', () => {
     });
 
   it('non-numeric player id is a 404', async () => {
-    expect((await jsonReq(app, 'POST', '/api/players/abc/military', {})).status).toBe(404);
+    expect((await jsonReq(app, 'POST', '/api/players/abc/move', {})).status).toBe(404);
   });
 
   it('census is refused (409) when no game is running', async () => {
@@ -723,11 +720,6 @@ describe('API input validation', () => {
   it('census can still be resubmitted after reveal (by design)', async () => {
     await jsonReq(app, 'POST', `/api/players/${p1}/census`, { population: 5 });
     expect((await jsonReq(app, 'POST', `/api/players/${p1}/census`, { population: 50 })).status).toBe(200);
-  });
-
-  it('non-numeric advance counts are a 400', async () => {
-    const res = await jsonReq(app, 'POST', `/api/players/${p1}/adv`, { adv_1vp: 'lots' });
-    expect(res.status).toBe(400);
   });
 
   it('game/start rejects an unknown civ and a bad expert flag', async () => {
@@ -817,5 +809,18 @@ describe('debug endpoints: optional seed', () => {
     await jsonReq(app, 'POST', '/api/debug/simulate', { expert: 1, player_count: 6, rounds: 2 }, ADMIN);
     const res = await app.request('/api/debug/census', { method: 'POST', headers: { cookie: ADMIN } });
     expect(res.status).toBe(200);
+  });
+});
+
+describe('hand-entered card counts and flags are gone (2.0: the cards decide)', () => {
+  it.each(['military', 'wonder', 'special', 'adv'])('POST /api/players/:id/%s is a 404', async (action) => {
+    const db = setUpDbForGameTests();
+    _setTestDb(db);
+    setAdminPassword('PASSWORD');
+    const app = makeApp();
+    await jsonReq(app, 'POST', '/api/game/start',
+      { expert: 0, players: [{ civ_id: 1, name: 'Alpha', region: 'west' }] }, ADMIN);
+    const res = await jsonReq(app, 'POST', `/api/players/1/${action}`, { adv_1vp: 1 }, ADMIN);
+    expect(res.status).toBe(404);
   });
 });

@@ -130,10 +130,6 @@ POST /api/backups/restore               {file}
 POST /api/players/:id/census            {population}                      public
 POST /api/players/:id/city-count        {city_count}                      public
 POST /api/players/:id/move              Toggle "units moved"              public
-POST /api/players/:id/military          Toggle Military                   public
-POST /api/players/:id/wonder            Toggle Wonder of the World        public
-POST /api/players/:id/special           Toggle special ability            public
-POST /api/players/:id/adv               {adv_1vp, adv_3vp, adv_6vp}       public
 POST /api/players/:id/ast               {level}: set the A.S.T. square
 POST /api/players/:id/regress           Calamity regression, one square back
 POST /api/players/:id/name              {name}
@@ -237,16 +233,17 @@ For quick measurements, run Playwright from `bun -e`; [CLAUDE.md](CLAUDE.md) has
 
 ## Screens
 
-Supported: **phones** (every page) and **1920×1080 at 100 % and up** (every page). Nothing in between.
+Supported: **phones** (every page), **foldables' inner screens** (Galaxy Z Fold 8: about 971×650, or 734×880 turned) and **1920×1080 at 100 % and up** (every page). Laptop sizes in between (1280–1919 px) are not targets.
 
-- **Status board:** never scrolls or clips from 1080p up, including 4K at 125 % OS scaling (3072×1600). On phones it shows the tables one under the other.
-- **Player page:** may scroll down on phones, never sideways, even with large OS fonts.
+- **Status board:** never scrolls or clips from 1080p up, including 4K at 125 % OS scaling (3072×1600). Below 1280 px it scrolls instead: one column on phones, two on a foldable or tablet (the A.S.T. board across both).
+- **Player page:** may scroll down on phones, never sideways, even with large OS fonts. On a foldable's inner screen it keeps the desktop layout with phone-sized text, and on any touch screen wider than a phone the controls are 44 px (`pointer: coarse`).
 
 **The board's type scale** is a set of `--board-*` tokens on `.status-grid`, at the end of `style.css`. The breakpoints only change the `*-base` values:
 
 | Width | Change |
 |---|---|
 | ≤ 700 px | Phone: one column |
+| 701–1279 px | Foldable or tablet: two scrolling columns |
 | ≥ 1200 px and < 2560 px | Tighter admin rows, so 18 players fit at 1080p |
 | ≥ 2560 px | Larger rows and fonts |
 | ≥ 3072 px | Wider empire cells; taller rows only from 1840 px tall, so 4K at 125 % still fits |

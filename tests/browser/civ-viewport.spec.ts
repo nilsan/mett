@@ -19,6 +19,9 @@ test.describe('civ page: never scrolls horizontally', () => {
     { w: 390, h: 844, label: 'iPhone 13/14 (minimum)' },
     { w: 412, h: 915, label: 'Pixel 6/7/8' },
     { w: 440, h: 956, label: 'iPhone 16 Pro Max' },
+    { w: 467, h: 640, label: 'Galaxy Z Fold 8 cover screen' },
+    { w: 971, h: 650, label: 'Galaxy Z Fold 8 inner screen' },
+    { w: 734, h: 880, label: 'Galaxy Z Fold 8 inner screen, turned' },
     { w: 1366, h: 768, label: 'short laptop' },
   ];
 

@@ -445,14 +445,14 @@ body {
 }
 
 /* Mobile: single-column, natural height, scrollable */
-@media (max-width: 43.75em) {
+@media (max-width: 79.99em) {
   .status-grid {
     grid-template-columns: 1fr;
   }
 }
 
 /* Desktop/TV: 5-column, viewport-locked, no scroll */
-@media (min-width: 43.76em) {
+@media (min-width: 80em) {
   .status-grid {
     /* Order: census | trade | A.S.T. Progress (ranking) | AST board | leaderboard.
        Every table except the AST board is content-sized (auto); the board is the
@@ -502,7 +502,7 @@ body {
 .fullscreen-toggle:hover { color: var(--mett-text); }
 /* Not on phones: it covered the phase steps there, and a phone browser
    hides its own bars when the page scrolls anyway. */
-@media (max-width: 43.75em) {
+@media (max-width: 79.99em) {
   .fs-supported .fullscreen-toggle { display: none; }
 }
 
@@ -824,7 +824,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
    board content-size to readable fixed-width cells and scroll horizontally
    inside its .ab-scroll card instead. Placed after the base rules so it wins
    the cascade on mobile (same specificity, later source order). */
-@media (max-width: 43.75em) {
+@media (max-width: 79.99em) {
   .ab-table.status-ast { width: max-content !important; }
   .status-ast .ab-data-col { width: clamp(1.9rem, 2.4vw, 3rem); }
 }
@@ -886,7 +886,7 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
 
 /* ─── S3 phone layout — single column, normal density ────────────────────── */
 
-@media (max-width: 43.75em) {
+@media (max-width: 79.99em) {
   .status-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -953,6 +953,15 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .trade-chip       { width: 16px; height: 24px; font-size: 10px; }
   .status-grid .trade-chips      { gap: 2px; }
   .status-grid .trade-table td   { padding-left: 5px; padding-right: 5px; }
+}
+
+/* Between a phone and the TV board (a foldable's inner screen, a tablet): the
+   same scrolling layout in two columns, the A.S.T. board across both. Dense
+   flow lets the leaderboard sit beside A.S.T. Progress Order. */
+@media (min-width: 43.76em) and (max-width: 79.99em) {
+  .status-grid { grid-template-columns: 1fr 1fr; grid-auto-flow: row dense; }
+  .status-grid .ast-section { grid-column: 1 / -1; }
+  .ab-table.status-ast { min-width: 100%; }
 }
 
 /* ─── S3 WQHD layout — 2560px CSS px (native 2560p, or 4K @ 1.5×) ─────────── */
@@ -1652,8 +1661,9 @@ details:is(.adv-ref-item, .cal-ref-item)[open] > summary:not([role]) { color: va
 
 /* ─── Civ page responsive overrides (base rules above, breakpoints below) ── */
 
-/* Mid-range: 1366×768 and similar — compact but readable */
-@media (max-width: 87.5em) {
+/* Mid-range: 1366×768 and similar — compact but readable. Not below 1280px:
+   a foldable's inner screen or a tablet is held close and gets the full sizes. */
+@media (min-width: 80em) and (max-width: 87.5em) {
   main.container-fluid { padding-bottom: 0.4rem !important; }
   .civ-hero { padding: 0.28rem 0.65rem; margin-bottom: 0.2rem; }
   .civ-hero h2 { font-size: 1.6rem; }
@@ -2010,9 +2020,9 @@ body:has(.civ-page) { overflow-x: clip; }
 .ab-legend-dot.age-lbronze { background: #5a2e0e; }
 .ab-legend-dot.age-eiron   { background: #6a7d9e; }
 .ab-legend-dot.age-liron   { background: conic-gradient(from 45deg, #e0533a, #e0b13a, #4caf50, #3a9ad0, #9b59d0, #e0533a); }
-/* Phone: the A.S.T. track and its legend at readable sizes (after their base
-   rules, which they override). */
-@media (max-width: 43.75em) {
+/* Phone and foldable/tablet: the A.S.T. track and its legend at readable
+   sizes (after their base rules, which they override). */
+@media (max-width: 79.99em) {
   .ast-req-legend { font-size: 0.92rem; gap: 0.3rem; }
   .ast-req-legend .ab-legend-dot { width: 0.8rem; height: 0.8rem; }
   /* Capped by the screen width too: 17 squares share it, so with a large OS
@@ -2021,7 +2031,7 @@ body:has(.civ-page) { overflow-x: clip; }
   .ast-age-label { font-size: min(0.62rem, 2.45vw); padding: 0.15rem 0; margin-bottom: 0.0625rem; }
   .ast-age-full { display: none; }
 }
-@media (min-width: 43.76em) {
+@media (min-width: 80em) {
   .ast-age-short { display: none; }
 }
 
@@ -2595,9 +2605,9 @@ body:has(.civ-page) { overflow-x: clip; }
   color: var(--mett-muted);
   vertical-align: middle;
 }
-/* Phone: the explanations at body size (after the base rules, which they
-   override). */
-@media (max-width: 43.75em) {
+/* Phone and foldable/tablet: the explanations at body size (after the base
+   rules, which they override). */
+@media (max-width: 79.99em) {
   .phase-hint, .mov-hint { font-size: 0.92rem; }
   .phase-badge { font-size: 0.72rem; }
 }
@@ -2660,19 +2670,18 @@ body:has(.civ-page) { overflow-x: clip; }
    because the status/admin layouts are height-tuned around the default
    header. */
 
-/* Short landscape: laptops (1366×768) and tablets/phones in landscape */
+/* Short landscape: tablets, a foldable's inner screen, phones in landscape.
+   Only spacing is squeezed — each tab scrolls, so the text keeps its size. */
 @media (min-width: 43.76em) and (max-height: 50em) {
   body:has(.civ-page) .site-header { padding: 0.25rem 0.75rem 0.15rem; }
   .civ-hero { padding: 0.18rem 0.65rem; margin-bottom: 0.15rem; }
   .civ-hero h2 { font-size: 1.3rem; }
   .civ-body { gap: 0.25rem; }
   .civ-section { padding: 0.2rem 0.5rem; }
-  .ast-level-value { font-size: 1.05rem; }
   .ast-current { margin-bottom: 0.05rem; }
   .ast-next { padding: 0.18rem 0.45rem; margin-bottom: 0.1rem; }
   .ast-req-status { gap: 0.15rem; }
-  .req-row { font-size: 0.82rem; gap: 0.3rem; }
-  .req-have { font-size: 0.72rem; }
+  .req-row { gap: 0.3rem; }
   .ast-bar-wrap { margin-top: 0.25rem; }
 }
 
@@ -2752,7 +2761,7 @@ body:has(.civ-page) { overflow-x: clip; }
    up to 1.15× (three-digit totals must still fit their column), player names
    not at all (the longest already fills the box). Trade chips follow the
    numbers, not the rows, so the trade column barely widens. */
-@media (min-width: 43.76em) {
+@media (min-width: 80em) {
   .status-grid {
     --board-row-base: clamp(1.1rem, 3.65vh, 4.2rem);
     --board-name-base: clamp(0.8rem, 1.5vh, 1.8rem);
@@ -2842,4 +2851,22 @@ body:has(.civ-page) { overflow-x: clip; }
     --text-scale-max: 1.1;
     --num-scale-max: 1;
   }
+}
+
+/* Touch screens wider than a phone (a foldable's inner screen, a tablet):
+   the desktop layout, but the player's controls at finger size (44px) —
+   the desktop sizes are made for a mouse. */
+@media (pointer: coarse) and (min-width: 43.76em) {
+  .civ-page .census-input { height: 2.75rem; min-height: 0; line-height: 2.75rem; box-sizing: border-box; }
+  .btn-submit { height: 2.75rem; min-height: 0; padding: 0 1rem; box-sizing: border-box; }
+  .adv-btn { width: 2.75rem; height: 2.75rem; min-height: 0; font-size: 1.2rem; }
+}
+
+/* A foldable's inner screen held upright (~734px) or a small tablet: the
+   GM's Players table fits without sideways scrolling (after the base admin
+   rules, which it overrides). */
+@media (min-width: 43.76em) and (max-width: 56.25em) {
+  .admin-table td, .admin-table th { padding-left: 0.2rem; padding-right: 0.2rem; }
+  .admin-table .player-name-input { width: 5.5rem; }
+  .census-admin-input { width: 4rem !important; }
 }

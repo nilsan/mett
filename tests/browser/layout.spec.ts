@@ -5,6 +5,18 @@
 /// <reference lib="dom" />
 import type { APIRequestContext } from '@playwright/test';
 import { test, expect, adminLogin } from './fixtures';
+import { ADVANCES, SPECIAL_ABILITY_IDS, WONDER_ID } from '../../src/shared/advances';
+
+/** Cards worth exactly `points` VP, 6s and 3s first, none that changes a flag
+ *  the board shows (Wonder, special abilities) or asks for a colour choice. */
+function cardsWorth(points: number): string[] {
+  const plain = ADVANCES.filter(a => a.id !== WONDER_ID && !SPECIAL_ABILITY_IDS.includes(a.id) && !a.choiceCredits)
+    .sort((a, b) => b.vp - a.vp);
+  const ids: string[] = [];
+  for (const a of plain) if (a.vp <= points) { ids.push(a.id); points -= a.vp; }
+  if (points) throw new Error('not enough cards');
+  return ids;
+}
 
 // The status display must fit a full 18-empire game without vertical scrolling
 // on the TV targets. The auto-seed fixture guarantees exactly 18 players, so the
@@ -130,7 +142,7 @@ test.describe('main display layout', () => {
         for (const [i, p] of state.players.entries()) {
           const tied = i >= tiedFrom;
           await request.post(`/api/players/${p.id}/ast`, { data: { level: tied ? 30 : 50 } });
-          await request.post(`/api/players/${p.id}/adv`, { data: { adv_1vp: tied ? 1 : 2 + i } });
+          await request.post(`/api/players/${p.id}/advances`, { data: { ids: cardsWorth(tied ? 1 : 2 + i) } });
         }
         await page.goto('/');
         await expect(page.locator('.lb-table tbody tr')).toHaveCount(players);
