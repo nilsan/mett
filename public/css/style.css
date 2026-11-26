@@ -967,6 +967,19 @@ main.container-fluid:has(.status-grid) { padding-block: 0.25rem; }
   .status-grid .lb-table td, .status-grid .lb-table th { padding-left: 0.25rem; padding-right: 0.25rem; }
 }
 
+/* A foldable's inner screen held upright (Galaxy Z Fold 8: ~616px at the
+   default density, ~734px at a smaller one): Trade Cards and A.S.T. Progress
+   Order — both one row per empire, the order list narrow — side by side;
+   census, board and leaderboard across the screen. Phones held upright are
+   under 576px and keep the single column. */
+@media (min-width: 36em) and (max-width: 56.25em) and (orientation: portrait) {
+  .status-grid { grid-template-columns: minmax(0, 1fr) auto; grid-auto-flow: row; }
+  .status-grid > .table-section { grid-column: 1 / -1; }
+  .status-grid > .table-section:has(.trade-table),
+  .status-grid > .ast-order-section { grid-column: auto; }
+  .status-grid .ast-order-section h3 { max-width: none; }
+}
+
 /* ─── S3 WQHD layout — 2560px CSS px (native 2560p, or 4K @ 1.5×) ─────────── */
 
 @media (min-width: 160rem) {
@@ -2856,13 +2869,15 @@ body:has(.civ-page) { overflow-x: clip; }
   }
 }
 
-/* Touch screens wider than a phone (a foldable's inner screen, a tablet):
-   the desktop layout, but the player's controls at finger size (44px) —
-   the desktop sizes are made for a mouse. */
-@media (pointer: coarse) and (min-width: 43.76em) {
+/* Touch screens wider than a phone (a foldable's inner screen either way
+   round, a tablet): the player's controls at finger size (44px). The desktop
+   sizes are made for a mouse, and the short-phone sizes for a 412px screen
+   that must not scroll; from 576px there is room. */
+@media (pointer: coarse) and (min-width: 36em) {
   .civ-page .census-input { height: 2.75rem; min-height: 0; line-height: 2.75rem; box-sizing: border-box; }
   .btn-submit { height: 2.75rem; min-height: 0; padding: 0 1rem; box-sizing: border-box; }
   .adv-btn { width: 2.75rem; height: 2.75rem; min-height: 0; font-size: 1.2rem; }
+  .city-count-row > .adv-btn { height: 2.75rem; }
 }
 
 /* A foldable's inner screen held upright (~734px) or a small tablet: the

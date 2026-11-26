@@ -2,6 +2,12 @@
 
 All notable changes to me[tt]. Versions follow [semantic versioning](DEV.md#versioning): **major** = upgrading needs manual work or breaks bookmarks/config; **minor** = new features, visible changes, database migrations; **patch** = fixes. Docker images are tagged with each version (`1.5.0`, `1.5`, `1`).
 
+## 2.0.0-beta.9 — 2026-11-26
+
+### Changed
+- Foldable held upright (the Galaxy Z Fold 8's inner screen turned): the status board puts Trade Cards and A.S.T. Progress Order side by side, with census, A.S.T. board and leaderboard across the screen, instead of one long column.
+- The census, city and Submit controls are finger-sized (44 px) on touch screens from 576 px wide, so also on the Fold 8 held upright at its default density, where the player page uses the phone layout.
+
 ## 2.0.0-beta.8 — 2026-11-25
 
 ### Added

@@ -233,16 +233,17 @@ For quick measurements, run Playwright from `bun -e`; [CLAUDE.md](CLAUDE.md) has
 
 ## Screens
 
-Supported: **phones** (every page), **foldables' inner screens** (Galaxy Z Fold 8: about 971×650, or 734×880 turned) and **1920×1080 at 100 % and up** (every page). Laptop sizes in between (1280–1919 px) are not targets.
+Supported: **phones** (every page), **foldables' inner screens** (Galaxy Z Fold 8, measured in Firefox: 857×647 CSS px at dpr 2.86, 647×857 turned; 857×500 and 647×711 with the browser's bars) and **1920×1080 at 100 % and up** (every page). Laptop sizes in between (1280–1919 px) are not targets.
 
-- **Status board:** never scrolls or clips from 1080p up, including 4K at 125 % OS scaling (3072×1600). Below 1280 px it scrolls instead: one column on phones, two on a foldable or tablet (the A.S.T. board across both).
-- **Player page:** may scroll down on phones, never sideways, even with large OS fonts. On a foldable's inner screen it keeps the desktop layout with phone-sized text, and on any touch screen wider than a phone the controls are 44 px (`pointer: coarse`).
+- **Status board:** never scrolls or clips from 1080p up, including 4K at 125 % OS scaling (3072×1600). Below 1280 px it scrolls instead: one column on phones, two on a foldable or tablet (the A.S.T. board across both). A foldable held upright (576–900 px, portrait) puts Trade Cards beside A.S.T. Progress Order, the other tables across the screen.
+- **Player page:** may scroll down on phones, never sideways, even with large OS fonts. On a foldable's inner screen it keeps the desktop layout with phone-sized text, and on any touch screen from 576 px the controls are 44 px (`pointer: coarse`). Held upright (647 px) it is the phone layout.
 
 **The board's type scale** is a set of `--board-*` tokens on `.status-grid`, at the end of `style.css`. The breakpoints only change the `*-base` values:
 
 | Width | Change |
 |---|---|
 | ≤ 700 px | Phone: one column |
+| 576–900 px, portrait | Foldable held upright: Trade Cards beside A.S.T. Progress Order |
 | 701–1279 px | Foldable or tablet: two scrolling columns |
 | ≥ 1200 px and < 2560 px | Tighter admin rows, so 18 players fit at 1080p |
 | ≥ 2560 px | Larger rows and fonts |

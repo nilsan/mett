@@ -79,7 +79,7 @@ Semantic versioning, rules in DEV.md › Versioning: every commit that changes b
 
 ## Supported screens
 
-Phones (every page), foldables' inner screens (Galaxy Z Fold 8: ~971×650 unfolded, ~734×880 turned; cover ~467×640 is a phone) and 1920×1080 at 100 % scaling and up. Laptop sizes in between are not targets. The status page must never scroll *or clip* at ≥ 1080p, including OS-scaled 4K (3072×1600); below 1280 px it scrolls table by table (two columns from 701 px). Touch screens wider than a phone get 44 px controls (`pointer: coarse`).
+Phones (every page), foldables' inner screens (Galaxy Z Fold 8, measured in Firefox, dpr 2.86: 857×500 unfolded, 647×711 turned, 857×647 / 647×857 without bars; cover ~416×657 is a phone) and 1920×1080 at 100 % scaling and up. Laptop sizes in between are not targets. The status page must never scroll *or clip* at ≥ 1080p, including OS-scaled 4K (3072×1600); below 1280 px it scrolls table by table (two columns from 701 px; upright foldables 576–900 px put Trade Cards beside A.S.T. Progress Order). Touch screens from 576 px get 44 px controls (`pointer: coarse`).
 
 ## Task List & todo.md
 

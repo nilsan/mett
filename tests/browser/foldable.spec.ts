@@ -5,13 +5,19 @@
 /// <reference lib="dom" />
 import { test, expect, adminLogin } from './fixtures';
 
-// A foldable's inner screen (Galaxy Z Fold 8, 4:3) sits between a phone and
-// the 1080p TV board, used either way round: about 971×734 CSS px held wide
-// and 734×971 held upright, less the browser's bars. The status board scrolls
+// A foldable's inner screen (Galaxy Z Fold 8, 4:3, 2448×1848 px) sits between
+// a phone and the 1080p TV board, used either way round: 857×647 CSS px in
+// Firefox (dpr 2.86; 971×734 at a smaller density), less the browser's bars. The status board scrolls
 // there in two columns instead of clipping its five; the player page keeps its
 // desktop layout with readable text and finger-sized controls; the GM's
 // Players table fits without sideways scrolling.
 const INNER = [
+  // Measured on the user's Fold 8 in Firefox (dpr 2.86): whole screen, and
+  // with the browser's bars.
+  { width: 857, height: 647 },
+  { width: 857, height: 500 },
+  { width: 647, height: 857 },
+  { width: 647, height: 711 },
   { width: 971, height: 734 },
   { width: 971, height: 650 },
   { width: 734, height: 971 },
@@ -48,7 +54,34 @@ for (const viewport of INNER) {
       expect(m).toEqual({ sideways: 0, clipped: 0, columns: 2, boardSpans: true });
     });
 
-    test('admin: every control on screen, no sideways scrolling in the Players table', async ({ page }) => {
+    if (viewport.height > viewport.width) {
+      test('status board upright: Trade Cards beside A.S.T. Progress Order, chips inside the card', async ({ page }) => {
+        // Worst case: census revealed and every empire at 9 cities.
+        await adminLogin(page.request);
+        expect((await page.request.post('/api/debug/census', { data: {} })).ok()).toBe(true);
+        const state = await (await page.request.get('/api/state')).json();
+        for (const p of state.players)
+          expect((await page.request.post(`/api/players/${p.id}/city-count`, { data: { city_count: 9 } })).ok()).toBe(true);
+        await page.goto('/');
+        await expect(page.locator('.trade-table')).toBeVisible();
+        const m = await page.evaluate(() => {
+          const trade = document.querySelector('.trade-table')!.closest('section')!.getBoundingClientRect();
+          const order = document.querySelector('.ast-order-section')!.getBoundingClientRect();
+          return {
+            sameRow: Math.abs(trade.top - order.top) < 1,
+            orderRight: order.left > trade.right,
+            chipsOut: Array.from(document.querySelectorAll('.trade-chips'))
+              .filter(c => c.getBoundingClientRect().right > trade.right + 0.5).length,
+            chips: document.querySelectorAll('.trade-chip').length > 0,
+          };
+        });
+        expect(m).toEqual({ sameRow: true, orderRight: true, chipsOut: 0, chips: true });
+      });
+    }
+
+    // Below 700px (the Fold 8 held upright at its default density) the admin
+    // page is the phone one, whose Players table scrolls in its card.
+    if (viewport.width > 700) test('admin: every control on screen, no sideways scrolling in the Players table', async ({ page }) => {
       await adminLogin(page.request);
       await page.goto('/admin');
       await expect(page.locator('.admin-table:not(.backup-table)')).toBeVisible();
@@ -71,8 +104,15 @@ for (const viewport of INNER) {
       const small = await page.locator('.adv-btn, .btn-submit, .census-input').evaluateAll(es => es
         .filter(e => (e as HTMLElement).offsetParent)
         .map(e => e.getBoundingClientRect())
-        .filter(r => r.height < 44 || r.width < 44).length);
-      expect(small, 'controls under 44px').toBe(0);
+        .filter(r => r.height < 44 || r.width < 44).map(r => `${Math.round(r.width)}x${Math.round(r.height)}`));
+      expect(small, "controls under 44px").toEqual([]);
+      const out = await page.evaluate(() => ({
+        offscreen: Array.from(document.querySelectorAll('button, input, select'))
+          .filter(e => (e as HTMLElement).offsetParent && e.getBoundingClientRect().right > innerWidth + 0.5).length,
+        clipped: Array.from(document.querySelectorAll('.civ-section'))
+          .filter(e => (e as HTMLElement).offsetParent && e.scrollWidth > e.clientWidth + 1).length,
+      }));
+      expect(out, 'Round tab fits across').toEqual({ offscreen: 0, clipped: 0 });
       await page.locator('#tab-btn-ast').click();
       for (const [sel, min] of [
         ['.ast-node', 12],
