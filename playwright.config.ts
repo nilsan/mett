@@ -27,7 +27,7 @@ export default defineConfig({
     // DejaVu, the default on many Linux TV computers and on the CI runners.
     {
       name: 'chromium-wide-font',
-      testMatch: /(layout|civ-oneline|civ-viewport)\.spec\.ts/,
+      testMatch: /(layout|civ-oneline|civ-viewport|foldable)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: { env: { ...process.env, FONTCONFIG_FILE: resolve('tests/browser/wide-font.conf') } },
